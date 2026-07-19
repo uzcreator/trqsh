@@ -1,0 +1,31 @@
+# Normalize line endings to LF for all text so gofmt/tooling is consistent
+# across macOS/Linux/Windows contributors.
+* text=auto eol=lf
+
+*.go     text eol=lf
+*.sh     text eol=lf
+*.mjs    text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+Makefile text eol=lf
+
+# Windows scripts keep CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary
+*.dmg  binary
+*.exe  binary
+
+# Generated / vendored — collapse in diffs and exclude from language stats.
+go.sum                              linguist-generated
+*.pb.go                             linguist-generated
+web/site/lib/catalog.generated.ts  linguist-generated
+pnpm-lock.yaml                      linguist-generated

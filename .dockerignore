@@ -1,0 +1,21 @@
+# Keep Docker build contexts small and reproducible.
+.git
+.github
+docs
+plan
+deploy/terraform
+deploy/helm
+deploy/observability
+
+# Node / frontend build artifacts (installed fresh inside the image).
+**/node_modules
+**/.next
+**/dist
+gui/bin
+
+# Local env & editor cruft.
+**/.env
+**/.env.*
+!**/.env.example
+.vscode
+*.log

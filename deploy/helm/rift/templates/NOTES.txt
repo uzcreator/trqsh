@@ -1,0 +1,32 @@
+Rift {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Components:
+{{- if .Values.api.enabled }}
+  • Control API   → Service {{ include "rift.fullname" . }}-api:{{ .Values.api.service.port }}
+{{- end }}
+{{- if .Values.edge.enabled }}
+  • Edge          → DaemonSet (host network) on nodes matching {{ .Values.edge.nodeSelector | toYaml | nindent 22 }}
+{{- end }}
+{{- if .Values.dashboard.enabled }}
+  • Dashboard     → Service {{ include "rift.fullname" . }}-dashboard:{{ .Values.dashboard.service.port }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Public endpoints (once DNS + TLS resolve):
+  • API   https://{{ .Values.ingress.hosts.api }}
+  • App   https://{{ .Values.ingress.hosts.app }}
+{{- end }}
+
+{{- if not .Values.secrets.existingSecret }}
+{{- if not .Values.secrets.create }}
+
+⚠  No secret configured. Set secrets.existingSecret to a pre-created Secret
+   (recommended) or secrets.create=true for dev. Required keys:
+   RIFT_JWT_SECRET, RIFT_INTERNAL_TOKEN, RIFT_DATABASE_URL, RIFT_REDIS_URL.
+{{- end }}
+{{- end }}
+
+Check rollout:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/component=edge --tail=50

@@ -1,0 +1,8 @@
+# SOPS encryption rules. Only the secret values (data/stringData) are encrypted;
+# YAML keys/structure stay readable in git diffs. Replace the age recipient with
+# your team/CI public keys (or swap `age:` for `kms:` / `gcp_kms:` in prod).
+creation_rules:
+  - path_regex: deploy/secrets/.*\.enc\.ya?ml$
+    encrypted_regex: "^(data|stringData)$"
+    age: >-
+      age1exampleteamkeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

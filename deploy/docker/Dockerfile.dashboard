@@ -1,0 +1,37 @@
+# Rift web dashboard (Next.js 15 App Router). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.dashboard -t rift/dashboard .
+#
+# Server Components + Server Actions require a Node runtime (not a static
+# export). RIFT_API_URL points the server-side data layer at the control API.
+
+# --- deps ---
+FROM node:24-alpine AS deps
+RUN corepack enable
+WORKDIR /app
+COPY web/dashboard/package.json web/dashboard/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# --- build ---
+FROM node:24-alpine AS build
+RUN corepack enable
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY web/dashboard/ ./
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build
+
+# --- runtime ---
+FROM node:24-alpine AS runtime
+RUN corepack enable && addgroup -S nodejs && adduser -S nextjs -G nodejs
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
+COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+# next.config + any runtime assets.
+COPY --from=build /app/next.config.mjs ./next.config.mjs
+
+USER nextjs
+EXPOSE 3000/tcp
+CMD ["pnpm", "start"]

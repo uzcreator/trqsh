@@ -1,0 +1,172 @@
+# Full local Rift stack (Part 08). Brings up the M1 product end-to-end:
+#   Postgres + Redis + migrations + control API + edge + dev mail.
+# The dashboard and the observability stack are opt-in via profiles.
+#
+#   make dev                 # core stack (pg, redis, migrate, api, edge, mailhog)
+#   make dev-web             # + the Next.js dashboard          (profile: web)
+#   make observability       # + Prometheus/Grafana/OTel        (profile: observability)
+#   make dev-deps            # just Postgres + Redis (for `go run` workflows)
+#
+# Dev secrets below are non-secret defaults for localhost only. Override via a
+# deploy/.env file (see deploy/.env.example). Never use these in staging/prod.
+
+x-internal-token: &internal_token ${RIFT_INTERNAL_TOKEN:-dev-internal-token}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rift
+      POSTGRES_PASSWORD: rift
+      POSTGRES_DB: rift
+    ports:
+      - "5432:5432"
+    volumes:
+      - rift_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rift -d rift"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - rift_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot schema migration. Runs goose `up`, then exits 0.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.migrate
+    environment:
+      GOOSE_DBSTRING: postgres://rift:rift@postgres:5432/rift?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Control plane: accounts, keys, domains, quotas, entitlements, billing.
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.api
+    environment:
+      RIFT_API_ADDR: ":8080"
+      RIFT_DATABASE_URL: postgres://rift:rift@postgres:5432/rift?sslmode=disable
+      RIFT_REDIS_URL: redis://redis:6379/0
+      RIFT_BASE_DOMAIN: lvh.me
+      RIFT_API_PUBLIC_URL: http://localhost:8080
+      RIFT_JWT_SECRET: ${RIFT_JWT_SECRET:-dev-jwt-secret-change-me}
+      RIFT_INTERNAL_TOKEN: *internal_token
+      RIFT_DEV_AUTH: "1"
+      # Billing is off unless you supply Stripe test keys in deploy/.env.
+      RIFT_STRIPE_SECRET_KEY: ${RIFT_STRIPE_SECRET_KEY:-}
+      RIFT_STRIPE_WEBHOOK_SECRET: ${RIFT_STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Edge data plane: public ingress + agent sessions. Talks to the real API for
+  # entitlements. Dev uses self-signed TLS (RIFT_ACME_STAGING=1).
+  edge:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.edge
+    environment:
+      RIFT_BASE_DOMAIN: lvh.me
+      RIFT_REGION: local
+      RIFT_EDGE_ID: edge-local
+      RIFT_REDIS_URL: redis://redis:6379/0
+      RIFT_ENTITLEMENTS: api
+      RIFT_API_URL: http://api:8080
+      RIFT_INTERNAL_TOKEN: *internal_token
+      RIFT_ACME_STAGING: "1"
+      RIFT_ACME_EMAIL: dev@localhost
+      RIFT_METRICS_ADDR: ":9090"
+    ports:
+      - "80:80"        # HTTP ingress
+      - "443:443"      # HTTPS ingress
+      - "4443:4443/tcp"  # agent TCP fallback
+      - "4443:4443/udp"  # agent QUIC
+      - "9090:9090"    # metrics + health
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  # Dev SMTP sink (magic-link / verification emails). UI on :8025.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # --- opt-in: web dashboard (profile: web) ---
+  dashboard:
+    profiles: ["web"]
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.dashboard
+    environment:
+      RIFT_API_URL: http://api:8080
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+
+  # --- opt-in: observability (profile: observability) ---
+  otel-collector:
+    profiles: ["observability"]
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.1.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "9091:9090"
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  rift_pg:
+  rift_redis:

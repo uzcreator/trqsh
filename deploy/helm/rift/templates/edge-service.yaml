@@ -1,0 +1,20 @@
+{{- if .Values.edge.enabled }}
+# Metrics-only Service for Prometheus discovery. Public edge traffic arrives on
+# node IPs (host networking + anycast/GeoDNS), not through this ClusterIP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rift.fullname" . }}-edge-metrics
+  labels:
+    {{- include "rift.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "rift.selectorLabels" (dict "root" . "component" "edge") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ .Values.edge.ports.metrics }}
+      targetPort: metrics
+{{- end }}

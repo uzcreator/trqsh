@@ -1,0 +1,49 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "rift.fullname" . }}
+  labels:
+    {{- include "rift.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.api | quote }}
+        - {{ .Values.ingress.hosts.app | quote }}
+      secretName: {{ include "rift.fullname" . }}-tls
+  {{- end }}
+  rules:
+    {{- if .Values.api.enabled }}
+    - host: {{ .Values.ingress.hosts.api | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "rift.fullname" . }}-api
+                port:
+                  number: {{ .Values.api.service.port }}
+    {{- end }}
+    {{- if .Values.dashboard.enabled }}
+    - host: {{ .Values.ingress.hosts.app | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "rift.fullname" . }}-dashboard
+                port:
+                  number: {{ .Values.dashboard.service.port }}
+    {{- end }}
+{{- end }}

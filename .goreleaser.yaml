@@ -1,0 +1,78 @@
+# GoReleaser — cross-compile + package the CLI (rift) and edge (riftd).
+# The desktop GUI is built + signed separately in release.yml (Wails needs CGO
+# and per-OS signing). Run locally: `goreleaser release --clean --snapshot`.
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: rift
+    main: ./cmd/rift
+    binary: rift
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+  - id: riftd
+    main: ./cmd/riftd
+    binary: riftd
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: default
+    builds: [rift, riftd]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-dev"
+
+changelog:
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^test:", "^chore:"]
+
+# Homebrew tap for the CLI (github.com/rift/homebrew-tap).
+brews:
+  - name: rift
+    ids: [default]
+    repository:
+      owner: rift
+      name: homebrew-tap
+    homepage: "https://rift.dev"
+    description: "Expose localhost to the internet — fast."
+    license: "Apache-2.0"
+    install: |
+      bin.install "rift"
+
+# Linux packages for the CLI + edge.
+nfpms:
+  - id: packages
+    package_name: rift
+    builds: [rift, riftd]
+    homepage: "https://rift.dev"
+    description: "Rift tunneling client (rift) and edge server (riftd)."
+    maintainer: "Rift <ops@rift.dev>"
+    license: "Apache-2.0"
+    formats: [deb, rpm]
+    bindir: /usr/bin
+
+release:
+  github:
+    owner: rift
+    name: rift
+  draft: false
+  prerelease: auto

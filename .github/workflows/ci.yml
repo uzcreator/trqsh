@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.26"
+
+jobs:
+  go:
+    name: Go build, test, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Build
+        run: go build ./...
+      - name: Check generated plan catalog is current
+        run: |
+          go run ./web/site/scripts/genplans
+          git diff --exit-code web/site/lib/catalog.generated.ts \
+            || (echo "::error::web/site/lib/catalog.generated.ts is stale — run 'make site-plans'"; exit 1)
+      - name: Check embedded OpenAPI is current
+        run: |
+          cp docs/openapi.yaml internal/api/openapi.yaml
+          git diff --exit-code internal/api/openapi.yaml \
+            || (echo "::error::internal/api/openapi.yaml is stale — run 'make openapi-sync'"; exit 1)
+      - name: Test (race)
+        run: go test ./... -race -count=1
+      - name: Vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  frontends:
+    name: Frontend builds
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [web/dashboard, web/site, gui/frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ${{ matrix.app }}/pnpm-lock.yaml
+      - name: Install
+        working-directory: ${{ matrix.app }}
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: ${{ matrix.app }}
+        run: pnpm build
+
+  helm:
+    name: Helm lint + template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Lint
+        run: helm lint deploy/helm/rift -f deploy/helm/rift/values.staging.yaml
+      - name: Template (render must succeed)
+        run: |
+          helm template rift deploy/helm/rift \
+            -f deploy/helm/rift/values.staging.yaml \
+            --set secrets.existingSecret=rift-secrets > /dev/null
+
+  terraform:
+    name: Terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Format check
+        run: terraform -chdir=deploy/terraform fmt -check -recursive
+      - name: Validate
+        run: |
+          terraform -chdir=deploy/terraform init -backend=false
+          terraform -chdir=deploy/terraform validate
+
+  compose:
+    name: Compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose
+        run: docker compose -f deploy/docker-compose.dev.yml config --quiet

@@ -1,0 +1,27 @@
+# Database migration runner (goose + the control-plane migrations). Build
+# context = repo root:
+#   docker build -f deploy/docker/Dockerfile.migrate -t rift/migrate .
+#
+# Run against a database (goose reads GOOSE_DBSTRING from the env):
+#   docker run --rm -e GOOSE_DBSTRING="postgres://rift:rift@db:5432/rift?sslmode=disable" rift/migrate up
+#
+# Used as a one-shot service in docker-compose and a pre-install/pre-upgrade
+# Helm hook Job so schema is applied before the API starts.
+
+# --- build goose ---
+FROM golang:1.26-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.24.1
+
+# --- runtime ---
+FROM alpine:3.20
+RUN adduser -D -u 65532 nonroot
+COPY --from=build /go/bin/goose /usr/local/bin/goose
+COPY internal/api/db/migrations /migrations
+
+ENV GOOSE_DRIVER=postgres \
+    GOOSE_MIGRATION_DIR=/migrations
+
+USER nonroot
+ENTRYPOINT ["goose"]
+CMD ["up"]

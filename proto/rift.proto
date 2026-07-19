@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package rift.v1;
+
+option go_package = "github.com/rift/rift/pkg/proto;proto";
+
+// ---- Control-stream messages (length-prefixed: uint32 BE length + bytes) ----
+
+message Envelope {
+  oneof msg {
+    Hello hello = 1;          // agent -> edge (first message on the control stream)
+    AuthResp auth_resp = 2;   // edge  -> agent
+    BindTunnel bind = 3;      // agent -> edge
+    BindResp bind_resp = 4;   // edge  -> agent
+    Unbind unbind = 5;        // agent -> edge
+    Ping ping = 6;            // both
+    Pong pong = 7;            // both
+    ErrorMsg error = 8;       // both
+    ShutdownMsg shutdown = 9; // edge  -> agent (drain)
+  }
+}
+
+message Hello {
+  string protocol_version = 1;   // "1"
+  string agent_version = 2;
+  string os = 3;                 // "darwin|linux|windows"
+  string arch = 4;
+  string api_key = 5;            // rk_live_...
+  string region_hint = 6;        // "auto" or region code
+  repeated string features = 7;  // e.g. "udp","tcp","quic"
+}
+
+message AuthResp {
+  bool ok = 1;
+  string account_id = 2;
+  string plan = 3;               // "free|pro|team|payg"
+  string session_id = 4;         // server-assigned, for logs/inspector
+  ErrorMsg error = 5;            // set when ok=false
+}
+
+enum TunnelType {
+  HTTP = 0;
+  HTTPS = 1;
+  TLS = 2;
+  TCP = 3;
+  UDP = 4;
+}
+
+message BindTunnel {
+  string client_tunnel_id = 1;   // agent-chosen local id (unique per session)
+  TunnelType type = 2;
+  string subdomain = 3;          // requested; empty => random
+  string custom_domain = 4;      // optional, must be verified in the control plane
+  uint32 remote_port = 5;        // for TCP/UDP; 0 => ephemeral assigned
+  map<string, string> options = 6; // e.g. "basic_auth","host_header","schemes"
+}
+
+message BindResp {
+  string client_tunnel_id = 1;
+  bool ok = 2;
+  string public_url = 3;         // https://abc.rift.sh  or  tcp://edge:2222
+  string assigned_host = 4;
+  uint32 assigned_port = 5;
+  ErrorMsg error = 6;            // set when ok=false
+}
+
+message Unbind {
+  string client_tunnel_id = 1;
+}
+
+message Ping {
+  int64 ts_unix_ms = 1;
+}
+
+message Pong {
+  int64 ts_unix_ms = 1;
+}
+
+message ShutdownMsg {
+  string reason = 1;
+  int64 drain_deadline_unix_ms = 2;
+}
+
+message ErrorMsg {
+  string code = 1;    // see plan/00-ARCHITECTURE.md section 8
+  string message = 2;
+}
+
+// ---- Data-stream header (first frame on every data stream, then raw bytes) ----
+
+message StreamInit {
+  string client_tunnel_id = 1;   // which tunnel this data stream serves
+  string remote_addr = 2;        // public client ip:port (for inspector/logs)
+  string proto = 3;              // "http|https|tcp|udp"
+  map<string, string> meta = 4;  // e.g. sni, alpn
+}

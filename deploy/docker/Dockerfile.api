@@ -1,0 +1,25 @@
+# Rift control API (riftapi). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.api -t rift/api .
+#
+# Accounts, API keys, domains, quotas, entitlements RPC, and billing webhooks.
+# Static, CGO-free, distroless/static:nonroot. Listens on :8080 (/healthz).
+
+# --- build ---
+FROM golang:1.26-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-trimpath
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+ARG VERSION=dev
+RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/riftapi ./cmd/riftapi
+
+# --- runtime ---
+FROM gcr.io/distroless/static:nonroot
+COPY --from=build /out/riftapi /usr/local/bin/riftapi
+
+EXPOSE 8080/tcp
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/riftapi"]

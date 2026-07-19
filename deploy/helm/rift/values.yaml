@@ -1,0 +1,127 @@
+# Default values for the Rift chart. Override per environment with
+# values.staging.yaml / values.prod.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Container images. Full ref = "{registry}/{repository}:{tag}".
+image:
+  registry: ghcr.io/rift
+  tag: "" # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Shared across components.
+common:
+  baseDomain: rift.sh
+
+# --- Secrets ---
+# In staging/prod, pre-create the Secret out of band (SOPS / sealed-secrets /
+# cloud KMS) and set existingSecret. `create: true` renders it from these values
+# and is intended for throwaway/dev clusters only.
+secrets:
+  existingSecret: "" # name of a pre-created Secret with the keys below
+  create: false
+  data:
+    RIFT_JWT_SECRET: ""
+    RIFT_INTERNAL_TOKEN: ""
+    RIFT_DATABASE_URL: ""
+    RIFT_REDIS_URL: ""
+    RIFT_STRIPE_SECRET_KEY: ""
+    RIFT_STRIPE_WEBHOOK_SECRET: ""
+
+# --- One-shot DB migrations (pre-install / pre-upgrade hook) ---
+migrations:
+  enabled: true
+  repository: migrate
+
+# --- Control API ---
+api:
+  enabled: true
+  repository: api
+  replicaCount: 2
+  publicURL: https://api.rift.sh
+  containerPort: 8080
+  service:
+    type: ClusterIP
+    port: 8080
+  devAuth: false
+  extraEnv: []
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# --- Edge data plane ---
+# Runs as a DaemonSet with host networking so it can own :80/:443 (TCP+UDP) and
+# the QUIC/agent port on every edge node. Schedule onto edge nodes via nodeSelector.
+edge:
+  enabled: true
+  repository: edge
+  hostNetwork: true
+  nodeSelector:
+    rift.dev/role: edge
+  tolerations: []
+  ports:
+    http: 80
+    https: 443
+    agent: 4443 # QUIC (udp) + TCP fallback
+    metrics: 9090
+  portRange:
+    min: 20000
+    max: 20100
+  acme:
+    staging: true
+    email: ops@rift.dev
+  drainTimeoutSeconds: 25
+  resources:
+    requests: { cpu: 200m, memory: 128Mi }
+    limits: { cpu: "2", memory: 1Gi }
+
+# --- Web dashboard (Next.js) ---
+dashboard:
+  enabled: true
+  repository: dashboard
+  replicaCount: 2
+  containerPort: 3000
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+# --- Ingress (API + dashboard). Edge is NOT behind ingress (host-networked). ---
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  tls:
+    enabled: true
+    # cert-manager ClusterIssuer that solves DNS-01 for the wildcard + hosts.
+    clusterIssuer: letsencrypt-staging
+  hosts:
+    api: api.rift.sh
+    app: app.rift.sh
+
+# --- Prometheus Operator ServiceMonitor for the edge /metrics ---
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+# --- NetworkPolicy isolating the internal entitlements RPC (edge -> api) ---
+networkPolicy:
+  enabled: true
+
+serviceAccount:
+  create: true
+  name: ""
+
+podAnnotations: {}

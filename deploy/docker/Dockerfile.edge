@@ -1,0 +1,31 @@
+# Rift edge server (riftd). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.edge -t rift/edge .
+#
+# Static, CGO-free (quic-go is pure Go), shipped on distroless/static:nonroot.
+# The edge terminates public HTTP/HTTPS (:80/:443) and accepts agent sessions
+# over QUIC (:4443/udp) + TCP fallback (:4443/tcp); metrics/health on :9090.
+
+# --- build ---
+FROM golang:1.26-alpine AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-trimpath
+WORKDIR /src
+
+# Cache modules first.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Then the source.
+COPY . .
+
+ARG VERSION=dev
+RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/riftd ./cmd/riftd
+
+# --- runtime ---
+FROM gcr.io/distroless/static:nonroot
+COPY --from=build /out/riftd /usr/local/bin/riftd
+
+# HTTP, HTTPS, QUIC/agent (udp+tcp), metrics+health.
+EXPOSE 80/tcp 443/tcp 4443/tcp 4443/udp 9090/tcp
+
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/riftd"]

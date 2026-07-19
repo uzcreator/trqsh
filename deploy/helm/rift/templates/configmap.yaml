@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rift.fullname" . }}-config
+  labels:
+    {{- include "rift.labels" . | nindent 4 }}
+data:
+  RIFT_BASE_DOMAIN: {{ .Values.common.baseDomain | quote }}
+  RIFT_API_PUBLIC_URL: {{ .Values.api.publicURL | quote }}

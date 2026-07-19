@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Secrets can also be passed
+# as TF_VAR_* env vars in CI instead of a file.
+
+# do_token          = "dop_v1_..."          # or export TF_VAR_do_token
+# spaces_access_id  = "..."                  # for Spaces buckets + remote state
+# spaces_secret_key = "..."
+# internal_token    = "a-long-random-shared-edge-api-token"
+
+domain                = "rift.sh"
+primary_region        = "fra1"
+edge_regions          = ["fra1", "nyc3", "sgp1"]
+edge_nodes_per_region = 2
+acme_email            = "ops@rift.dev"
+
+# SSH keys placed on edge droplets (DO fingerprints).
+# ssh_key_fingerprints = ["aa:bb:cc:..."]
+
+# Set after `helm install` provisions the ingress LoadBalancer (or use external-dns).
+# control_ingress_ip = "203.0.113.10"

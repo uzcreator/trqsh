@@ -1,0 +1,16 @@
+# Local compose overrides (may hold real secrets).
+.env
+
+# Terraform state, plans, vars, and downloaded providers.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+!terraform/*.tfvars.example
+terraform/*.tfplan
+terraform/kubeconfig.yaml
+
+# Decrypted secrets must never be written to disk here.
+secrets/*.dec.yaml
+secrets/rift-secrets.yaml
+kubeconfig*.yaml

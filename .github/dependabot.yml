@@ -1,0 +1,43 @@
+version: 2
+updates:
+  # Go modules (root module).
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+
+  # Frontends.
+  - package-ecosystem: npm
+    directory: /web/dashboard
+    schedule:
+      interval: weekly
+    groups:
+      dashboard-deps:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /web/site
+    schedule:
+      interval: weekly
+    groups:
+      site-deps:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /gui/frontend
+    schedule:
+      interval: weekly
+    groups:
+      gui-deps:
+        patterns: ["*"]
+
+  # CI actions + container base images.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule:
+      interval: weekly

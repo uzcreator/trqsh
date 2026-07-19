@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v3.json",
+  "version": "3",
+  "name": "rift",
+  "description": "Rift — expose localhost to the internet, fast.",
+  "info": {
+    "productName": "Rift",
+    "productVersion": "0.1.0",
+    "companyName": "Rift",
+    "copyright": "© 2026 Rift"
+  },
+  "frontend": {
+    "dir": "frontend",
+    "install": "pnpm install",
+    "build": "pnpm build",
+    "dev": "pnpm dev",
+    "devServerUrl": "http://localhost:9245"
+  },
+  "build": {
+    "outputDir": "bin",
+    "binaryName": "rift-gui"
+  }
+}

@@ -1,0 +1,32 @@
+{{- if and .Values.networkPolicy.enabled .Values.api.enabled }}
+# Restrict who can reach the control API (which serves the internal entitlements
+# RPC): only the edge, the dashboard, and the ingress controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rift.fullname" . }}-api
+  labels:
+    {{- include "rift.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rift.selectorLabels" (dict "root" . "component" "api") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "rift.selectorLabels" (dict "root" . "component" "edge") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "rift.selectorLabels" (dict "root" . "component" "dashboard") | nindent 14 }}
+        # Public API traffic arrives via the ingress controller namespace.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.containerPort }}
+{{- end }}

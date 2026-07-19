@@ -1,0 +1,41 @@
+# Staging overrides. Uses Let's Encrypt STAGING certs (untrusted but rate-limit
+# friendly) and pre-created secrets. `helm upgrade --install rift deploy/helm/rift
+#   -f deploy/helm/rift/values.staging.yaml`.
+
+image:
+  tag: "" # set by CI to the built SHA/tag
+
+common:
+  baseDomain: staging.rift.sh
+
+secrets:
+  existingSecret: rift-secrets # created by CI from SOPS/sealed-secrets
+
+api:
+  replicaCount: 2
+  publicURL: https://api.staging.rift.sh
+  devAuth: false
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+edge:
+  acme:
+    staging: true
+    email: ops@rift.dev
+
+dashboard:
+  replicaCount: 1
+
+ingress:
+  className: nginx
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-staging
+  hosts:
+    api: api.staging.rift.sh
+    app: app.staging.rift.sh
+
+serviceMonitor:
+  enabled: true

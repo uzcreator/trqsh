@@ -1,0 +1,63 @@
+# Binaries
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/rift
+/riftd
+
+# Test & coverage
+*.test
+*.out
+coverage.*
+
+# Go
+/vendor/
+go.work.sum
+
+# Env & secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.dec.yaml
+*credentials*.json
+kubeconfig*.yaml
+# NOTE: real secret files are ignored by pattern above + deploy/.gitignore.
+# We deliberately do NOT blanket-ignore `secrets/` so committed *.example.yaml
+# templates (e.g. deploy/secrets/) stay in the repo.
+secrets/*.dec.yaml
+secrets/*.secret.yaml
+
+# Terraform state & vars (belt-and-suspenders; see deploy/.gitignore)
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfplan
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+.turbo/
+pnpm-debug.log*
+
+# Wails build output
+gui/build/bin/
+gui/frontend/dist/
+
+# Local data (compose volumes, sqlite, etc.)
+/data/
+*.db
+
+# OS & editor
+.DS_Store
+Thumbs.db
+*.swp
