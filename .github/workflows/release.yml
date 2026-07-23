@@ -107,3 +107,52 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
           AWS_ENDPOINT_URL: https://fra1.digitaloceanspaces.com
+
+  # Publish the npm wrapper (npx trqsh / npm i -g trqsh). Runs after the release
+  # exists so the binary + checksums are downloadable. Skips cleanly if NPM_TOKEN
+  # isn't configured, so it never blocks a binary release.
+  npm:
+    needs: cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Publish to npm
+        working-directory: packaging/npm
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "NPM_TOKEN secret not set — skipping npm publish."; exit 0
+          fi
+          VER="${GITHUB_REF_NAME#v}"
+          npm version "$VER" --no-git-tag-version --allow-same-version
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Publish the PyPI wrapper (pip install trqsh). Skips cleanly if PYPI_TOKEN
+  # isn't configured.
+  pypi:
+    needs: cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build & publish to PyPI
+        working-directory: packaging/pypi
+        run: |
+          if [ -z "${TWINE_PASSWORD}" ]; then
+            echo "PYPI_TOKEN secret not set — skipping PyPI publish."; exit 0
+          fi
+          VER="${GITHUB_REF_NAME#v}"
+          python -m pip install --upgrade build twine
+          sed -i -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
+          sed -i -E "s/^__version__ = \".*\"/__version__ = \"$VER\"/" src/trqsh/__init__.py
+          python -m build
+          python -m twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
