@@ -4,7 +4,7 @@
 
 export type Theme = "system" | "light" | "dark";
 
-const KEY = "rift.theme";
+const KEY = "trqsh.theme";
 
 function systemPrefersDark(): boolean {
   return (

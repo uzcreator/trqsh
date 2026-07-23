@@ -15,14 +15,14 @@ The empty repository was turned into a compiling Go monorepo skeleton matching t
 `plan/00-ARCHITECTURE.md` §4. No part logic was implemented — only scaffolding.
 
 ```
-go.mod                      module github.com/rift/rift  (go 1.23)
+go.mod                      module github.com/trqsh-uz/trqsh  (go 1.23)
 go.work                     workspace (use .)
 Makefile                    help, proto, build, test, lint, tidy, dev, run-edge, run-agent
 .gitignore                  Go + Node + Wails + secrets
 LICENSE                     Apache-2.0 (open-source client)
 README.md                   repo overview + status + pointers to plan/
-cmd/riftd/main.go           edge binary stub (empty main, TODO Part 02)
-cmd/rift/main.go            agent/CLI binary stub (empty main, TODO Part 03)
+cmd/trqshd/main.go           edge binary stub (empty main, TODO Part 02)
+cmd/trqsh/main.go            agent/CLI binary stub (empty main, TODO Part 03)
 pkg/proto/doc.go            package stub — FROZEN contract, Part 01
 pkg/tunnel/doc.go           package stub — FROZEN contract, Part 01
 pkg/authz/doc.go            package stub — FROZEN contract, Part 01
@@ -41,11 +41,11 @@ docs/build-log/             this build log
 
 ## Key decisions
 
-- **Go module path:** `github.com/rift/rift` — fixed now, do not change. Updated
-  `plan/00-ARCHITECTURE.md` to replace the `<org>` placeholder with `rift` (paths + `go_package`).
+- **Go module path:** `github.com/trqsh-uz/trqsh` — fixed now, do not change. Updated
+  `plan/00-ARCHITECTURE.md` to replace the `<org>` placeholder with `trqsh` (paths + `go_package`).
 - **Go version floor:** `go 1.23` in `go.mod` (matches the stack decision; newer toolchains are fine).
 - **`go.work` present** even though there is a single module today, so the open-source client
-  (`cmd/rift` + `pkg/*`) can later split into its own module without churn.
+  (`cmd/trqsh` + `pkg/*`) can later split into its own module without churn.
 - **License:** Apache-2.0 for the client/shared libs; the hosted edge/control/billing stay proprietary.
 - **Dev deps:** Postgres **16** + Redis **7** via compose, with healthchecks and named volumes so
   Parts 02/05 can run immediately. Part 08 will extend this file with edge/api/mailhog.

@@ -1,25 +1,25 @@
-# Step 4 — Part 03: Agent Core + CLI (`rift`)
+# Step 4 — Part 03: Agent Core + CLI (`trqsh`)
 
 - **Date:** 2026-07-17
 - **Step:** 4 of 11 (see [`../../plan/EXECUTION-ORDER.md`](../../plan/EXECUTION-ORDER.md))
 - **Spec:** [`../../plan/03-agent-cli.md`](../../plan/03-agent-cli.md)
 - **Milestone:** **M1 — MVP reached** 🎉
-- **Status:** ✅ Complete — build/vet/test green; **real binaries prove the full loop** (`rift http 3000` → live public URL).
+- **Status:** ✅ Complete — build/vet/test green; **real binaries prove the full loop** (`trqsh http 3000` → live public URL).
 
-> **TL;DR (Uz):** Agent yadrosi + `rift` CLI yozildi. Agent edge'ga `pkg/tunnel` orqali ulanadi,
+> **TL;DR (Uz):** Agent yadrosi + `trqsh` CLI yozildi. Agent edge'ga `pkg/tunnel` orqali ulanadi,
 > `Hello`/`BindTunnel` yuboradi, data streamlarni qabul qilib local xizmatga uzatadi (HTTP inspector
 > orqali). Avtomatik qayta ulanish (backoff + re-bind), `127.0.0.1:4040` inspector (replay bilan),
 > GUI uchun local control API (JSON+SSE), va cobra CLI (`http/tcp/udp/start/status/stop/login/config/
-> version/update`). **MVP TIRIK:** haqiqiy binarlar bilan `rift http 3000` → `curl` local javobni
+> version/update`). **MVP TIRIK:** haqiqiy binarlar bilan `trqsh http 3000` → `curl` local javobni
 > qaytardi. Keyingi qadam: **Part 05 — Control API** (haqiqiy auth/billing).
 
 ## What was built
 
-`rift` — the open-source client. All code in `internal/agent` (+ `inspect/`, `cli/`) and `cmd/rift`.
+`trqsh` — the open-source client. All code in `internal/agent` (+ `inspect/`, `cli/`) and `cmd/trqsh`.
 
 ```
-cmd/rift/main.go                    → cli.Execute()
-internal/agent/config.go            §10 config (~/.rift/rift.yml): Load (flags>env>file>defaults), Save
+cmd/trqsh/main.go                    → cli.Execute()
+internal/agent/config.go            §10 config (~/.trqsh-uz/trqsh.yml): Load (flags>env>file>defaults), Save
 internal/agent/core.go              FROZEN agent-core API: Core, TunnelSpec, Tunnel, Event, Status + impl
 internal/agent/session.go           dial → control stream → Hello/Auth → Bind; control loop; data accept
 internal/agent/forward.go           local forwarding: HTTP (inspector tee), raw TCP, UDP (uint16 framing)
@@ -67,9 +67,9 @@ type Core interface {
 - **Local control API** (`cfg.ControlAddr`): JSON over loopback HTTP + an SSE event stream, so the GUI
   drives the same core out-of-process (`GET /status|/tunnels`, `POST /tunnels`, `DELETE /tunnels/{id}`,
   `GET /events`).
-- **CLI**: `rift http 3000`, `rift tcp 22 --remote-port 2222`, `rift udp 5353`, `rift start` (all
-  config tunnels), `rift status`/`rift stop` (talk to a running agent's control API), `rift login`,
-  `rift config`, `rift version`, `rift update`. Errors map §8 codes → messages + upgrade hints.
+- **CLI**: `trqsh http 3000`, `trqsh tcp 22 --remote-port 2222`, `trqsh udp 5353`, `trqsh start` (all
+  config tunnels), `trqsh status`/`trqsh stop` (talk to a running agent's control API), `trqsh login`,
+  `trqsh config`, `trqsh version`, `trqsh update`. Errors map §8 codes → messages + upgrade hints.
 
 ## Verification — MVP proven with real binaries
 
@@ -80,14 +80,14 @@ The in-process integration test and a real-binary smoke both pass:
 | `go build ./...` / `go vet ./...` | ✅ |
 | `go test ./internal/agent/...` (config + E2E + control API) | ✅ ok |
 | Stress `-count=5` (MVP + ControlAPI) | ✅ stable |
-| **`rift http 3000` → `curl` → local response** | ✅ `hello-from-local-service` |
-| `rift status` via control API | ✅ connected, plan=pro, req counter |
+| **`trqsh http 3000` → `curl` → local response** | ✅ `hello-from-local-service` |
+| `trqsh status` via control API | ✅ connected, plan=pro, req counter |
 | Inspector captured the request | ✅ full headers + timing |
 
 `TestMVPEndToEnd` boots the **real edge** (Part 02) + agent core + a local `httptest` service, binds
 `demo`, and a public `GET Host: demo.lvh.me` returns the local service's body — the complete
 **agent ↔ edge ↔ public** loop. `TestLocalControlAPIDrivesCore` drives start/list/status over the
-control API. Real-binary run (`riftd` + `rift http 3000 --server 127.0.0.1:4443 --insecure`) confirmed
+control API. Real-binary run (`trqshd` + `trqsh http 3000 --server 127.0.0.1:4443 --insecure`) confirmed
 the same end to end, plus the inspector at `:4040`.
 
 `-race` still can't run here (no C compiler — see `02-protocol-transport.md`); stress runs stand in.
@@ -97,19 +97,19 @@ the same end to end, plus the inspector at `:4040`.
 # 1) local service
 python -m http.server 3000
 # 2) edge (dev ports; :443/:80 need admin, so use highs)
-$env:RIFT_ENTITLEMENTS="stub"; $env:RIFT_BASE_DOMAIN="lvh.me"
-$env:RIFT_HTTP_ADDR="127.0.0.1:8080"; $env:RIFT_QUIC_ADDR="127.0.0.1:4443"; $env:RIFT_TCP_ADDR="127.0.0.1:4443"
-go run ./cmd/riftd
+$env:TRQSH_ENTITLEMENTS="stub"; $env:TRQSH_BASE_DOMAIN="lvh.me"
+$env:TRQSH_HTTP_ADDR="127.0.0.1:8080"; $env:TRQSH_QUIC_ADDR="127.0.0.1:4443"; $env:TRQSH_TCP_ADDR="127.0.0.1:4443"
+go run ./cmd/trqshd
 # 3) agent
-go run ./cmd/rift http 3000 --server 127.0.0.1:4443 --insecure --subdomain demo
+go run ./cmd/trqsh http 3000 --server 127.0.0.1:4443 --insecure --subdomain demo
 curl -H "Host: demo.lvh.me" http://127.0.0.1:8080/    # local listing
 # inspector: http://127.0.0.1:4040
 ```
 
 ## Key decisions
 
-- **Default server `localhost:4443`** and dev API-key fallback (`rk_dev_local` when unset) so
-  `rift http 3000` works against the stub edge out of the box. A real edge requires `rift login`.
+- **Default server `localhost:4443`** and dev API-key fallback (`tq_dev_local` when unset) so
+  `trqsh http 3000` works against the stub edge out of the box. A real edge requires `trqsh login`.
   (This reconciles the `:4443` agent-port divergence noted in `03-edge-server.md`.)
 - **Local control API = loopback HTTP** (not a unix socket / named pipe) for cross-platform simplicity;
   the frozen `Core` interface is transport-agnostic, so Part 04 can also embed the core in-process.
@@ -122,17 +122,17 @@ curl -H "Host: demo.lvh.me" http://127.0.0.1:8080/    # local listing
 
 ## Known gaps / notes (for later parts)
 
-- **`rift login`/real keys**: today any non-empty key passes the stub edge; real issuance + validation
+- **`trqsh login`/real keys**: today any non-empty key passes the stub edge; real issuance + validation
   arrives with Part 05 (control API) and is wired at Qadam 7.
-- **`rift update`** is a stub pointing at the download page; the signed release feed is Part 08.
-- **No daemonization**: `rift status`/`rift stop` talk to a *running* foreground agent's control API.
+- **`trqsh update`** is a stub pointing at the download page; the signed release feed is Part 08.
+- **No daemonization**: `trqsh status`/`trqsh stop` talk to a *running* foreground agent's control API.
   A background service/daemon mode can come with Part 04/08 if desired.
 - **Reconnect** is implemented and emits events; it's covered by code + manual network-drop testing
   rather than an automated (flaky) port-recycle test.
 
 ## What's next
 
-The MVP is complete: **`rift http 3000` yields a live public URL that proxies to localhost**, TCP/UDP
+The MVP is complete: **`trqsh http 3000` yields a live public URL that proxies to localhost**, TCP/UDP
 tunnels weld, and the inspector shows traffic. Next is **Part 05 — Control API & Auth**
 (`plan/05-control-api.md`): real accounts, API keys, domains, quotas, and the real `authz.Entitlements`
 that the edge swaps in for the stub at Qadam 7 (Integration).

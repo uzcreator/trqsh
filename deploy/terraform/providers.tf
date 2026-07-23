@@ -7,16 +7,16 @@ provider "digitalocean" {
 provider "random" {}
 
 # Group all resources under one DO project for tidy billing/console.
-resource "digitalocean_project" "rift" {
+resource "digitalocean_project" "trqsh" {
   name        = var.project_name
-  description = "Rift tunneling platform"
+  description = "trqsh tunneling platform"
   purpose     = "Web Application"
   environment = "Production"
   resources = concat(
     [digitalocean_kubernetes_cluster.control.urn],
     [digitalocean_database_cluster.postgres.urn],
     [digitalocean_database_cluster.redis.urn],
-    [digitalocean_domain.rift.urn],
+    [digitalocean_domain.trqsh.urn],
     [for ip in digitalocean_reserved_ip.edge : ip.urn],
   )
 }

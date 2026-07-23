@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
-const ACCESS = "rift_access";
-const REFRESH = "rift_refresh";
+const ACCESS = "trqsh_access";
+const REFRESH = "trqsh_refresh";
 
 export interface Tokens {
   access_token: string;

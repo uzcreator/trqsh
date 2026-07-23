@@ -24,25 +24,25 @@ func NewMetrics() *Metrics {
 	m := &Metrics{
 		reg: reg,
 		SessionsActive: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "rift_sessions_active", Help: "Active agent sessions.",
+			Name: "trqsh_sessions_active", Help: "Active agent sessions.",
 		}),
 		TunnelsActive: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "rift_tunnels_active", Help: "Active bound tunnels.",
+			Name: "trqsh_tunnels_active", Help: "Active bound tunnels.",
 		}),
 		StreamsOpened: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "rift_streams_opened_total", Help: "Data streams opened, by proto.",
+			Name: "trqsh_streams_opened_total", Help: "Data streams opened, by proto.",
 		}, []string{"proto"}),
 		BytesTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "rift_bytes_total", Help: "Bytes welded, by direction.",
+			Name: "trqsh_bytes_total", Help: "Bytes welded, by direction.",
 		}, []string{"dir"}),
 		Handshakes: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "rift_agent_handshakes_total", Help: "Agent sessions accepted, by transport.",
+			Name: "trqsh_agent_handshakes_total", Help: "Agent sessions accepted, by transport.",
 		}, []string{"kind"}),
 		Requests: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "rift_http_requests_total", Help: "HTTP requests proxied, by scheme.",
+			Name: "trqsh_http_requests_total", Help: "HTTP requests proxied, by scheme.",
 		}, []string{"scheme"}),
 		Errors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "rift_errors_total", Help: "Edge errors, by kind.",
+			Name: "trqsh_errors_total", Help: "Edge errors, by kind.",
 		}, []string{"kind"}),
 	}
 	reg.MustRegister(

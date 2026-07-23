@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing"
-	"github.com/rift/rift/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
 
 // Server is the control-plane API.

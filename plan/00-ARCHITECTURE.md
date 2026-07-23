@@ -5,8 +5,8 @@
 
 ## 1. What we are building
 
-Rift is a hosted developer tunneling service. A local **agent** exposes a `localhost` service to
-the public internet through Rift's **edge** servers, without port-forwarding. Revenue comes from a
+trqsh is a hosted developer tunneling service. A local **agent** exposes a `localhost` service to
+the public internet through trqsh's **edge** servers, without port-forwarding. Revenue comes from a
 **SaaS subscription**; the **agent is open source**, the edge/control/billing are proprietary.
 
 ### Differentiators (design every feature to protect these)
@@ -19,11 +19,11 @@ the public internet through Rift's **edge** servers, without port-forwarding. Re
 
 ## 2. Glossary
 
-- **Agent** — `rift` binary running on the developer's machine (also embedded in the GUI).
-- **Edge / `riftd`** — public server accepting agent sessions and public traffic; routes between them.
+- **Agent** — `trqsh` binary running on the developer's machine (also embedded in the GUI).
+- **Edge / `trqshd`** — public server accepting agent sessions and public traffic; routes between them.
 - **Control plane** — the API + DB owning identity, keys, domains, quotas, billing.
 - **Session** — one authenticated, multiplexed connection agent↔edge (QUIC or TCP+yamux).
-- **Tunnel** — one bound route (e.g. `myapp.rift.sh` → `localhost:3000`).
+- **Tunnel** — one bound route (e.g. `myapp.trqsh.uz` → `localhost:3000`).
 - **Stream** — one multiplexed channel within a session (control stream, or one per public connection).
 - **Registry** — edge's map of `hostname/port → session` (Redis-backed, shared across edges).
 
@@ -52,12 +52,12 @@ the public internet through Rift's **edge** servers, without port-forwarding. Re
 ```
 <repo-root>/
 ├── go.work                      # Go workspace
-├── go.mod (module github.com/rift/rift)
+├── go.mod (module github.com/trqsh-uz/trqsh)
 ├── plan/                        # these build specs (this folder)
 ├── proto/                       # .proto source files (Part 01 owns)
 ├── cmd/
-│   ├── riftd/                   # edge binary            (Part 02)
-│   └── rift/                    # agent + CLI binary     (Part 03)
+│   ├── trqshd/                   # edge binary            (Part 02)
+│   └── trqsh/                    # agent + CLI binary     (Part 03)
 ├── pkg/                         # SHARED — Part 01 owns; others import read-only
 │   ├── proto/                   # generated + codec      (Part 01)
 │   ├── tunnel/                  # QUIC+TCP mux transport (Part 01)
@@ -75,20 +75,20 @@ the public internet through Rift's **edge** servers, without port-forwarding. Re
 └── docs/                        # engineering + API docs (cross-cutting; 09 curates)
 ```
 
-**Module strategy:** single Go module `github.com/rift/rift` at the root is simplest; a `go.work`
-is included for future multi-module splits (e.g. open-sourcing `pkg/*` + `cmd/rift` separately).
-The module path is fixed to `github.com/rift/rift` (chosen at bootstrap); never change it.
+**Module strategy:** single Go module `github.com/trqsh-uz/trqsh` at the root is simplest; a `go.work`
+is included for future multi-module splits (e.g. open-sourcing `pkg/*` + `cmd/trqsh` separately).
+The module path is fixed to `github.com/trqsh-uz/trqsh` (chosen at bootstrap); never change it.
 
 ## 5. Dev environment bootstrap (Part 00 / first session sets this up)
 
-- `go.work` + root `go.mod` (`module github.com/rift/rift`, `go 1.23`).
+- `go.work` + root `go.mod` (`module github.com/trqsh-uz/trqsh`, `go 1.23`).
 - `deploy/docker-compose.dev.yml` running **Postgres 16** and **Redis 7** for local dev (Part 08
   authors the full file; Part 00 may add a minimal version so Parts 02/05 can run immediately).
 - `Makefile` (or `Taskfile.yml`) targets: `proto` (regenerate), `build`, `test`, `lint` (golangci-lint),
   `run-edge`, `run-agent`, `dev` (compose up + edge + api).
 - Toolchain pins: `protoc` + `protoc-gen-go`, `sqlc`, `goose`, `golangci-lint`, Node 20 + pnpm,
   Wails v3 CLI. List exact versions in `docs/DEVELOPMENT.md`.
-- Local TLS for dev: edge uses a self-signed CA (or mkcert); agent trusts it via `RIFT_INSECURE=1`
+- Local TLS for dev: edge uses a self-signed CA (or mkcert); agent trusts it via `TRQSH_INSECURE=1`
   for dev only. Never in prod.
 
 ## 6. FROZEN CONTRACT — Wire protocol (`proto/rift.proto` → `pkg/proto`)
@@ -100,7 +100,7 @@ Two kinds of streams inside a session:
 ```proto
 syntax = "proto3";
 package rift.v1;
-option go_package = "github.com/rift/rift/pkg/proto;proto";
+option go_package = "github.com/trqsh-uz/trqsh/pkg/proto;proto";
 
 // ---- Control-stream messages (length-prefixed: uint32 BE length + bytes) ----
 message Envelope {
@@ -122,7 +122,7 @@ message Hello {
   string agent_version    = 2;
   string os               = 3;      // "darwin|linux|windows"
   string arch             = 4;
-  string api_key          = 5;      // rk_live_... (auth in the Hello)
+  string api_key          = 5;      // tq_live_... (auth in the Hello)
   string region_hint      = 6;      // "auto" or region code
   repeated string features = 7;     // e.g. "udp","tcp","quic"
 }
@@ -149,7 +149,7 @@ message BindTunnel {
 message BindResp {
   string client_tunnel_id = 1;
   bool   ok               = 2;
-  string public_url       = 3;      // https://abc.rift.sh  or  tcp://edge:2222
+  string public_url       = 3;      // https://abc.trqsh.uz  or  tcp://edge:2222
   string assigned_host    = 4;
   uint32 assigned_port    = 5;
   ErrorMsg error          = 6;      // set when ok=false (see §8 codes)
@@ -298,12 +298,12 @@ type Entitlements interface {
 }
 ```
 
-## 10. FROZEN CONTRACT — Agent config schema (`~/.rift/rift.yml`)
+## 10. FROZEN CONTRACT — Agent config schema (`~/.trqsh-uz/trqsh.yml`)
 
 ```yaml
 version: 1
-api_key: "rk_live_xxx"          # or env RIFT_API_KEY, or `rift login`
-server: "edge.rift.dev:443"     # default endpoint (region router resolves nearest)
+api_key: "tq_live_xxx"          # or env TRQSH_API_KEY, or `trqsh login`
+server: "edge.trqsh.uz:443"     # default endpoint (region router resolves nearest)
 region: "auto"                  # auto | us | eu | ap ...
 transport: "auto"               # auto | quic | tcp
 tunnels:
@@ -322,7 +322,7 @@ inspector:
 log_level: "info"               # debug|info|warn|error
 ```
 
-Precedence: CLI flags > env (`RIFT_*`) > config file > defaults.
+Precedence: CLI flags > env (`TRQSH_*`) > config file > defaults.
 
 ## 11. FROZEN CONTRACT — Plan / quota catalog (numbers tunable in Part 07)
 
@@ -343,7 +343,7 @@ the enforcement path is the `authz.Entitlements` interface (§9).
 
 ## 12. Control REST API surface (defined fully in Part 05; listed here for planning)
 
-Base `https://api.rift.dev/v1`. JWT (dashboard) or API key (programmatic). Key groups:
+Base `https://api.trqsh.uz/v1`. JWT (dashboard) or API key (programmatic). Key groups:
 `/auth/*` (oauth, session), `/account`, `/api-keys`, `/tunnels` (active, from Redis), `/subdomains`
 (reserve), `/domains` (add/verify custom), `/usage`, `/billing/*` (Part 07), `/orgs` + `/members`.
 Full OpenAPI is authored in Part 05 and consumed by 02 (internal entitlement RPC), 03, 06, 07, 09.
@@ -382,8 +382,8 @@ M0 = 00,01 · M1 = 02,03,min-05,min-08 · M2 = 04,06,07 · M3 = full-08,09.
 
 - **M0:** `make proto && go build ./... && go test ./pkg/...` green; transport test covers QUIC,
   forced-TCP fallback, and N concurrent echo streams.
-- **M1:** `make dev` (compose + edge + agent); local `:3000` server; `rift http 3000` → `curl`
-  the public URL returns the local body; drop/restore network → auto-reconnect; `rift tcp 22` via
+- **M1:** `make dev` (compose + edge + agent); local `:3000` server; `trqsh http 3000` → `curl`
+  the public URL returns the local body; drop/restore network → auto-reconnect; `trqsh tcp 22` via
   ssh; UDP echo.
 - **M2:** GUI starts a tunnel end-to-end; dashboard shows it; Stripe test-mode upgrade lifts a quota.
 - **M3:** Helm deploy to staging; Let's Encrypt **staging** wildcard issues; Grafana shows metrics;

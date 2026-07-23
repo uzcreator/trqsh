@@ -1,13 +1,13 @@
 {
   "$schema": "https://wails.io/schemas/config.v3.json",
   "version": "3",
-  "name": "rift",
-  "description": "Rift — expose localhost to the internet, fast.",
+  "name": "trqsh",
+  "description": "trqsh — expose localhost to the internet, fast.",
   "info": {
-    "productName": "Rift",
+    "productName": "trqsh",
     "productVersion": "0.1.0",
-    "companyName": "Rift",
-    "copyright": "© 2026 Rift"
+    "companyName": "trqsh",
+    "copyright": "© 2026 trqsh"
   },
   "frontend": {
     "dir": "frontend",
@@ -18,6 +18,6 @@
   },
   "build": {
     "outputDir": "bin",
-    "binaryName": "rift-gui"
+    "binaryName": "trqsh-gui"
   }
 }

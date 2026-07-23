@@ -3,6 +3,7 @@ import { Rocket } from "lucide-react";
 import { agent } from "@/lib/agent";
 import { friendlyError } from "@/lib/errors";
 import type { TunnelProto, TunnelSpec } from "@/lib/types";
+import { useToast } from "./ui/toast";
 import { Dialog } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -27,6 +28,7 @@ export function StartTunnelDialog({
   onClose: () => void;
   onStarted: () => void;
 }) {
+  const toast = useToast();
   const [proto, setProto] = useState<TunnelProto>("http");
   const [addr, setAddr] = useState("3000");
   const [name, setName] = useState("");
@@ -70,7 +72,8 @@ export function StartTunnelDialog({
       remote_port: !isHTTP && remotePort ? Number(remotePort) : undefined,
     };
     try {
-      await agent.startTunnel(spec);
+      const t = await agent.startTunnel(spec);
+      toast.success("Tunnel started", { description: t.public_url });
       reset();
       onStarted();
     } catch (err) {

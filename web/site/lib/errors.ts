@@ -21,7 +21,7 @@ export const ERRORS: ErrorDoc[] = [
     code: "ERR_AUTH_REQUIRED",
     title: "Authentication required",
     detail: "The edge received a bind without valid credentials.",
-    fix: "Run `rift login`, or set `RIFT_API_KEY` / the `api_key` field in `~/.rift/rift.yml`.",
+    fix: "Run `trqsh login`, or set `TRQSH_API_KEY` / the `api_key` field in `~/.trqsh-uz/trqsh.yml`.",
   },
   {
     code: "ERR_AUTH_INVALID",
@@ -33,7 +33,7 @@ export const ERRORS: ErrorDoc[] = [
     code: "ERR_VERSION_UNSUPPORTED",
     title: "Agent version unsupported",
     detail: "This edge no longer supports your agent's protocol version.",
-    fix: "Update the CLI: `rift update` or reinstall from the download page.",
+    fix: "Update the CLI: `trqsh update` or reinstall from the download page.",
   },
   {
     code: "ERR_QUOTA_TUNNELS",

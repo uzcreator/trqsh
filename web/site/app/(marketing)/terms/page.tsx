@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "The terms governing your use of Rift.",
+  description: "The terms governing your use of trqsh.",
 };
 
 export default function TermsPage() {
@@ -14,14 +14,14 @@ export default function TermsPage() {
 
         <h2>1. Agreement</h2>
         <p>
-          By creating a Rift account or using the Rift agent, edge, or dashboard (the &quot;Service&quot;),
+          By creating a trqsh account or using the trqsh agent, edge, or dashboard (the &quot;Service&quot;),
           you agree to these Terms. If you use the Service on behalf of an organization, you accept
           these Terms for that organization.
         </p>
 
         <h2>2. Acceptable use</h2>
         <p>
-          You may not use Rift to host phishing, malware, or other illegal content, to send spam, or
+          You may not use trqsh to host phishing, malware, or other illegal content, to send spam, or
           to violate others&apos; rights. Public hostnames are subject to abuse screening, and we may
           suspend tunnels that threaten the Service or its users. See our{" "}
           <a href="/docs/security">security &amp; abuse policy</a>.
@@ -42,21 +42,21 @@ export default function TermsPage() {
 
         <h2>5. The open-source agent</h2>
         <p>
-          The Rift agent is open source under its published license. These Terms govern the hosted
+          The trqsh agent is open source under its published license. These Terms govern the hosted
           Service; your use of the agent&apos;s source is additionally governed by that license.
         </p>
 
         <h2>6. Warranty &amp; liability</h2>
         <p>
           The Service is provided &quot;as is&quot; without warranties of any kind. To the maximum
-          extent permitted by law, Rift is not liable for indirect or consequential damages.
+          extent permitted by law, trqsh is not liable for indirect or consequential damages.
         </p>
 
         <h2>7. Changes</h2>
         <p>We may update these Terms; material changes will be announced. Continued use constitutes acceptance.</p>
 
         <h2>Contact</h2>
-        <p>Questions? Email legal@rift.dev.</p>
+        <p>Questions? Email legal@trqsh.uz.</p>
       </article>
     </div>
   );

@@ -1,13 +1,13 @@
 openapi: 3.1.0
 info:
-  title: Rift Control API
+  title: trqsh Control API
   version: "1.0.0"
   description: >
-    Control plane for Rift: accounts, API keys, reserved subdomains, custom
+    Control plane for trqsh: accounts, API keys, reserved subdomains, custom
     domains, usage, and plans. Authenticated with a Bearer JWT (dashboard) or an
     API key (programmatic). See plan/05-control-api.md.
 servers:
-  - url: https://api.rift.dev/v1
+  - url: https://api.trqsh.uz/v1
   - url: http://localhost:8080/v1
 security:
   - bearerAuth: []

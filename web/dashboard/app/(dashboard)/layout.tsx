@@ -24,7 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Waypoints className="h-4 w-4" />
           </div>
-          <span className="font-semibold tracking-tight">Rift</span>
+          <span className="font-semibold tracking-tight">trqsh</span>
         </div>
         <div className="py-2">
           <Nav />

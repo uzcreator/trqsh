@@ -14,7 +14,7 @@ import (
 const MaxFrameSize = 1 << 20 // 1 MiB
 
 // ErrFrameTooLarge is returned when a frame's declared length exceeds MaxFrameSize.
-var ErrFrameTooLarge = errors.New("rift/proto: frame exceeds MaxFrameSize")
+var ErrFrameTooLarge = errors.New("trqsh/proto: frame exceeds MaxFrameSize")
 
 // WriteMsg writes a length-prefixed Envelope: a uint32 big-endian length
 // followed by the marshaled protobuf bytes.
@@ -45,7 +45,7 @@ func ReadStreamInit(r io.Reader) (*StreamInit, error) {
 func writeFramed(w io.Writer, m proto.Message) error {
 	b, err := proto.Marshal(m)
 	if err != nil {
-		return fmt.Errorf("rift/proto: marshal: %w", err)
+		return fmt.Errorf("trqsh/proto: marshal: %w", err)
 	}
 	if len(b) > MaxFrameSize {
 		return ErrFrameTooLarge

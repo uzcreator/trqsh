@@ -1,6 +1,6 @@
 # Development setup
 
-Toolchain and local workflow for Rift. See [`../plan/`](../plan/) for the build specs and
+Toolchain and local workflow for trqsh. See [`../plan/`](../plan/) for the build specs and
 [`build-log/`](./build-log/) for what each step delivered.
 
 ## Prerequisites (pinned)
@@ -36,11 +36,11 @@ make run-agent ARGS="http 3000"   # run the agent (after Part 03)
 
 ## Module
 
-Single Go module: **`github.com/rift/rift`** (chosen at bootstrap — do not change). A `go.work` is
-present so the open-source client (`cmd/rift` + `pkg/*`) can later split into its own module.
+Single Go module: **`github.com/trqsh-uz/trqsh`** (chosen at bootstrap — do not change). A `go.work` is
+present so the open-source client (`cmd/trqsh` + `pkg/*`) can later split into its own module.
 
 ## Local TLS / DNS tips
 
 - `lvh.me` and `*.lvh.me` resolve to `127.0.0.1` — use them for local vhost/subdomain testing
   without configuring DNS.
-- For dev, the agent may trust a self-signed edge cert via `RIFT_INSECURE=1`. **Never in production.**
+- For dev, the agent may trust a self-signed edge cert via `TRQSH_INSECURE=1`. **Never in production.**

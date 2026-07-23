@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Documentation",
-  description: "Guides, references, and a 60-second quickstart for Rift.",
+  description: "Guides, references, and a 60-second quickstart for trqsh.",
 };
 
 const HIGHLIGHTS = [
@@ -26,7 +26,7 @@ export default function DocsIndexPage() {
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Documentation</h1>
         <p className="mt-3 max-w-2xl text-secondary">
-          Everything you need to expose localhost with Rift — from your first tunnel to custom
+          Everything you need to expose localhost with trqsh — from your first tunnel to custom
           domains, the request inspector, configuration, and the full API.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">

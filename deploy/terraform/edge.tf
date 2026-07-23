@@ -22,16 +22,16 @@ locals {
     runcmd:
       - systemctl enable --now docker
       - |
-        docker run -d --restart=always --name rift-edge --network host \
-          -e RIFT_BASE_DOMAIN=${var.domain} \
-          -e RIFT_REGION=${n.region} \
-          -e RIFT_ENTITLEMENTS=api \
-          -e RIFT_API_URL=https://api.${var.domain} \
-          -e RIFT_INTERNAL_TOKEN=${var.internal_token} \
-          -e RIFT_REDIS_URL=${digitalocean_database_cluster.redis.uri} \
-          -e RIFT_ACME_STAGING=0 \
-          -e RIFT_ACME_EMAIL=${var.acme_email} \
-          -e RIFT_METRICS_ADDR=:9090 \
+        docker run -d --restart=always --name trqsh-edge --network host \
+          -e TRQSH_BASE_DOMAIN=${var.domain} \
+          -e TRQSH_REGION=${n.region} \
+          -e TRQSH_ENTITLEMENTS=api \
+          -e TRQSH_API_URL=https://api.${var.domain} \
+          -e TRQSH_INTERNAL_TOKEN=${var.internal_token} \
+          -e TRQSH_REDIS_URL=${digitalocean_database_cluster.redis.uri} \
+          -e TRQSH_ACME_STAGING=0 \
+          -e TRQSH_ACME_EMAIL=${var.acme_email} \
+          -e TRQSH_METRICS_ADDR=:9090 \
           ${var.edge_image}
   EOT
   }
@@ -46,7 +46,7 @@ resource "digitalocean_droplet" "edge" {
   image     = "ubuntu-24-04-x64"
   ssh_keys  = var.ssh_key_fingerprints
   user_data = local.edge_user_data[each.key]
-  tags      = ["rift", "edge", "region:${each.value.region}"]
+  tags      = ["trqsh", "edge", "region:${each.value.region}"]
 }
 
 # Stable public IP per edge droplet.

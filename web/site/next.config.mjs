@@ -6,16 +6,16 @@ const nextConfig = {
   // the site runs against a local stack out of the box.
   env: {
     // Where "Sign up" / "Dashboard" / "Log in" CTAs point (Part 06).
-    RIFT_DASHBOARD_URL: process.env.RIFT_DASHBOARD_URL || "http://localhost:3000",
+    TRQSH_DASHBOARD_URL: process.env.TRQSH_DASHBOARD_URL || "https://app.trqsh.uz",
     // Control API (Part 05) — used for the OAuth deep-links on signup.
-    RIFT_API_URL: process.env.RIFT_API_URL || "http://localhost:8080",
+    TRQSH_API_URL: process.env.TRQSH_API_URL || "https://api.trqsh.uz",
     // GitHub repo that hosts releases (Part 08 goreleaser output).
-    RIFT_GITHUB_REPO: process.env.RIFT_GITHUB_REPO || "rift/rift",
+    TRQSH_GITHUB_REPO: process.env.TRQSH_GITHUB_REPO || "trqsh-uz/trqsh",
     // Canonical public origin (sitemap, robots, Open Graph, docs links).
-    RIFT_SITE_URL: process.env.RIFT_SITE_URL || "https://rift.dev",
+    TRQSH_SITE_URL: process.env.TRQSH_SITE_URL || "https://trqsh.uz",
     // Latest published version — drives download filenames (matches goreleaser
-    // `rift_<version>_<os>_<arch>` and the GUI installer names).
-    RIFT_LATEST_VERSION: process.env.RIFT_LATEST_VERSION || "0.1.0",
+    // `trqsh_<version>_<os>_<arch>` and the GUI installer names).
+    TRQSH_LATEST_VERSION: process.env.TRQSH_LATEST_VERSION || "0.1.0",
   },
 };
 

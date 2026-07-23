@@ -32,7 +32,7 @@ A reusable Go library that both the edge and the agent import:
 ### T2 — Transport interfaces (`pkg/tunnel/tunnel.go`)
 - Define `Kind`, `Session`, `Stream`, `Dialer`, `Listener` exactly as §7.
 - `Stream` wraps the underlying mux stream and satisfies `net.Conn`; `ID()` returns the mux stream id.
-- ALPN token `"rift/1"` for both QUIC and TLS-TCP so intermediaries can distinguish protocol versions.
+- ALPN token `"trqsh/1"` for both QUIC and TLS-TCP so intermediaries can distinguish protocol versions.
 
 ### T3 — QUIC transport (`pkg/tunnel/quic.go`)
 - Use `github.com/quic-go/quic-go`. A `quicSession` adapts `quic.Connection`:
@@ -51,7 +51,7 @@ A reusable Go library that both the edge and the agent import:
   1. If `ForceKind` set, use only that.
   2. Else if `Prefer==KindQUIC` (default): try QUIC with `DialTimeout`. On failure (UDP blocked,
      timeout, handshake error) **fall back** to TCP+yamux. Log which kind won (for metrics).
-- Shared `*tls.Config` (with ALPN). Honor `RIFT_INSECURE=1` (dev) to skip verify — never default-on.
+- Shared `*tls.Config` (with ALPN). Honor `TRQSH_INSECURE=1` (dev) to skip verify — never default-on.
 
 ### T6 — Listener accepting both (`pkg/tunnel/listen.go`)
 - `Listen(quicAddr, tcpAddr, tlsConf)` starts a QUIC listener (UDP) **and** a TLS-TCP listener,

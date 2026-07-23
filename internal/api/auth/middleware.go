@@ -39,7 +39,7 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 			writeUnauthorized(w)
 			return
 		}
-		if strings.HasPrefix(tok, "rk_") {
+		if strings.HasPrefix(tok, "tq_") {
 			k, err := a.AuthenticateAPIKey(r.Context(), tok)
 			if err != nil {
 				writeUnauthorized(w)

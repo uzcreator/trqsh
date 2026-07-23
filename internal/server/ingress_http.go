@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 const httpIdleTimeout = 75 * time.Second

@@ -1,18 +1,18 @@
 # Self-hosting
 
-The Rift **agent is open source**. You can audit it, build it yourself, and run it
-however you like. The hosted edge, control plane, and billing are operated by Rift
+The trqsh **agent is open source**. You can audit it, build it yourself, and run it
+however you like. The hosted edge, control plane, and billing are operated by trqsh
 as a service.
 
 ## Build the agent from source
 
 ```sh
-git clone https://github.com/rift/rift
-cd rift
-go build ./cmd/rift
+git clone https://github.com/trqsh-uz/trqsh
+cd trqsh
+go build ./cmd/trqsh
 ```
 
-You now have a `rift` binary identical to the released one (releases are just this,
+You now have a `trqsh` binary identical to the released one (releases are just this,
 cross-compiled and signed). Point it at the hosted edge with your API key and it
 behaves exactly like the packaged CLI.
 
@@ -24,7 +24,7 @@ behaves exactly like the packaged CLI.
 
 ## What isn't open (yet)
 
-The edge (`riftd`), control API, and billing are proprietary and run as the hosted
+The edge (`trqshd`), control API, and billing are proprietary and run as the hosted
 service — that's what your subscription pays for, and it's what keeps the network,
 certificates, and multi-region routing maintained.
 
@@ -32,11 +32,11 @@ certificates, and multi-region routing maintained.
 
 A fully self-hosted deployment (your own edge + control plane) isn't part of the
 free open-source distribution today. If you have a strong need — air-gapped
-networks, compliance, on-prem — [get in touch](mailto:hello@rift.dev); we're
+networks, compliance, on-prem — [get in touch](mailto:hello@trqsh.uz); we're
 interested in an open-core path.
 
 ## Contributing
 
 Issues and pull requests for the agent are welcome on
-[GitHub](https://github.com/rift/rift). See the repository's contributing guide for
+[GitHub](https://github.com/trqsh-uz/trqsh). See the repository's contributing guide for
 the development setup and coding standards.

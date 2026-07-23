@@ -2,7 +2,7 @@ import { api, safe } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { DomainsManager } from "./domains-manager";
 
-const BASE_DOMAIN = process.env.NEXT_PUBLIC_RIFT_BASE_DOMAIN || "rift.sh";
+const BASE_DOMAIN = process.env.NEXT_PUBLIC_TRQSH_BASE_DOMAIN || "trqsh.uz";
 
 export default async function DomainsPage() {
   const [subdomains, domains] = await Promise.all([safe(api.subdomains()), safe(api.domains())]);

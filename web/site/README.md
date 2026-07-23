@@ -45,14 +45,14 @@ scripts/genplans/        Go generator for catalog.generated.ts
 - **API reference** renders from the canonical `docs/openapi.yaml` (Part 05) at
   build time.
 - **Download links** resolve to the real Part 08 release artifacts; version is set
-  by `RIFT_LATEST_VERSION`.
+  by `TRQSH_LATEST_VERSION`.
 
 ## Deploy-time env
 
 | Var | Default | Purpose |
 |---|---|---|
-| `RIFT_DASHBOARD_URL` | `http://localhost:3000` | Sign-up / login CTAs |
-| `RIFT_API_URL` | `http://localhost:8080` | OAuth deep-links |
-| `RIFT_GITHUB_REPO` | `rift/rift` | Release/download links |
-| `RIFT_SITE_URL` | `https://rift.dev` | Canonical origin, sitemap, OG |
-| `RIFT_LATEST_VERSION` | `0.1.0` | Download artifact filenames |
+| `TRQSH_DASHBOARD_URL` | `http://localhost:3000` | Sign-up / login CTAs |
+| `TRQSH_API_URL` | `http://localhost:8080` | OAuth deep-links |
+| `TRQSH_GITHUB_REPO` | `trqsh-uz/trqsh` | Release/download links |
+| `TRQSH_SITE_URL` | `https://trqsh.uz` | Canonical origin, sitemap, OG |
+| `TRQSH_LATEST_VERSION` | `0.1.0` | Download artifact filenames |

@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 var errPortUnavailable = errors.New("server: no ports available")

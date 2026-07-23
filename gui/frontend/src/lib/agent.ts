@@ -23,6 +23,7 @@ import type {
 /** GUI-local settings persisted by the Go side (config.yml + keychain). */
 export interface AppSettings {
   server: string;
+  transport: "auto" | "quic" | "tcp";
   insecure: boolean;
   start_at_login: boolean;
   minimize_to_tray: boolean;
@@ -35,6 +36,18 @@ export interface UpdateInfo {
   version: string;
   notes: string;
   url: string;
+}
+
+/** Host environment + product deep links (Go AgentService.Env). Lets the UI
+ *  adapt window chrome to the OS and build links without hardcoding an origin. */
+export interface HostInfo {
+  os: string; // "darwin" | "windows" | "linux"
+  arch: string;
+  version: string;
+  dashboard_url: string;
+  keys_url: string;
+  billing_url: string;
+  docs_url: string;
 }
 
 const EVENT = "agent:event";
@@ -96,6 +109,76 @@ function realAPI(): AgentAPI {
 export const agent: AgentAPI = isDesktop() ? realAPI() : mockAPI();
 
 // ---------------------------------------------------------------------------
+// Host: environment + native window controls (WindowService + AgentService.Env)
+// ---------------------------------------------------------------------------
+
+export interface HostAPI {
+  env(): Promise<HostInfo>;
+  minimize(): Promise<void>;
+  toggleMaximize(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+  hide(): Promise<void>;
+  quit(): Promise<void>;
+  /** Subscribe to a named Wails UI event (e.g. tray → "ui:new-tunnel"). */
+  onUI(name: string, cb: () => void): () => void;
+}
+
+function realHost(): HostAPI {
+  const call = <T>(method: string, ...args: unknown[]) =>
+    Call.ByName(method, ...args) as Promise<T>;
+  return {
+    env: () => call<HostInfo>("AgentService.Env"),
+    minimize: () => call<void>("WindowService.Minimize"),
+    toggleMaximize: () => call<void>("WindowService.ToggleMaximize"),
+    isMaximized: () => call<boolean>("WindowService.IsMaximized"),
+    hide: () => call<void>("WindowService.Hide"),
+    quit: () => call<void>("WindowService.Quit"),
+    onUI: (name, cb) => Events.On(name, () => cb()),
+  };
+}
+
+/** Best-effort OS guess from the user agent, so browser preview renders the
+ *  correct window chrome (custom buttons on win/linux, native inset on mac). */
+function guessOS(): string {
+  if (typeof navigator === "undefined") return "linux";
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("mac")) return "darwin";
+  if (ua.includes("win")) return "windows";
+  return "linux";
+}
+
+function mockHost(): HostAPI {
+  let maximized = false;
+  return {
+    async env() {
+      return {
+        os: guessOS(),
+        arch: "amd64",
+        version: "0.1.0",
+        dashboard_url: "https://dashboard.trqsh.uz",
+        keys_url: "https://dashboard.trqsh.uz/keys",
+        billing_url: "https://dashboard.trqsh.uz/billing",
+        docs_url: "https://trqsh.uz/docs",
+      };
+    },
+    async minimize() {},
+    async toggleMaximize() {
+      maximized = !maximized;
+    },
+    async isMaximized() {
+      return maximized;
+    },
+    async hide() {},
+    async quit() {},
+    onUI() {
+      return () => {};
+    },
+  };
+}
+
+export const host: HostAPI = isDesktop() ? realHost() : mockHost();
+
+// ---------------------------------------------------------------------------
 // Browser-preview mock
 // ---------------------------------------------------------------------------
 
@@ -115,7 +198,8 @@ function mockAPI(): AgentAPI {
   let seq = 0;
 
   let settings: AppSettings = {
-    server: "api.rift.dev:443",
+    server: "api.trqsh.uz:443",
+    transport: "auto",
     insecure: false,
     start_at_login: false,
     minimize_to_tray: true,
@@ -141,7 +225,7 @@ function mockAPI(): AgentAPI {
       started_at: new Date().toISOString(),
       duration_ms: dur,
       req_headers: { "User-Agent": "curl/8.4.0", Accept: "*/*" },
-      resp_headers: { "Content-Type": "application/json", Server: "rift" },
+      resp_headers: { "Content-Type": "application/json", Server: "trqsh" },
       req_body: "",
       resp_body: btoa(JSON.stringify({ ok: code < 400 })),
       bytes_in: 120 + (seq % 7) * 30,
@@ -181,7 +265,7 @@ function mockAPI(): AgentAPI {
         connected: true,
         account_id: "acct_preview",
         plan: "free",
-        edge: "fra1.rift.sh",
+        edge: "fra1.trqsh.uz",
         kind: "quic",
       };
       emit({ type: "status", status: { ...status } });
@@ -205,8 +289,8 @@ function mockAPI(): AgentAPI {
       const local = spec.addr.includes(":") ? spec.addr : `localhost:${spec.addr}`;
       const url =
         spec.proto === "http" || spec.proto === "tls"
-          ? `https://${sub}.rift.sh`
-          : `tcp://1.tcp.rift.sh:${10000 + (seq % 5000)}`;
+          ? `https://${sub}.trqsh.uz`
+          : `tcp://1.tcp.trqsh.uz:${10000 + (seq % 5000)}`;
       const t: Tunnel = {
         id,
         name: spec.name || sub,

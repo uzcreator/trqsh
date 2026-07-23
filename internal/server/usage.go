@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rift/rift/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
 )
 
 // usageKey identifies a metering bucket.

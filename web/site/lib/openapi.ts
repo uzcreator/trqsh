@@ -144,7 +144,7 @@ export function loadOpenApi(): ApiSpec | null {
   for (const k of groups.keys()) if (!orderedKeys.includes(k)) orderedKeys.push(k);
 
   return {
-    title: info.title ?? "Rift Control API",
+    title: info.title ?? "trqsh Control API",
     version: info.version ?? "1.0.0",
     description: info.description,
     servers,

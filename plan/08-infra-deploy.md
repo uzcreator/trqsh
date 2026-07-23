@@ -18,7 +18,7 @@
 ## Scope / task breakdown
 
 ### T1 — Containers (`deploy/docker/`)
-- Multi-stage Dockerfiles for `riftd` (edge) and the control API (small, distroless/static).
+- Multi-stage Dockerfiles for `trqshd` (edge) and the control API (small, distroless/static).
 - `deploy/docker-compose.dev.yml`: Postgres 16, Redis 7, edge, control API, mailhog (dev email),
   Stripe CLI note. A `make dev` brings the whole M1 stack up. (Part 00 may ship a minimal compose
   with just Postgres+Redis so Parts 02/05 run before this part lands.)
@@ -30,13 +30,13 @@
 
 ### T3 — Terraform (`deploy/terraform/`)
 - Cloud infra: a Kubernetes cluster (or per-region VMs for edges), managed **Postgres** + **Redis**,
-  object storage (cert cache, release artifacts), **DNS** incl. the **wildcard `*.rift.sh`** record,
+  object storage (cert cache, release artifacts), **DNS** incl. the **wildcard `*.trqsh.uz`** record,
   the DNS-provider credentials for CertMagic DNS-01, secrets manager, and per-region edge pools.
 - Anycast IP / GeoDNS so agents and public users hit the **nearest edge** (latency = differentiator).
 
 ### T4 — CI/CD (`.github/workflows/`)
 - `ci.yml`: `make proto`, `go build/test -race`, `golangci-lint`, frontend `pnpm build/test`.
-- `release.yml`: on tag — cross-compile `rift`/`riftd` (darwin/linux/windows × amd64/arm64);
+- `release.yml`: on tag — cross-compile `trqsh`/`trqshd` (darwin/linux/windows × amd64/arm64);
   build GUI bundles (Part 04); **macOS notarization** + **Windows Authenticode** signing; publish
   GitHub Releases + Homebrew tap + `winget`/scoop manifests + `curl | sh` script; generate the
   **auto-update feed** the GUI/CLI consume.
@@ -57,7 +57,7 @@
   `docker-compose.dev.yml` and release/update feed that other parts reference in their verify steps.
 
 ## Done criteria
-- `make dev` brings up the full M1 stack; `rift http 3000` works end-to-end locally.
+- `make dev` brings up the full M1 stack; `trqsh http 3000` works end-to-end locally.
 - `helm install` to a **staging** cluster runs edge+api; Let's Encrypt **staging** wildcard issues;
   Grafana shows live metrics; drain works on rollout.
 - `release.yml` on a test tag produces **signed** installers for all three OSes + working update feed;
@@ -67,6 +67,6 @@
 ## Run / verify
 ```bash
 make dev                                   # full local stack
-helm upgrade --install rift deploy/helm -f deploy/helm/values.staging.yaml   # staging
+helm upgrade --install trqsh deploy/helm -f deploy/helm/values.staging.yaml   # staging
 # tag a test release to exercise release.yml in a fork; verify signed artifacts + update feed
 ```

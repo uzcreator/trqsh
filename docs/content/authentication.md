@@ -6,24 +6,24 @@ sessions; you never need those for the CLI.
 ## Interactive login
 
 ```sh
-rift login
+trqsh login
 ```
 
 This starts a device-authorization flow: the CLI shows a short code, opens your
-browser, and once you approve, it stores an API key in `~/.rift/rift.yml`. This is
+browser, and once you approve, it stores an API key in `~/.trqsh-uz/trqsh.yml`. This is
 the easiest path and works on any machine with a browser.
 
 ## API keys
 
-API keys look like `rk_live_…`. Create and manage them in the dashboard under
+API keys look like `tq_live_…`. Create and manage them in the dashboard under
 **API keys**. A key is shown **once** at creation — copy it then. Keys are hashed
 at rest and can be revoked at any time.
 
-Provide a key without `rift login` in any of these ways (highest priority first):
+Provide a key without `trqsh login` in any of these ways (highest priority first):
 
-1. A flag: `rift http 3000 --api-key rk_live_…`
-2. An environment variable: `export RIFT_API_KEY=rk_live_…`
-3. The config file: set `api_key` in `~/.rift/rift.yml` (see [Configuration](/docs/configuration)).
+1. A flag: `trqsh http 3000 --api-key tq_live_…`
+2. An environment variable: `export TRQSH_API_KEY=tq_live_…`
+3. The config file: set `api_key` in `~/.trqsh-uz/trqsh.yml` (see [Configuration](/docs/configuration)).
 
 Environment variables are ideal for CI, where you'd store the key as a secret.
 
@@ -37,7 +37,7 @@ stops any agent using it — the next bind fails with
 ## Logging out
 
 ```sh
-rift logout
+trqsh logout
 ```
 
 This removes the stored key from your config. Revoke the key in the dashboard too

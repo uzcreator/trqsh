@@ -5,9 +5,9 @@ set -euo pipefail
 
 tag="${1:?usage: gen-update-feed.sh <tag>}"
 version="${tag#v}"
-repo="${GITHUB_REPOSITORY:-rift/rift}"
+repo="${GITHUB_REPOSITORY:-trqsh-uz/trqsh}"
 url="https://github.com/${repo}/releases/tag/${tag}"
-notes="Rift ${version}. See the release notes for changes."
+notes="trqsh ${version}. See the release notes for changes."
 
 cat <<JSON
 {

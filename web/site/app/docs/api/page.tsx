@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "API reference",
-  description: "The Rift Control API, generated from the canonical OpenAPI spec.",
+  description: "The trqsh Control API, generated from the canonical OpenAPI spec.",
 };
 
 const METHOD_STYLES: Record<string, string> = {

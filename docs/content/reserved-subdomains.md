@@ -1,6 +1,6 @@
 # Reserved subdomains
 
-By default each tunnel gets a random subdomain like `tidy-otter-4f2a.rift.sh`.
+By default each tunnel gets a random subdomain like `tidy-otter-4f2a.trqsh.uz`.
 Reserve one to keep the **same URL every time** — handy for webhooks, OAuth
 callbacks, and sharing a stable link.
 
@@ -18,10 +18,10 @@ The exact numbers are on the [pricing page](/pricing) (and enforced by the edge)
 ## Use it
 
 ```sh
-rift http 3000 --subdomain myapp
+trqsh http 3000 --subdomain myapp
 ```
 
-You'll consistently get `https://myapp.rift.sh`.
+You'll consistently get `https://myapp.trqsh.uz`.
 
 ## In a config file
 
@@ -33,7 +33,7 @@ tunnels:
     subdomain: "myapp"
 ```
 
-Then just run `rift start`. See [Configuration](/docs/configuration).
+Then just run `trqsh start`. See [Configuration](/docs/configuration).
 
 ## Errors
 
@@ -44,5 +44,5 @@ Then just run `rift start`. See [Configuration](/docs/configuration).
 
 ## Custom domains
 
-Want `tunnel.yourcompany.com` instead of a `rift.sh` subdomain? Use a
+Want `tunnel.yourcompany.com` instead of a `trqsh.uz` subdomain? Use a
 [custom domain](/docs/custom-domains).

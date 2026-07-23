@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, DownloadCloud, LogOut } from "lucide-react";
-import { agent, type AppSettings, type UpdateInfo } from "@/lib/agent";
+import { agent, host, type AppSettings, type HostInfo, type UpdateInfo } from "@/lib/agent";
 import { applyTheme, type Theme } from "@/lib/theme";
 import { friendlyError } from "@/lib/errors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-
-const APP_VERSION = "0.1.0";
+import { Dialog } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 
 function Row({
   title,
@@ -34,16 +34,23 @@ function Row({
 }
 
 export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
+  const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
+  const [confirmOff, setConfirmOff] = useState(false);
+  const [env, setEnv] = useState<HostInfo | null>(null);
 
   useEffect(() => {
-    agent.settings().then(setSettings).catch((e) => setError(friendlyError(e)));
+    agent.settings().then(setSettings).catch((e) => setLoadError(friendlyError(e)));
+    host.env().then(setEnv).catch(() => {});
   }, []);
+
+  const version = env?.version ?? "0.1.0";
+  const docs = env?.docs_url;
 
   const patch = (p: Partial<AppSettings>) =>
     setSettings((s) => (s ? { ...s, ...p } : s));
@@ -51,14 +58,14 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
   const save = async () => {
     if (!settings) return;
     setSaving(true);
-    setError(null);
     try {
       await agent.saveSettings(settings);
       applyTheme(settings.theme);
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
+      toast.success("Settings saved");
     } catch (e) {
-      setError(friendlyError(e));
+      toast.error("Couldn't save settings", { description: friendlyError(e) });
     } finally {
       setSaving(false);
     }
@@ -67,9 +74,15 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
   const checkUpdate = async () => {
     setChecking(true);
     try {
-      setUpdate(await agent.checkUpdate());
+      const info = await agent.checkUpdate();
+      setUpdate(info);
+      if (info.available) {
+        toast.info("Update available", { description: `Version ${info.version} is ready to download.` });
+      } else {
+        toast.success("You're on the latest version");
+      }
     } catch (e) {
-      setError(friendlyError(e));
+      toast.error("Update check failed", { description: friendlyError(e) });
     } finally {
       setChecking(false);
     }
@@ -77,8 +90,14 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
 
   if (!settings) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner className="size-5 text-muted" />
+      <div className="flex flex-1 items-center justify-center p-6">
+        {loadError ? (
+          <p className="max-w-sm rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-center text-xs text-critical">
+            {loadError}
+          </p>
+        ) : (
+          <Spinner className="size-5 text-muted" />
+        )}
       </div>
     );
   }
@@ -101,6 +120,19 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
               className="font-mono"
             />
           </div>
+          <Row title="Transport" hint="QUIC is fastest; TCP maximizes compatibility.">
+            <div className="w-32">
+              <Select
+                id="transport"
+                value={settings.transport}
+                onChange={(e) => patch({ transport: e.target.value as AppSettings["transport"] })}
+              >
+                <option value="auto">Auto</option>
+                <option value="quic">QUIC</option>
+                <option value="tcp">TCP</option>
+              </Select>
+            </div>
+          </Row>
           <Row
             title="Allow insecure TLS"
             hint="Skip certificate verification. Only for local/self-hosted edges."
@@ -134,7 +166,7 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
               </Select>
             </div>
           </Row>
-          <Row title="Start at login" hint="Launch Rift when you sign in.">
+          <Row title="Start at login" hint="Launch trqsh when you sign in.">
             <Switch
               checked={settings.start_at_login}
               onChange={(v) => patch({ start_at_login: v })}
@@ -150,11 +182,24 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Updates</CardTitle>
+          {docs && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
+              onClick={() => agent.openURL(docs)}
+            >
+              Open docs
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          <Row title="Version" hint={`Rift ${APP_VERSION}`}>
+          <Row
+            title="Version"
+            hint={`trqsh ${version}${env?.os ? ` · ${env.os}/${env.arch}` : ""}`}
+          >
             <Button variant="secondary" size="sm" onClick={checkUpdate} disabled={checking}>
               {checking ? <Spinner /> : <DownloadCloud className="size-3.5" />}
               Check for updates
@@ -177,14 +222,12 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
         </CardContent>
       </Card>
 
-      {error && (
-        <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-xs text-critical">
-          {error}
-        </p>
-      )}
-
       <div className="flex items-center justify-between">
-        <Button variant="ghost" className="text-critical hover:bg-critical/10" onClick={onDisconnect}>
+        <Button
+          variant="ghost"
+          className="text-critical hover:bg-critical/10"
+          onClick={() => setConfirmOff(true)}
+        >
           <LogOut />
           Disconnect
         </Button>
@@ -193,6 +236,29 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
           {saved ? "Saved" : "Save changes"}
         </Button>
       </div>
+
+      <Dialog
+        open={confirmOff}
+        onClose={() => setConfirmOff(false)}
+        title="Disconnect?"
+        description="Active tunnels will stop and you'll return to sign-in."
+      >
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmOff(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setConfirmOff(false);
+              onDisconnect();
+            }}
+          >
+            <LogOut />
+            Disconnect
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

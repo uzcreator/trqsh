@@ -10,7 +10,7 @@ export interface FriendlyError {
 const MAP: Record<string, FriendlyError> = {
   ERR_AUTH_REQUIRED: { title: "Sign in required", detail: "Your session expired. Please sign in again." },
   ERR_AUTH_INVALID: { title: "Invalid credentials", detail: "That API key or token is not valid." },
-  ERR_VERSION_UNSUPPORTED: { title: "Update required", detail: "Your agent is too old for this edge. Update the `rift` CLI." },
+  ERR_VERSION_UNSUPPORTED: { title: "Update required", detail: "Your agent is too old for this edge. Update the `trqsh` CLI." },
   ERR_QUOTA_TUNNELS: { title: "Tunnel limit reached", detail: "You've hit the concurrent-tunnel limit for your plan.", upgrade: true },
   ERR_QUOTA_BANDWIDTH: { title: "Bandwidth quota exceeded", detail: "This month's bandwidth allowance is used up.", upgrade: true },
   ERR_QUOTA_REQUESTS: { title: "Request quota exceeded", detail: "This month's request allowance is used up.", upgrade: true },

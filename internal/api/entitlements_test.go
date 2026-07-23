@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/pkg/authz"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 func setupOrgKey(t *testing.T, plan string) (*Entitlements, store.Store, string, string) {
@@ -39,7 +39,7 @@ func TestAuthenticate(t *testing.T) {
 	if acct != orgID || plan != PlanFree {
 		t.Fatalf("got (%s,%s), want (%s,free)", acct, plan, orgID)
 	}
-	if _, _, err := ent.Authenticate(context.Background(), "rk_live_bogus_key"); err == nil {
+	if _, _, err := ent.Authenticate(context.Background(), "tq_live_bogus_key"); err == nil {
 		t.Fatal("expected error for bogus key")
 	}
 }

@@ -15,7 +15,7 @@
 > docs + OpenAPI'dan API reference (har bir §8 xato kodi anchor bilan). Brend tokenlari Parts 04/06
 > bilan bir xil. Keyin **hammasi Docker'siz, sof Go bilan ishga tushdi**: edge + agent QUIC ustidan
 > jonli tunnel (`https://demo.lvh.me → localhost:3000`, HTTP 200), real Prometheus metrikalari, va
-> control API `/v1/plans` — saytdagi narxlar bilan **aynan mos**. Rift endi to'liq launch-ready. 🚀
+> control API `/v1/plans` — saytdagi narxlar bilan **aynan mos**. trqsh endi to'liq launch-ready. 🚀
 
 ## What was built
 
@@ -49,7 +49,7 @@ docs/content/*.md         quickstart, install, auth, http/tcp-udp, subdomains, c
   a FAQ. Prices/limits are exactly what the edge enforces.
 - **T3 Download.** OS auto-detect; desktop-app bundles + CLI package-manager snippets (`brew`,
   `scoop`, `curl | sh`) + raw archive links. URLs resolve to the **real Part 08 release artifacts**
-  (`rift_<version>_<os>_<arch>` archives, `Rift.app.zip`, `rift-gui.exe`) with a `checksums.txt`
+  (`trqsh_<version>_<os>_<arch>` archives, `Trqsh.app.zip`, `trqsh-gui.exe`) with a `checksums.txt`
   link and verify instructions.
 - **T4 Docs.** 13 Markdown guides rendered at build (h2/h3 get stable slug ids + a TOC via a
   version-independent post-process). An **API reference generated from `docs/openapi.yaml`** at build
@@ -98,17 +98,17 @@ docs/content/*.md         quickstart, install, auth, http/tcp-udp, subdomains, c
 
 ### End-to-end runtime ("run everything") — pure Go, no Docker/Postgres/Redis
 
-Both the edge (in-memory registry when `RIFT_REDIS_URL` is empty) and the API (in-memory store when
-`RIFT_DATABASE_URL` is empty) run standalone, so the whole product was exercised live:
+Both the edge (in-memory registry when `TRQSH_REDIS_URL` is empty) and the API (in-memory store when
+`TRQSH_DATABASE_URL` is empty) run standalone, so the whole product was exercised live:
 
 | Component | Result |
 |---|---|
-| Edge `riftd` (stub entitlements, lvh.me) | ✅ agent listener :4443 (QUIC+TCP), ingress :8088/:8443, `/healthz`+`/readyz` 200 |
-| Agent `rift http 3000 --insecure` | ✅ connected over **QUIC**, `tunnel online https://demo.lvh.me` |
+| Edge `trqshd` (stub entitlements, lvh.me) | ✅ agent listener :4443 (QUIC+TCP), ingress :8088/:8443, `/healthz`+`/readyz` 200 |
+| Agent `trqsh http 3000 --insecure` | ✅ connected over **QUIC**, `tunnel online https://demo.lvh.me` |
 | **Public request through the edge** | ✅ `curl -H 'Host: demo.lvh.me' http://127.0.0.1:8088/…` → **HTTP 200**, local body returned |
 | Local inspector (:4040) | ✅ serving |
-| Edge Prometheus metrics (:9099) | ✅ `rift_agent_handshakes_total{kind="quic"}`, `rift_sessions_active 1`, `rift_tunnels_active 1`, `rift_http_requests_total 4` |
-| Control API `riftapi` (in-memory) | ✅ `store=memory`, `/healthz` 200, signup → JWT |
+| Edge Prometheus metrics (:9099) | ✅ `trqsh_agent_handshakes_total{kind="quic"}`, `trqsh_sessions_active 1`, `trqsh_tunnels_active 1`, `trqsh_http_requests_total 4` |
+| Control API `trqshapi` (in-memory) | ✅ `store=memory`, `/healthz` 200, signup → JWT |
 | `GET /v1/plans` vs site pricing | ✅ **identical** (free 10 GB $0, pro 200 GB $8/$80, team 1 TB $20/$200) |
 
 ## Cross-part touches (additive, documented)
@@ -132,7 +132,7 @@ verified; they add to existing lists without changing other parts' behavior.
 
 ## What's next
 
-Nothing in the build plan — **all 11 steps are complete**. Rift is a launch-ready SaaS: CLI + GUI
+Nothing in the build plan — **all 11 steps are complete**. trqsh is a launch-ready SaaS: CLI + GUI
 (3 OSes), edge, control plane, billing, dashboard, and now the marketing site + docs. Go-live is
-operational: point DNS at the edge, set the deploy-time env (`RIFT_SITE_URL`, `RIFT_DASHBOARD_URL`,
-`RIFT_LATEST_VERSION`, …), flip Stripe to live mode, and ship the first tagged release.
+operational: point DNS at the edge, set the deploy-time env (`TRQSH_SITE_URL`, `TRQSH_DASHBOARD_URL`,
+`TRQSH_LATEST_VERSION`, …), flip Stripe to live mode, and ship the first tagged release.

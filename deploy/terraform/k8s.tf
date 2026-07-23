@@ -17,7 +17,7 @@ resource "digitalocean_kubernetes_cluster" "control" {
     size       = var.control_node_size
     node_count = 2
     labels = {
-      "rift.dev/role" = "control"
+      "trqsh.uz/role" = "control"
     }
   }
 }

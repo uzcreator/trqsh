@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Rift Dashboard",
-  description: "Manage your Rift tunnels, domains, API keys, usage, and billing.",
+  title: "trqsh Dashboard",
+  description: "Manage your trqsh tunnels, domains, API keys, usage, and billing.",
 };
 
 // First-visit theme: honor the theme cookie server-side (no flash); fall back to

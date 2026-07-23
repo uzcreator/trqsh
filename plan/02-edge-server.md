@@ -1,6 +1,6 @@
-# 02 — Edge Server / Data Plane (`riftd`)
+# 02 — Edge Server / Data Plane (`trqshd`)
 
-**Owns:** `internal/server`, `cmd/riftd`
+**Owns:** `internal/server`, `cmd/trqshd`
 **Depends on:** Part 01 (`pkg/proto`, `pkg/tunnel`, `pkg/authz`) — hard. Part 05 — **interface only**
 (`authz.Entitlements`); ship against `authz.StubEntitlements` and swap to the real client later.
 **Blocks:** the M1 MVP.
@@ -10,7 +10,7 @@
 
 ## Goal
 
-`riftd` — a horizontally scalable edge server that:
+`trqshd` — a horizontally scalable edge server that:
 1. Accepts authenticated, multiplexed **agent sessions** (QUIC + TCP via `tunnel.Listener`).
 2. Maintains a **tunnel registry** (`hostname/port → session`) in Redis (shared across edges).
 3. Accepts **public traffic** — HTTP/HTTPS (vhost/SNI routing), raw **TCP**, and **UDP** — and
@@ -20,10 +20,10 @@
 
 ## Scope / task breakdown
 
-### T1 — Config & bootstrap (`internal/server/config.go`, `cmd/riftd/main.go`)
-- Config via env/flags: `RIFT_QUIC_ADDR` (`:443/udp`), `RIFT_TCP_ADDR` (`:443`), `RIFT_HTTP_ADDR`
-  (`:80` redirect), `RIFT_REDIS_URL`, `RIFT_BASE_DOMAIN` (`rift.sh`), `RIFT_REGION`, cert/DNS creds,
-  entitlements mode (`stub` | `api` + `RIFT_API_URL`).
+### T1 — Config & bootstrap (`internal/server/config.go`, `cmd/trqshd/main.go`)
+- Config via env/flags: `TRQSH_QUIC_ADDR` (`:443/udp`), `TRQSH_TCP_ADDR` (`:443`), `TRQSH_HTTP_ADDR`
+  (`:80` redirect), `TRQSH_REDIS_URL`, `TRQSH_BASE_DOMAIN` (`trqsh.uz`), `TRQSH_REGION`, cert/DNS creds,
+  entitlements mode (`stub` | `api` + `TRQSH_API_URL`).
 - `main.go` wires: entitlements client, Redis, cert manager, agent listener, ingress servers, metrics.
 - Structured `slog` + OpenTelemetry init.
 
@@ -56,7 +56,7 @@
 - **CertMagic** with a **DNS-01** solver (lego DNS provider from env) for `*.<base_domain>` wildcard.
 - **On-demand TLS** for verified custom domains (check the control plane / a Redis allowlist before
   issuing, to prevent abuse). Cache certs in Redis/shared storage so all edges reuse them.
-- Use Let's Encrypt **staging** in non-prod (`RIFT_ACME_STAGING=1`).
+- Use Let's Encrypt **staging** in non-prod (`TRQSH_ACME_STAGING=1`).
 
 ### T6 — TCP & UDP port tunnels + usage (`internal/server/ingress_tcp.go`, `ingress_udp.go`, `usage.go`)
 - A pool of listenable ports (range from config) assigned on TCP/UDP binds. Accept a public conn →
@@ -80,7 +80,7 @@
   `authz.Entitlements` (§9). Inject the entitlements implementation; default to `StubEntitlements`.
 
 ## Done criteria
-- `go build ./cmd/riftd` produces a running edge; `go test ./internal/server/...` passes.
+- `go build ./cmd/trqshd` produces a running edge; `go test ./internal/server/...` passes.
 - With `StubEntitlements` + local Redis: an agent (Part 03) can auth, bind an HTTP tunnel, and a
   `curl` to the public host returns the agent's local response; TCP + UDP tunnels weld correctly.
 - Wildcard cert issues against Let's Encrypt **staging**; unknown host returns the branded 404.
@@ -89,7 +89,7 @@
 ## Run / verify
 ```bash
 docker compose -f deploy/docker-compose.dev.yml up -d redis   # from Part 08 (or minimal Part 00)
-RIFT_ENTITLEMENTS=stub RIFT_BASE_DOMAIN=lvh.me RIFT_ACME_STAGING=1 go run ./cmd/riftd
+TRQSH_ENTITLEMENTS=stub TRQSH_BASE_DOMAIN=lvh.me TRQSH_ACME_STAGING=1 go run ./cmd/trqshd
 # then, in another shell, use the Part 03 agent to bind a tunnel and curl the public URL
 ```
 Note: `lvh.me` and `*.lvh.me` resolve to 127.0.0.1 — handy for local vhost testing without DNS.

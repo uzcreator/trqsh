@@ -16,7 +16,7 @@ const (
 
 // ALPNProto is the ALPN token negotiated for both QUIC and TLS-TCP sessions,
 // so intermediaries and servers can distinguish the protocol version.
-const ALPNProto = "rift/1"
+const ALPNProto = "trqsh/1"
 
 // Transport tuning applied when the corresponding Dialer/Listen field is zero.
 const (

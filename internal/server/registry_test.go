@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/server"
+	"github.com/trqsh-uz/trqsh/internal/server"
 )
 
 func TestRouteKey(t *testing.T) {
@@ -13,7 +13,7 @@ func TestRouteKey(t *testing.T) {
 		r    server.Route
 		want string
 	}{
-		{server.Route{Host: "Abc.RIFT.sh"}, "host:abc.rift.sh"},
+		{server.Route{Host: "Abc.TRQSH.uz"}, "host:abc.trqsh.uz"},
 		{server.Route{Proto: "tcp", Port: 2222}, "port:tcp:2222"},
 		{server.Route{Proto: "udp", Port: 5353}, "port:udp:5353"},
 	}

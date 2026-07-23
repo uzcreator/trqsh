@@ -5,13 +5,13 @@
 - **Spec:** [`../../plan/06-web-dashboard.md`](../../plan/06-web-dashboard.md)
 - **Milestone:** M2 — Monetizable product
 - **Status:** ✅ Complete — `pnpm build` green (all 13 routes type-check + compile); **the app runs and
-  renders real data** end-to-end against a live `riftapi` (auth guard + Server-Component reads + billing).
+  renders real data** end-to-end against a live `trqshapi` (auth guard + Server-Component reads + billing).
 
 > **TL;DR (Uz):** Birinchi frontend qism — Next.js 15 (App Router) + TS + Tailwind dashboard. Login
 > (httpOnly JWT cookie), himoyalangan sahifalar: Overview, Tunnels, Domains (subdomain+custom, DNS+verify),
 > API Keys (bir marta ko'rsatiladi, revoke), Usage (dataviz meter/bar), **Billing (Stripe Checkout/Portal
 > embed)**, Inspector (capture-stream kutmoqda — hujjatlangan gap), Team, Settings. Token brauzerga
-> chiqmaydi: o'qish RSC'da, yozish Server Action'da. `pnpm build` yashil; haqiqiy `riftapi` bilan ishlab,
+> chiqmaydi: o'qish RSC'da, yozish Server Action'da. `pnpm build` yashil; haqiqiy `trqshapi` bilan ishlab,
 > real ma'lumot render qildi. Keyingi: Part 04 GUI yoki Part 08 infra.
 
 ## What was built
@@ -64,14 +64,14 @@ middleware.ts                   route protection
 | Check | Result |
 |------|--------|
 | `pnpm build` (13 routes: compile + type-check + lint) | ✅ green |
-| Runtime: `next start` + live `riftapi` | ✅ |
+| Runtime: `next start` + live `trqshapi` | ✅ |
 | `/login` unauthenticated | ✅ 200 |
 | `/` without cookie → middleware redirect | ✅ 307 → `/login` |
 | `/` with real JWT cookie → Overview renders (RSC fetched `/account`, usage, …) | ✅ 200, "Overview"+"Quick start" |
 | `/keys` with cookie → renders keys manager | ✅ 200, "Create an API key" |
 | `/billing` with cookie → renders plan cards from `/plans` + `/billing/subscription` | ✅ 200, "Pro" |
 
-Smoke: signed up via `riftapi`, set the `rift_access` cookie, and drove the pages over HTTP — the
+Smoke: signed up via `trqshapi`, set the `trqsh_access` cookie, and drove the pages over HTTP — the
 Server Components authenticated to the control API and rendered real account/usage/plan data.
 
 ## Key decisions

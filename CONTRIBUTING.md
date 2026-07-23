@@ -1,6 +1,6 @@
-# Contributing to Rift
+# Contributing to trqsh
 
-Thanks for your interest in improving Rift. The **agent** (`cmd/rift`, `internal/agent`) and the
+Thanks for your interest in improving trqsh. The **agent** (`cmd/trqsh`, `internal/agent`) and the
 shared libraries (`pkg/*`) are open source; the edge, control plane, and billing are also in this
 repo for development but are proprietary. Contributions are welcome across all of it.
 
@@ -23,9 +23,9 @@ Run a public URL against a local server, no cloud needed:
 
 ```bash
 # terminal 1 — edge (in-memory registry, stub entitlements)
-RIFT_ENTITLEMENTS=stub RIFT_BASE_DOMAIN=lvh.me go run ./cmd/riftd
+TRQSH_ENTITLEMENTS=stub TRQSH_BASE_DOMAIN=lvh.me go run ./cmd/trqshd
 # terminal 2 — agent
-go run ./cmd/rift http 3000 --server 127.0.0.1:4443 --insecure
+go run ./cmd/trqsh http 3000 --server 127.0.0.1:4443 --insecure
 curl -H 'Host: <sub>.lvh.me' http://127.0.0.1
 ```
 

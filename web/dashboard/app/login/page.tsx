@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const API = process.env.RIFT_API_URL || "http://localhost:8080";
+const API = process.env.TRQSH_API_URL || "http://localhost:8080";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<LoginState, FormData>(authenticate, {});
@@ -19,7 +19,7 @@ export default function LoginPage() {
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Waypoints className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">Sign in to Rift</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Sign in to trqsh</h1>
           <p className="mt-1 text-sm text-secondary">Manage your tunnels, domains, and billing.</p>
         </div>
 

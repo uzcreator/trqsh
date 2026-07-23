@@ -5,25 +5,25 @@ The most common tunnel: expose a local web app or API over a public HTTPS URL.
 ## Basics
 
 ```sh
-rift http 3000
+trqsh http 3000
 ```
 
-`3000` is your local port. Rift assigns a random subdomain and serves it over
+`3000` is your local port. trqsh assigns a random subdomain and serves it over
 HTTPS with a valid certificate — no TLS setup on your side. You can also point at a
 full address:
 
 ```sh
-rift http localhost:3000
-rift http 127.0.0.1:8080
+trqsh http localhost:3000
+trqsh http 127.0.0.1:8080
 ```
 
 ## Pick a subdomain
 
 ```sh
-rift http 3000 --subdomain myapp
+trqsh http 3000 --subdomain myapp
 ```
 
-You'll get `https://myapp.rift.sh` if it's available. To keep a subdomain reserved
+You'll get `https://myapp.trqsh.uz` if it's available. To keep a subdomain reserved
 for your account across restarts, see [Reserved subdomains](/docs/reserved-subdomains).
 Requesting one you don't own returns
 [`ERR_SUBDOMAIN_FORBIDDEN`](/docs/errors#err_subdomain_forbidden); one already taken
@@ -32,7 +32,7 @@ returns [`ERR_SUBDOMAIN_TAKEN`](/docs/errors#err_subdomain_taken).
 ## Protect it with basic auth
 
 ```sh
-rift http 3000 --basic-auth user:secret
+trqsh http 3000 --basic-auth user:secret
 ```
 
 Anyone visiting the URL is prompted for those credentials before the request
@@ -43,7 +43,7 @@ reaches your machine.
 Some frameworks are picky about the `Host` header. Send them the host they expect:
 
 ```sh
-rift http 3000 --host-header localhost:3000
+trqsh http 3000 --host-header localhost:3000
 ```
 
 ## HTTPS upstreams
@@ -51,7 +51,7 @@ rift http 3000 --host-header localhost:3000
 If your local server already speaks TLS, tunnel it as `https`:
 
 ```sh
-rift https 8443
+trqsh https 8443
 ```
 
 ## What you get

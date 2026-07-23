@@ -20,15 +20,15 @@
 
 ## What was built
 
-`gui/` — a Wails v3 desktop app. A **separate Go module** (`github.com/rift/rift/gui`, `replace … => ../`)
+`gui/` — a Wails v3 desktop app. A **separate Go module** (`github.com/trqsh-uz/trqsh/gui`, `replace … => ../`)
 so it stays out of the root `go.work` and never blocks the CGO-less root build/CI.
 
 ```
 gui/
-├── go.mod            separate module; replace github.com/rift/rift => ../
+├── go.mod            separate module; replace github.com/trqsh-uz/trqsh => ../
 ├── main.go           Wails bootstrap: frameless window, embedded assets, lifecycle, tray wiring
 ├── app.go            AgentService — the Wails-bound API; core.Events() → "agent:event" pump
-├── storage.go        Settings/SaveSettings (rift.yml + gui.json) + API-key storage seam
+├── storage.go        Settings/SaveSettings (trqsh.yml + gui.json) + API-key storage seam
 ├── update.go         CheckUpdate against the release feed + semver compare
 ├── system.go         openBrowser (OS launcher) + replayLocal (re-issue a captured request)
 ├── tray.go           system tray (Open / Quit, click-to-toggle)
@@ -48,7 +48,7 @@ UI-kit philosophy as `web/dashboard`, no Radix.
 
 ## How it works
 
-- **One core, no drift.** `main.go` loads `~/.rift/rift.yml` and builds the **same `internal/agent` core the
+- **One core, no drift.** `main.go` loads `~/.trqsh-uz/trqsh.yml` and builds the **same `internal/agent` core the
   CLI uses**, wraps it in `AgentService`, and binds it. The GUI adds *no* tunnelling logic — only presentation,
   auth state, event bridging, settings, updates, and URL opening.
 - **One event channel.** `AgentService.pumpEvents` ranges over `agent.Core.Events()`
@@ -116,7 +116,7 @@ verified by re-running all three after writing `gui/`.
   `NewSystemTray`, `EmitEvent`, `Call.ByName`/`Events.On`); the exact `wails/v3` module version must be pinned
   to match `@wailsio/runtime` via `wails3 update` / `go mod tidy` under that toolchain. `gui/README.md` has the
   steps. **Packaging, code-signing, and notarization are Part 08.**
-- **API key storage** currently reuses the agent's `~/.rift/rift.yml` (shared source of truth with the CLI).
+- **API key storage** currently reuses the agent's `~/.trqsh-uz/trqsh.yml` (shared source of truth with the CLI).
   `storage.go` marks the single seam to swap in the OS keychain (Keychain / Credential Manager / libsecret)
   for a hardened build.
 - **Replay** re-issues the captured request against the **local** target (ngrok-style; exercises the dev's
@@ -131,3 +131,68 @@ M2 GUI is done. Remaining per `EXECUTION-ORDER.md`: **Qadam 10 — Part 08 (Infr
 docker-compose full stack, Helm/K8s, Terraform (wildcard DNS + Postgres/Redis), GitHub Actions (build/test +
 cross-compile + **sign/notarize the GUI installers** built here) and observability; and **Qadam 11 — Part 09
 (Marketing site + docs)**, which shares this exact design-token set and the OpenAPI surface.
+
+---
+
+## Enhancement pass — "real desktop app" + responsive + security (2026-07-20)
+
+A follow-up pass turned the shell into a first-class native app: strong desktop affordances, a fully
+responsive layout, live feedback, and WebView hardening. Same rule as before — **the frozen `agent.Core`
+is untouched**; every addition is GUI presentation, chrome, or a new Wails-bound host service.
+
+**New native window controls (the biggest gap).** The window is frameless, but had no min/max/close.
+Added `gui/window.go` — a `WindowService` bound to the frontend (`Minimize`/`ToggleMaximize`/`IsMaximized`/
+`Hide`/`Show`/`Quit`) driven by `application.WebviewWindow` methods. `components/window-controls.tsx` draws
+custom min/max/close on Windows/Linux and renders **nothing on macOS** (the OS draws traffic lights; the
+titlebar reserves 76px for them). The close button honors the minimize-to-tray preference (hide vs. quit).
+
+**Live system tray.** `tray.go` is now a `Tray` controller wired to `AgentService.OnState`; it rebuilds on
+every status/tunnel change, reflects state in its label ("trqsh — N active"), and offers quick actions that
+read the current tunnel set at click time (open each web tunnel in the browser, "New tunnel…" which emits
+`ui:new-tunnel` to the frontend, quit). Request-stream events are deliberately excluded from refresh.
+
+**Responsive everywhere** (`lib/hooks.ts` — `useWindowWidth`, `useNow`, `useHotkeys`): the sidebar collapses
+to an icon rail (auto < 940px, manual toggle), the Inspector switches between a two-pane split (≥ 880px) and
+a master–detail stack, and Tunnels flow into a 1/2-column grid.
+
+**Keyboard-driven + command palette.** `⌘/Ctrl-K` opens a fuzzy command palette (`command-palette.tsx`);
+`⌘N` new tunnel, `⌘1–4` switch screens. Global matcher ignores keystrokes inside inputs (except the palette
+toggle).
+
+**Feedback system.** A dependency-free toast provider (`ui/toast.tsx`) wired into copy actions, tunnel
+start/stop, settings save, update checks, and errors.
+
+**Richer screens.** Inspector: search + method/status filters, follow-newest, clear, request/response
+**tabs**, JSON pretty-printing, per-body copy, and **copy-as-cURL** (`lib/curl.ts`). Tunnels: live traffic
+**sparklines** (`components/sparkline.tsx`, sampled 1/s), uptime, req/s, copy-as-cURL, aggregate header
+stats. Account: usage **meters** vs. plan allowance (`ui/meter.tsx`). Settings: transport (auto/quic/tcp)
+control + **confirm-before-disconnect** dialog + host os/arch/version. Login: show/hide key toggle.
+Deep links are no longer hardcoded — `AgentService.Env()` returns OS/arch/version + dashboard/keys/billing/
+docs URLs (overridable via `TRQSH_DASHBOARD_URL`/`TRQSH_DOCS_URL` for self-host).
+
+### Security hardening (the user's explicit ask)
+- **Strict Content-Security-Policy** on the WebView, injected at **build time only** (so `vite dev` HMR is
+  unaffected): `default-src 'self'`, `object-src 'none'`, `base-uri/frame-ancestors/form-action 'none'`,
+  `script-src 'self'`, `connect-src 'self'`, `img/font 'self' data:`, `style-src 'self' 'unsafe-inline'`.
+  The app is fully self-contained (embedded assets, native postMessage bridge — no remote origins), so this
+  is a clean lock-down and defense-in-depth against injected content.
+- **`openBrowser` scheme allow-list** (`system.go` → `safeExternalURL`): only `http`/`https` with a host are
+  ever handed to the OS launcher. Closes the injection surface where a crafted string (`file://`,
+  `javascript:`, or a `-`-leading value parsed as a flag) could launch an unintended handler. Applied to
+  every deep link and the update URL.
+- **API-key hygiene**: masked input with an explicit reveal toggle; still cleared on logout. (OS-keychain
+  storage remains the documented seam in `storage.go`.)
+- **Focus-trapped, escape-closable modals** with focus restore.
+
+### Verification
+| Check | Result |
+|------|--------|
+| `pnpm build` (`tsc --noEmit && vite build`, strict + noUnused*) | ✅ green — 1642 modules, 0 type errors |
+| CSP present in `dist/index.html`, relative `./assets` paths (Wails-embeddable) | ✅ |
+| `gofmt -l gui/*.go` | ✅ empty (all 7 Go files clean, incl. new `window.go`) |
+
+**Process note:** the screen rewrites were fanned out to 3 parallel subagents; a session/rate limit killed
+them mid-flight after they'd completed `account.tsx` + `settings.tsx`, so the remaining screens + the whole
+app shell were finished inline. Native `wails3 build` still needs the Wails toolchain + CGO + WebView
+(unchanged gap, Part 08) — so the Wails window-control / tray / CSP behavior is written against the
+documented v3 API but verified natively only in Part 08.

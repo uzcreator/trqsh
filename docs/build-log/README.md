@@ -16,9 +16,9 @@ session can catch up in one read — without re-deriving context.
 
 - [`01-bootstrap.md`](./01-bootstrap.md) — repo scaffold, dev deps, Makefile, license (Step 1).
 - [`02-protocol-transport.md`](./02-protocol-transport.md) — wire protocol + QUIC/TCP mux transport, Part 01 (Step 2).
-- [`03-edge-server.md`](./03-edge-server.md) — edge `riftd`: sessions, registry, ingress, TLS, Part 02 (Step 3).
-- [`04-agent-cli.md`](./04-agent-cli.md) — agent core + CLI `rift`, inspector, reconnect, Part 03 (Step 4). **M1 MVP.**
-- [`05-control-api.md`](./05-control-api.md) — control plane `riftapi`: accounts, auth, real entitlements, Part 05 (Step 5).
+- [`03-edge-server.md`](./03-edge-server.md) — edge `trqshd`: sessions, registry, ingress, TLS, Part 02 (Step 3).
+- [`04-agent-cli.md`](./04-agent-cli.md) — agent core + CLI `trqsh`, inspector, reconnect, Part 03 (Step 4). **M1 MVP.**
+- [`05-control-api.md`](./05-control-api.md) — control plane `trqshapi`: accounts, auth, real entitlements, Part 05 (Step 5).
 - [`06-billing.md`](./06-billing.md) — billing: catalog, Stripe Checkout/Portal/webhooks, metering, quota, Part 07 (Step 6).
 - Step 7 (edge ↔ real entitlements integration) has no separate log — proven inline in Steps 5–6 with real binaries.
 - [`08-dashboard.md`](./08-dashboard.md) — web dashboard: auth, tunnels, domains, keys, usage, billing, Part 06 (Step 8).

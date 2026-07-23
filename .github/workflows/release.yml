@@ -66,7 +66,7 @@ jobs:
         if: matrix.platform == 'darwin'
         run: |
           # codesign the .app, then submit for notarization.
-          xcrun notarytool submit gui/bin/Rift.app.zip \
+          xcrun notarytool submit gui/bin/Trqsh.app.zip \
             --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -78,7 +78,7 @@ jobs:
         shell: pwsh
         run: |
           # AzureSignTool / signtool with the code-signing cert.
-          echo "signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 gui/bin/rift-gui.exe"
+          echo "signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 gui/bin/trqsh-gui.exe"
         env:
           WINDOWS_CERT: ${{ secrets.WINDOWS_CERT_BASE64 }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
@@ -99,10 +99,10 @@ jobs:
         run: |
           bash deploy/release/gen-update-feed.sh "${{ github.ref_name }}" > latest.json
           cat latest.json
-      - name: Publish feed to Spaces (downloads.rift.dev/desktop/latest.json)
+      - name: Publish feed to Spaces (downloads.trqsh.uz/desktop/latest.json)
         run: |
           echo "Uploading latest.json to the releases bucket via s3cmd/aws-cli…"
-          # aws s3 cp latest.json s3://rift-releases/desktop/latest.json --acl public-read
+          # aws s3 cp latest.json s3://trqsh-releases/desktop/latest.json --acl public-read
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}

@@ -74,12 +74,12 @@ jobs:
         with:
           version: v3.16.3
       - name: Lint
-        run: helm lint deploy/helm/rift -f deploy/helm/rift/values.staging.yaml
+        run: helm lint deploy/helm/trqsh -f deploy/helm/trqsh/values.staging.yaml
       - name: Template (render must succeed)
         run: |
-          helm template rift deploy/helm/rift \
-            -f deploy/helm/rift/values.staging.yaml \
-            --set secrets.existingSecret=rift-secrets > /dev/null
+          helm template trqsh deploy/helm/trqsh \
+            -f deploy/helm/trqsh/values.staging.yaml \
+            --set secrets.existingSecret=trqsh-secrets > /dev/null
 
   terraform:
     name: Terraform fmt + validate

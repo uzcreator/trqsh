@@ -27,10 +27,10 @@ type CertManager interface {
 // by a stable in-memory key. Suitable for local `curl -k` testing only.
 //
 // TODO(prod): replace with a CertMagic manager:
-//   - DNS-01 wildcard for *.<base_domain> (lego provider from RIFT_DNS_* env),
+//   - DNS-01 wildcard for *.<base_domain> (lego provider from TRQSH_DNS_* env),
 //   - on-demand TLS for custom domains gated by a control-plane/Redis allowlist,
 //   - shared cert cache (Redis) so all edges reuse issued certs,
-//   - Let's Encrypt staging when RIFT_ACME_STAGING=1.
+//   - Let's Encrypt staging when TRQSH_ACME_STAGING=1.
 type devCertManager struct {
 	baseDomain string
 	key        *ecdsa.PrivateKey

@@ -27,8 +27,8 @@ type InspectorConfig struct {
 	Addr    string `yaml:"addr"`
 }
 
-// Config is the agent configuration, matching ~/.rift/rift.yml (§10).
-// Precedence when loaded by the CLI: flags > env (RIFT_*) > file > defaults.
+// Config is the agent configuration, matching ~/.trqsh-uz/trqsh.yml (§10).
+// Precedence when loaded by the CLI: flags > env (TRQSH_*) > file > defaults.
 type Config struct {
 	Version   int                     `yaml:"version"`
 	APIKey    string                  `yaml:"api_key,omitempty"`
@@ -58,20 +58,20 @@ func DefaultConfig() Config {
 	}
 }
 
-// DefaultConfigPath is ~/.rift/rift.yml (override with RIFT_CONFIG).
+// DefaultConfigPath is ~/.trqsh-uz/trqsh.yml (override with TRQSH_CONFIG).
 func DefaultConfigPath() string {
-	if p := os.Getenv("RIFT_CONFIG"); p != "" {
+	if p := os.Getenv("TRQSH_CONFIG"); p != "" {
 		return p
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "rift.yml"
+		return "trqsh.yml"
 	}
-	return filepath.Join(home, ".rift", "rift.yml")
+	return filepath.Join(home, ".trqsh", "trqsh.yml")
 }
 
 // Load builds a Config from defaults, overlaid with the file at path (if it
-// exists), overlaid with RIFT_* environment variables.
+// exists), overlaid with TRQSH_* environment variables.
 func Load(path string) (Config, error) {
 	c := DefaultConfig()
 	if path == "" {
@@ -92,14 +92,14 @@ func Load(path string) (Config, error) {
 }
 
 func (c *Config) applyEnv() {
-	envStr(&c.APIKey, "RIFT_API_KEY")
-	envStr(&c.Server, "RIFT_SERVER")
-	envStr(&c.Region, "RIFT_REGION")
-	envStr(&c.Transport, "RIFT_TRANSPORT")
-	envStr(&c.LogLevel, "RIFT_LOG_LEVEL")
-	envStr(&c.Inspector.Addr, "RIFT_INSPECTOR_ADDR")
-	envStr(&c.ControlAddr, "RIFT_CONTROL_ADDR")
-	if v, ok := os.LookupEnv("RIFT_INSECURE"); ok {
+	envStr(&c.APIKey, "TRQSH_API_KEY")
+	envStr(&c.Server, "TRQSH_SERVER")
+	envStr(&c.Region, "TRQSH_REGION")
+	envStr(&c.Transport, "TRQSH_TRANSPORT")
+	envStr(&c.LogLevel, "TRQSH_LOG_LEVEL")
+	envStr(&c.Inspector.Addr, "TRQSH_INSPECTOR_ADDR")
+	envStr(&c.ControlAddr, "TRQSH_CONTROL_ADDR")
+	if v, ok := os.LookupEnv("TRQSH_INSECURE"); ok {
 		c.Insecure = truthy(v)
 	}
 }

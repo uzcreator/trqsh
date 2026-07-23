@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rift/rift/internal/agent/inspect"
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 // ---- Frozen agent-core API (consumed by the CLI and the GUI, Part 04) ----
@@ -181,7 +181,7 @@ func (a *Agent) Inspector() *inspect.Recorder { return a.insp }
 
 func (a *Agent) clientTLS() *tls.Config {
 	return &tls.Config{
-		InsecureSkipVerify: a.cfg.Insecure, //nolint:gosec // dev opt-in via RIFT_INSECURE
+		InsecureSkipVerify: a.cfg.Insecure, //nolint:gosec // dev opt-in via TRQSH_INSECURE
 		NextProtos:         []string{tunnel.ALPNProto},
 	}
 }

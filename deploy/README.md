@@ -1,6 +1,6 @@
 # deploy/ — Infrastructure, deploy & release (Part 08)
 
-Everything needed to run Rift **locally**, ship it to the **cloud**, **release** it
+Everything needed to run trqsh **locally**, ship it to the **cloud**, **release** it
 to users, and **observe** it.
 
 ```
@@ -8,7 +8,7 @@ deploy/
 ├── docker-compose.dev.yml   full local M1 stack (+ web / observability profiles)
 ├── .env.example             compose overrides (secrets for localhost)
 ├── docker/                  multi-stage Dockerfiles: edge, api, migrate, dashboard
-├── helm/rift/               Kubernetes chart: edge (DaemonSet), api, dashboard,
+├── helm/trqsh/               Kubernetes chart: edge (DaemonSet), api, dashboard,
 │                            ingress, HPA/PDB, migrate hook, NetworkPolicy, SM
 ├── terraform/               DigitalOcean: DOKS + Postgres + Redis + edge droplets +
 │                            wildcard DNS + Spaces
@@ -25,7 +25,7 @@ CI/CD lives in [`../.github/workflows/`](../.github/workflows/) and
 ```bash
 make dev            # pg + redis + migrate + api + edge + mailhog  (builds images)
 # in another shell — a public URL to your local server:
-go run ./cmd/rift http 3000 --server 127.0.0.1:4443 --insecure
+go run ./cmd/trqsh http 3000 --server 127.0.0.1:4443 --insecure
 curl -H 'Host: <sub>.lvh.me' http://127.0.0.1
 
 make dev-web        # + dashboard on :3000
@@ -40,7 +40,7 @@ dashboard `:3000`; mailhog `:8025`; Grafana `:3001`.
 
 1. `deploy/terraform` → DOKS control cluster + managed Postgres/Redis + per-region
    edge droplets + wildcard DNS + Spaces. See [terraform/README.md](terraform/README.md).
-2. `deploy/helm/rift` → the control plane (`edge.enabled=false` in the DO topology;
+2. `deploy/helm/trqsh` → the control plane (`edge.enabled=false` in the DO topology;
    the edge DaemonSet is for single-region / self-hosted clusters). Staging vs prod
    via `values.staging.yaml` / `values.prod.yaml`.
 

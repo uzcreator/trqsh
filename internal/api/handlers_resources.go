@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
 )
 
 func orgOf(r *http.Request) string {
@@ -157,7 +157,7 @@ func (s *Server) handleAddDomain(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "custom domain limit reached for your plan")
 		return
 	}
-	token := "rift-verify=" + store.NewID("v")[2:]
+	token := "trqsh-verify=" + store.NewID("v")[2:]
 	d, err := s.store.AddCustomDomain(r.Context(), store.CustomDomain{OrgID: org.ID, Domain: domain, VerifyToken: token})
 	if err == store.ErrConflict {
 		writeError(w, http.StatusConflict, "domain already added")
@@ -170,7 +170,7 @@ func (s *Server) handleAddDomain(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"domain": d,
 		"dns_instructions": map[string]string{
-			"txt_name":    "_rift-challenge." + domain,
+			"txt_name":    "_trqsh-challenge." + domain,
 			"txt_value":   token,
 			"cname_name":  domain,
 			"cname_value": s.cfg.BaseDomain,
@@ -196,7 +196,7 @@ func (s *Server) handleVerifyDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	// Dev shortcut: skip DNS when explicitly forced (local/testing only).
 	forced := s.cfg.DevAuth && r.URL.Query().Get("force") == "true"
-	if !forced && !dnsHasTXT("_rift-challenge."+d.Domain, d.VerifyToken) {
+	if !forced && !dnsHasTXT("_trqsh-challenge."+d.Domain, d.VerifyToken) {
 		writeError(w, http.StatusBadRequest, "DNS TXT record not found yet; add it and retry")
 		return
 	}

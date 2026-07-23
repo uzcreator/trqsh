@@ -9,9 +9,9 @@ resource "digitalocean_database_cluster" "postgres" {
   private_network_uuid = digitalocean_vpc.control.id
 }
 
-resource "digitalocean_database_db" "rift" {
+resource "digitalocean_database_db" "trqsh" {
   cluster_id = digitalocean_database_cluster.postgres.id
-  name       = "rift"
+  name       = "trqsh"
 }
 
 resource "digitalocean_database_cluster" "redis" {

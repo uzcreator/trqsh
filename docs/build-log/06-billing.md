@@ -11,7 +11,7 @@
 > **TL;DR (Uz):** Billing (`internal/billing`) yozildi — plan katalogi endi shu yerda (yagona manba,
 > Stripe price ID'lari bilan), Stripe Checkout + Customer Portal, **imzo tekshiriladigan webhooklar**
 > `orgs.plan` ni o'zgartiradi, metered usage yig'ish + Stripe'ga push, va **kvota majburlash**
-> (`ERR_QUOTA_BANDWIDTH`) Part 05'ning `CheckBind`iga ulandi. Isbot: haqiqiy `riftapi` — Free UDP'ni
+> (`ERR_QUOTA_BANDWIDTH`) Part 05'ning `CheckBind`iga ulandi. Isbot: haqiqiy `trqshapi` — Free UDP'ni
 > rad etadi → imzolangan webhook Pro'ga o'tkazadi → UDP endi ruxsat; soxta imzo 400. Keyingi: Part 06 dashboard.
 
 ## What was built
@@ -47,7 +47,7 @@ Store additions (Part 05's `internal/api/store`, sanctioned by the spec — "reu
   customer, looks up the configured price ID, and returns a Checkout Session URL (Pro gets a 14-day trial,
   promo codes allowed). `POST /v1/billing/portal` returns a Customer-Portal URL.
 - **Webhooks (T3):** `POST /v1/billing/webhooks` is public but **HMAC-SHA256 signature-verified** against
-  `RIFT_STRIPE_WEBHOOK_SECRET` (Stripe's `t=…,v1=…` scheme, constant-time compare, timestamp tolerance),
+  `TRQSH_STRIPE_WEBHOOK_SECRET` (Stripe's `t=…,v1=…` scheme, constant-time compare, timestamp tolerance),
   **idempotent** (dedupe by event id in `billing_events`), and drives the state machine:
   `checkout.session.completed` links customer↔org; `customer.subscription.created/updated` upserts the
   subscription and sets `orgs.plan`; `deleted` → Free; `invoice.payment_failed` → `past_due` (plan retained
@@ -55,7 +55,7 @@ Store additions (Part 05's `internal/api/store`, sanctioned by the spec — "reu
 - **Metering (T4):** `CollectMeteredUsage` rolls `usage_records` up into `metered_usage` push rows for
   Pay-as-you-go orgs (idempotent per org+metric+window); `FlushMeteredUsage` pushes pending rows via the
   **Billing Meters API** (customer-keyed, the row id as the idempotency key) and marks them reported. An
-  opt-in `RunMeteringLoop` (env `RIFT_BILLING_METERING_INTERVAL`) runs both on a ticker.
+  opt-in `RunMeteringLoop` (env `TRQSH_BILLING_METERING_INTERVAL`) runs both on a ticker.
 - **Quota enforcement (T5):** `Service.CheckQuota` compares current-month usage to plan limits and returns
   `ERR_QUOTA_BANDWIDTH`/`ERR_QUOTA_REQUESTS`. It is injected into Part 05's `Entitlements` via a new
   `QuotaChecker` seam (`ent.SetQuota`), so the edge's `CheckBind` now denies over-quota binds. **Fail-safe:**
@@ -71,10 +71,10 @@ Store additions (Part 05's `internal/api/store`, sanctioned by the spec — "reu
 | `go test ./internal/billing/...` (stripe sig, catalog, quota+fail-safe, webhook lifecycle, metering) | ✅ |
 | Stress `go test -count=20 ./internal/billing/...` | ✅ |
 | Part 05's 12 api tests (after catalog alias + quota wiring) | ✅ still green |
-| **Real binaries: `riftapi` — signed webhook flips plan; edge RPC enforces it** | ✅ (below) |
+| **Real binaries: `trqshapi` — signed webhook flips plan; edge RPC enforces it** | ✅ (below) |
 
-**Real-binary smoke (the Qadam 6 gate).** `riftapi` (billing enabled: `sk_test_smoke`, `whsec_smoke`,
-`RIFT_STRIPE_PRICE_PRO_MONTHLY=price_pro_m`), driven over HTTP:
+**Real-binary smoke (the Qadam 6 gate).** `trqshapi` (billing enabled: `sk_test_smoke`, `whsec_smoke`,
+`TRQSH_STRIPE_PRICE_PRO_MONTHLY=price_pro_m`), driven over HTTP:
 
 ```
 org: org_… plan: free
@@ -90,11 +90,11 @@ bad-signature webhook -> 400                      # forged signature rejected, n
 
 ### Run locally (Stripe test mode)
 ```bash
-export RIFT_STRIPE_SECRET_KEY=sk_test_…  RIFT_STRIPE_WEBHOOK_SECRET=whsec_…
-export RIFT_STRIPE_PRICE_PRO_MONTHLY=price_…  RIFT_STRIPE_PRICE_PRO_ANNUAL=price_…
-export RIFT_STRIPE_PRICE_TEAM_MONTHLY=price_…  RIFT_STRIPE_PRICE_PAYG_METERED=price_…
-export RIFT_STRIPE_METER_BANDWIDTH=rift_bandwidth  RIFT_STRIPE_METER_REQUESTS=rift_requests
-go run ./cmd/riftapi
+export TRQSH_STRIPE_SECRET_KEY=sk_test_…  TRQSH_STRIPE_WEBHOOK_SECRET=whsec_…
+export TRQSH_STRIPE_PRICE_PRO_MONTHLY=price_…  TRQSH_STRIPE_PRICE_PRO_ANNUAL=price_…
+export TRQSH_STRIPE_PRICE_TEAM_MONTHLY=price_…  TRQSH_STRIPE_PRICE_PAYG_METERED=price_…
+export TRQSH_STRIPE_METER_BANDWIDTH=trqsh_bandwidth  TRQSH_STRIPE_METER_REQUESTS=trqsh_requests
+go run ./cmd/trqshapi
 stripe listen --forward-to localhost:8080/v1/billing/webhooks   # Stripe CLI test mode
 # subscribe Free->Pro with test card 4242…; webhook flips orgs.plan; the edge then allows UDP/custom-domain.
 ```
@@ -114,7 +114,7 @@ stripe listen --forward-to localhost:8080/v1/billing/webhooks   # Stripe CLI tes
 - **Quota is always enforced**, even with Stripe disabled — the service is constructed unconditionally and
   `CheckQuota` reads the local plan/catalog. Stripe only gates Checkout/Portal/webhooks/meter-push.
 - **Dunning grace = Stripe Smart Retries.** `invoice.payment_failed` records `past_due` and retains the plan;
-  the eventual `customer.subscription.deleted` downgrades to Free. `RIFT_BILLING_DUNNING_GRACE` is reserved
+  the eventual `customer.subscription.deleted` downgrades to Free. `TRQSH_BILLING_DUNNING_GRACE` is reserved
   for an optional operator-run local reconciliation sweep.
 
 ## Known gaps / notes (for later parts)

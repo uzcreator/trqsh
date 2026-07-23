@@ -22,7 +22,7 @@ Part 01 delivers the three **frozen shared packages** every other part imports. 
 proto/rift.proto            protobuf schema — package rift.v1, go_package .../pkg/proto
 buf.yaml / buf.gen.yaml     buf v2 config (local protoc-gen-go, paths=source_relative)
 
-pkg/proto/rift.pb.go        generated (buf) — Envelope oneof + all messages
+pkg/proto/trqsh.pb.go        generated (buf) — Envelope oneof + all messages
 pkg/proto/codec.go          length-prefixed framing: WriteMsg/ReadMsg, WriteStreamInit/ReadStreamInit
 pkg/proto/errors.go         frozen ERR_* taxonomy constants + NewError()
 pkg/proto/codec_test.go     round-trip, multi-frame, oversize (write+read), truncation
@@ -53,7 +53,7 @@ pkg/authz/stub.go           StubEntitlements — allow-all for edge until Part 0
   `ForceKind` pins one transport (used by tests/diagnostics); `Prefer` chooses the primary.
 - **Listener** — `Listen(quicAddr, tcpAddr, tlsConf)` fronts both acceptors and fans sessions into a
   single `Accept(ctx)`. Either address may be empty to run a single transport.
-- **ALPN** — `"rift/1"` forced onto every QUIC/TLS handshake so intermediaries can version the wire.
+- **ALPN** — `"trqsh/1"` forced onto every QUIC/TLS handshake so intermediaries can version the wire.
 - **Entitlements** — the `authz.Entitlements` seam (`Authenticate`, `CheckBind`, `ReportUsage`) with
   an allow-all `StubEntitlements`, so Part 02's edge runs today and swaps to real auth in Part 05.
 
@@ -86,7 +86,7 @@ Tests covered: codec round-trip / multi-frame / oversize-write / oversize-read /
 QUIC echo with 20 concurrent streams; TCP+yamux echo with 20 concurrent streams; **real QUIC→TCP
 fallback**; ping/pong via the proto codec over a live stream.
 
-Toolchain used: **Go 1.26.5** (`%LOCALAPPDATA%\rift-tools\go`), buf 1.71.0, protoc-gen-go.
+Toolchain used: **Go 1.26.5** (`%LOCALAPPDATA%\trqsh-tools\go`), buf 1.71.0, protoc-gen-go.
 
 ### To run the race gate locally (recommended before Part 02/03 merge)
 ```powershell
@@ -103,13 +103,13 @@ go test ./pkg/... -race -count=1                    # expect: ok
 - **Heartbeat policy is not in the transport** — `Ping`/`Pong` messages exist and are proven over a
   stream, but *who* sends them and how often (control-stream heartbeat loop) belongs to the agent/edge
   (Parts 02/03). QUIC/yamux keepalive already covers the socket layer.
-- **`RIFT_INSECURE=1`** dev skip-verify is intentionally **not** baked into `pkg/tunnel` (kept pure);
+- **`TRQSH_INSECURE=1`** dev skip-verify is intentionally **not** baked into `pkg/tunnel` (kept pure);
   it belongs to agent config (Part 03), which builds the client `*tls.Config`.
 - **`make proto`** now works end-to-end (`buf generate`); regenerate after any `proto/rift.proto` edit.
 
 ## What's next
 
-**Part 01 is the M0 gate and it is green.** Parts **02 (edge/`riftd`)**, **03 (agent/CLI)**, and
+**Part 01 is the M0 gate and it is green.** Parts **02 (edge/`trqshd`)**, **03 (agent/CLI)**, and
 **05 (control API)** may now start in parallel — 02 and 03 import `pkg/tunnel` + `pkg/proto` directly
 and run against `authz.StubEntitlements` until Part 05 is ready. Use the ready-to-paste prompts for
 Steps 3–5 in `plan/EXECUTION-ORDER.md`.

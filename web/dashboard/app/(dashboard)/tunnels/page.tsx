@@ -19,7 +19,7 @@ export default async function TunnelsPage() {
         <EmptyState
           icon={Network}
           title="No active tunnels"
-          description="Run `rift http 3000` (or tcp/udp) to open a tunnel. Active tunnels show up here in real time."
+          description="Run `trqsh http 3000` (or tcp/udp) to open a tunnel. Active tunnels show up here in real time."
         />
       ) : (
         <Card>

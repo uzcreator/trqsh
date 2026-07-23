@@ -21,11 +21,11 @@ variable "spaces_secret_key" {
 variable "project_name" {
   description = "DigitalOcean project name."
   type        = string
-  default     = "rift"
+  default     = "trqsh"
 }
 
 variable "internal_token" {
-  description = "Shared edge<->API token (must match the API's RIFT_INTERNAL_TOKEN)."
+  description = "Shared edge<->API token (must match the API's TRQSH_INTERNAL_TOKEN)."
   type        = string
   sensitive   = true
 }
@@ -33,7 +33,7 @@ variable "internal_token" {
 variable "acme_email" {
   description = "Contact email for Let's Encrypt (edge cert issuance)."
   type        = string
-  default     = "ops@rift.dev"
+  default     = "ops@trqsh.uz"
 }
 
 variable "control_ingress_ip" {
@@ -45,7 +45,7 @@ variable "control_ingress_ip" {
 variable "edge_image" {
   description = "Edge container image the droplets run."
   type        = string
-  default     = "ghcr.io/rift/edge:latest"
+  default     = "ghcr.io/trqsh/edge:latest"
 }
 
 variable "ssh_key_fingerprints" {
@@ -57,7 +57,7 @@ variable "ssh_key_fingerprints" {
 variable "domain" {
   description = "Public apex domain managed here (wildcard tunnels live under it)."
   type        = string
-  default     = "rift.sh"
+  default     = "trqsh.uz"
 }
 
 variable "primary_region" {

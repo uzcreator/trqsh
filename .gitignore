@@ -5,8 +5,8 @@
 *.dll
 *.so
 *.dylib
-/rift
-/riftd
+/trqsh
+/trqshd
 
 # Test & coverage
 *.test

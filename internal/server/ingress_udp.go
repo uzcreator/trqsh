@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 // UDP datagrams are carried over a data stream with a uint16 big-endian length

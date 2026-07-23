@@ -1,5 +1,5 @@
-# Rift control API (riftapi). Build context = repo root:
-#   docker build -f deploy/docker/Dockerfile.api -t rift/api .
+# trqsh control API (trqshapi). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.api -t trqsh/api .
 #
 # Accounts, API keys, domains, quotas, entitlements RPC, and billing webhooks.
 # Static, CGO-free, distroless/static:nonroot. Listens on :8080 (/healthz).
@@ -14,12 +14,12 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
-RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/riftapi ./cmd/riftapi
+RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/trqshapi ./cmd/trqshapi
 
 # --- runtime ---
 FROM gcr.io/distroless/static:nonroot
-COPY --from=build /out/riftapi /usr/local/bin/riftapi
+COPY --from=build /out/trqshapi /usr/local/bin/trqshapi
 
 EXPOSE 8080/tcp
 USER nonroot:nonroot
-ENTRYPOINT ["/usr/local/bin/riftapi"]
+ENTRYPOINT ["/usr/local/bin/trqshapi"]

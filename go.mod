@@ -1,4 +1,4 @@
-module github.com/rift/rift
+module github.com/trqsh-uz/trqsh
 
 go 1.25.0
 

@@ -1,4 +1,4 @@
-# Full local Rift stack (Part 08). Brings up the M1 product end-to-end:
+# Full local trqsh stack (Part 08). Brings up the M1 product end-to-end:
 #   Postgres + Redis + migrations + control API + edge + dev mail.
 # The dashboard and the observability stack are opt-in via profiles.
 #
@@ -10,21 +10,21 @@
 # Dev secrets below are non-secret defaults for localhost only. Override via a
 # deploy/.env file (see deploy/.env.example). Never use these in staging/prod.
 
-x-internal-token: &internal_token ${RIFT_INTERNAL_TOKEN:-dev-internal-token}
+x-internal-token: &internal_token ${TRQSH_INTERNAL_TOKEN:-dev-internal-token}
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: rift
-      POSTGRES_PASSWORD: rift
-      POSTGRES_DB: rift
+      POSTGRES_USER: trqsh
+      POSTGRES_PASSWORD: trqsh
+      POSTGRES_DB: trqsh
     ports:
       - "5432:5432"
     volumes:
-      - rift_pg:/var/lib/postgresql/data
+      - trqsh_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rift -d rift"]
+      test: ["CMD-SHELL", "pg_isready -U trqsh -d trqsh"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -34,7 +34,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - rift_redis:/data
+      - trqsh_redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,7 +47,7 @@ services:
       context: ..
       dockerfile: deploy/docker/Dockerfile.migrate
     environment:
-      GOOSE_DBSTRING: postgres://rift:rift@postgres:5432/rift?sslmode=disable
+      GOOSE_DBSTRING: postgres://trqsh:trqsh@postgres:5432/trqsh?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,17 +59,17 @@ services:
       context: ..
       dockerfile: deploy/docker/Dockerfile.api
     environment:
-      RIFT_API_ADDR: ":8080"
-      RIFT_DATABASE_URL: postgres://rift:rift@postgres:5432/rift?sslmode=disable
-      RIFT_REDIS_URL: redis://redis:6379/0
-      RIFT_BASE_DOMAIN: lvh.me
-      RIFT_API_PUBLIC_URL: http://localhost:8080
-      RIFT_JWT_SECRET: ${RIFT_JWT_SECRET:-dev-jwt-secret-change-me}
-      RIFT_INTERNAL_TOKEN: *internal_token
-      RIFT_DEV_AUTH: "1"
+      TRQSH_API_ADDR: ":8080"
+      TRQSH_DATABASE_URL: postgres://trqsh:trqsh@postgres:5432/trqsh?sslmode=disable
+      TRQSH_REDIS_URL: redis://redis:6379/0
+      TRQSH_BASE_DOMAIN: lvh.me
+      TRQSH_API_PUBLIC_URL: http://localhost:8080
+      TRQSH_JWT_SECRET: ${TRQSH_JWT_SECRET:-dev-jwt-secret-change-me}
+      TRQSH_INTERNAL_TOKEN: *internal_token
+      TRQSH_DEV_AUTH: "1"
       # Billing is off unless you supply Stripe test keys in deploy/.env.
-      RIFT_STRIPE_SECRET_KEY: ${RIFT_STRIPE_SECRET_KEY:-}
-      RIFT_STRIPE_WEBHOOK_SECRET: ${RIFT_STRIPE_WEBHOOK_SECRET:-}
+      TRQSH_STRIPE_SECRET_KEY: ${TRQSH_STRIPE_SECRET_KEY:-}
+      TRQSH_STRIPE_WEBHOOK_SECRET: ${TRQSH_STRIPE_WEBHOOK_SECRET:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -81,22 +81,22 @@ services:
         condition: service_completed_successfully
 
   # Edge data plane: public ingress + agent sessions. Talks to the real API for
-  # entitlements. Dev uses self-signed TLS (RIFT_ACME_STAGING=1).
+  # entitlements. Dev uses self-signed TLS (TRQSH_ACME_STAGING=1).
   edge:
     build:
       context: ..
       dockerfile: deploy/docker/Dockerfile.edge
     environment:
-      RIFT_BASE_DOMAIN: lvh.me
-      RIFT_REGION: local
-      RIFT_EDGE_ID: edge-local
-      RIFT_REDIS_URL: redis://redis:6379/0
-      RIFT_ENTITLEMENTS: api
-      RIFT_API_URL: http://api:8080
-      RIFT_INTERNAL_TOKEN: *internal_token
-      RIFT_ACME_STAGING: "1"
-      RIFT_ACME_EMAIL: dev@localhost
-      RIFT_METRICS_ADDR: ":9090"
+      TRQSH_BASE_DOMAIN: lvh.me
+      TRQSH_REGION: local
+      TRQSH_EDGE_ID: edge-local
+      TRQSH_REDIS_URL: redis://redis:6379/0
+      TRQSH_ENTITLEMENTS: api
+      TRQSH_API_URL: http://api:8080
+      TRQSH_INTERNAL_TOKEN: *internal_token
+      TRQSH_ACME_STAGING: "1"
+      TRQSH_ACME_EMAIL: dev@localhost
+      TRQSH_METRICS_ADDR: ":9090"
     ports:
       - "80:80"        # HTTP ingress
       - "443:443"      # HTTPS ingress
@@ -123,7 +123,7 @@ services:
       context: ..
       dockerfile: deploy/docker/Dockerfile.dashboard
     environment:
-      RIFT_API_URL: http://api:8080
+      TRQSH_API_URL: http://api:8080
       NODE_ENV: production
     ports:
       - "3000:3000"
@@ -168,5 +168,5 @@ services:
       - prometheus
 
 volumes:
-  rift_pg:
-  rift_redis:
+  trqsh_pg:
+  trqsh_redis:

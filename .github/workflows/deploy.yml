@@ -28,12 +28,12 @@ jobs:
           echo "${{ secrets.KUBECONFIG_STAGING }}" | base64 -d > ~/.kube/config
       - name: Helm upgrade (staging)
         run: |
-          helm upgrade --install rift deploy/helm/rift \
-            -f deploy/helm/rift/values.staging.yaml \
+          helm upgrade --install trqsh deploy/helm/trqsh \
+            -f deploy/helm/trqsh/values.staging.yaml \
             --set image.tag=sha-$(git rev-parse --short HEAD) \
             --set edge.enabled=false \
-            --set secrets.existingSecret=rift-secrets \
-            --namespace rift --create-namespace --wait --timeout 5m
+            --set secrets.existingSecret=trqsh-secrets \
+            --namespace trqsh --create-namespace --wait --timeout 5m
 
   production:
     # Tagged releases go to prod after manual approval (environment gate).
@@ -50,9 +50,9 @@ jobs:
           echo "${{ secrets.KUBECONFIG_PROD }}" | base64 -d > ~/.kube/config
       - name: Helm upgrade (production)
         run: |
-          helm upgrade --install rift deploy/helm/rift \
-            -f deploy/helm/rift/values.prod.yaml \
+          helm upgrade --install trqsh deploy/helm/trqsh \
+            -f deploy/helm/trqsh/values.prod.yaml \
             --set image.tag=${{ github.ref_name }} \
             --set edge.enabled=false \
-            --set secrets.existingSecret=rift-secrets \
-            --namespace rift --create-namespace --wait --timeout 10m
+            --set secrets.existingSecret=trqsh-secrets \
+            --namespace trqsh --create-namespace --wait --timeout 10m

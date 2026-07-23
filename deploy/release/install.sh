@@ -1,11 +1,11 @@
 #!/bin/sh
-# Rift CLI installer.  curl -fsSL https://rift.dev/install.sh | sh
-# Detects OS/arch, downloads the latest release archive, installs `rift`.
+# trqsh CLI installer.  curl -fsSL https://trqsh.uz/install.sh | sh
+# Detects OS/arch, downloads the latest release archive, installs `trqsh`.
 set -eu
 
-REPO="${RIFT_REPO:-rift/rift}"
-BIN="rift"
-INSTALL_DIR="${RIFT_INSTALL_DIR:-/usr/local/bin}"
+REPO="${TRQSH_REPO:-trqsh-uz/trqsh}"
+BIN="trqsh"
+INSTALL_DIR="${TRQSH_INSTALL_DIR:-/usr/local/bin}"
 
 err() { echo "install: $*" >&2; exit 1; }
 
@@ -18,7 +18,7 @@ case "$arch" in
 esac
 case "$os" in
   linux|darwin) ;;
-  *) err "unsupported OS: $os (use the Windows installer or 'scoop install rift')" ;;
+  *) err "unsupported OS: $os (use the Windows installer or 'scoop install trqsh')" ;;
 esac
 
 # Resolve the latest tag via the GitHub API (no jq dependency).
@@ -27,7 +27,7 @@ tag=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
 [ -n "${tag:-}" ] || err "could not determine latest release"
 version="${tag#v}"
 
-asset="rift_${version}_${os}_${arch}.tar.gz"
+asset="trqsh_${version}_${os}_${arch}.tar.gz"
 url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
 
 tmp=$(mktemp -d)
@@ -45,4 +45,4 @@ fi
 chmod +x "$INSTALL_DIR/$BIN"
 
 echo "Installed $("$INSTALL_DIR/$BIN" version 2>/dev/null || echo "$BIN $version") → $INSTALL_DIR/$BIN"
-echo "Get started:  rift http 3000"
+echo "Get started:  trqsh http 3000"

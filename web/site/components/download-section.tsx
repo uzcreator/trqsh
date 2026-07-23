@@ -1,21 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Apple, Download, Monitor, Terminal as TerminalIcon } from "lucide-react";
-import { OS_DOWNLOADS, OS_ORDER, checksumsUrl, releasesUrl, type OSId } from "@/lib/downloads";
+import { Apple, Download, Monitor, Star, Terminal as TerminalIcon } from "lucide-react";
+import {
+  OS_DOWNLOADS,
+  OS_ORDER,
+  checksumsUrl,
+  releasesUrl,
+  type OSId,
+} from "@/lib/downloads";
+import { detectOS } from "@/lib/detect";
 import { site } from "@/lib/site";
 import { CodeBlock } from "./code-block";
 import { buttonVariants } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
-
-function detectOS(): OSId {
-  if (typeof navigator === "undefined") return "macos";
-  const s = `${navigator.userAgent} ${navigator.platform}`.toLowerCase();
-  if (s.includes("win")) return "windows";
-  if (s.includes("linux") || s.includes("android")) return "linux";
-  return "macos";
-}
 
 const OS_ICON: Record<OSId, React.ComponentType<{ className?: string }>> = {
   macos: Apple,
@@ -23,98 +22,113 @@ const OS_ICON: Record<OSId, React.ComponentType<{ className?: string }>> = {
   linux: TerminalIcon,
 };
 
+// Full download matrix — every OS, its desktop build, package-manager commands,
+// and raw archives shown at once. The visitor's detected OS floats to the front
+// and gets a highlighted ring so they see their platform first.
 export function DownloadSection() {
-  const [active, setActive] = React.useState<OSId>("macos");
+  const [detected, setDetected] = React.useState<OSId | null>(null);
+  React.useEffect(() => setDetected(detectOS()), []);
 
-  React.useEffect(() => {
-    setActive(detectOS());
-  }, []);
-
-  const os = OS_DOWNLOADS[active];
+  const order = React.useMemo(() => {
+    if (!detected) return OS_ORDER;
+    return [detected, ...OS_ORDER.filter((o) => o !== detected)];
+  }, [detected]);
 
   return (
     <div>
-      <div className="mb-6 inline-flex flex-wrap gap-1 rounded-md border border-border-strong bg-surface p-0.5">
-        {OS_ORDER.map((id) => {
+      <div className="grid gap-5 lg:grid-cols-3">
+        {order.map((id) => {
+          const os = OS_DOWNLOADS[id];
           const Icon = OS_ICON[id];
+          const isYou = detected === id;
           return (
-            <button
+            <div
               key={id}
-              type="button"
-              onClick={() => setActive(id)}
               className={cn(
-                "flex items-center gap-2 rounded px-4 py-1.5 text-sm font-medium transition-colors",
-                active === id ? "bg-accent text-primary" : "text-secondary hover:text-foreground"
+                "border-gradient flex flex-col rounded-2xl border bg-surface p-6 shadow-sm transition-shadow",
+                isYou ? "border-brand/40 glow-brand" : "border-border"
               )}
             >
-              <Icon className="h-4 w-4" />
-              {OS_DOWNLOADS[id].name}
-            </button>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-brand">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-foreground">{os.name}</h3>
+                    {isYou && <Badge variant="good">Your OS</Badge>}
+                  </div>
+                  <p className="text-xs text-muted">{os.tagline}</p>
+                </div>
+              </div>
+
+              {/* Desktop app */}
+              <div className="flex flex-col gap-2">
+                {os.desktop.map((a) => (
+                  <a
+                    key={a.href}
+                    href={a.href}
+                    className={cn(buttonVariants({ size: "sm" }), "w-full justify-center")}
+                  >
+                    <Download className="h-4 w-4" /> {a.label}
+                    {a.kind && <span className="opacity-70">· {a.kind}</span>}
+                  </a>
+                ))}
+              </div>
+
+              {/* Package managers */}
+              <div className="mt-5">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Package managers
+                </p>
+                <div className="flex flex-col gap-2.5">
+                  {os.cli.map((snip) => (
+                    <div key={snip.label}>
+                      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-secondary">
+                        {snip.recommended && <Star className="h-3 w-3 fill-brand text-brand" />}
+                        {snip.label}
+                      </div>
+                      <CodeBlock code={snip.command} prompt />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Raw archives */}
+              <div className="mt-5 border-t border-border pt-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Direct binaries
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {os.archives.map((a) => (
+                    <a
+                      key={a.href}
+                      href={a.href}
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs")}
+                    >
+                      {a.label}
+                      {a.kind && <span className="text-muted">· {a.kind}</span>}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Desktop app */}
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-          <div className="mb-1 flex items-center gap-2">
-            <h3 className="text-base font-semibold text-foreground">Desktop app</h3>
-            <Badge variant="good">Recommended</Badge>
-          </div>
-          <p className="mb-4 text-sm text-secondary">
-            One-click tunnels, a built-in inspector, and a system tray. Signed &amp; notarized.
-          </p>
-          <div className="flex flex-col gap-2">
-            {os.desktop.map((a) => (
-              <a key={a.href} href={a.href} className={cn(buttonVariants(), "w-full justify-center")}>
-                <Download className="h-4 w-4" />
-                {a.label}
-              </a>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted">
-            Version {site.version} ·{" "}
-            <a href={checksumsUrl} className="underline hover:text-foreground">
-              checksums.txt
-            </a>
-          </p>
-        </div>
-
-        {/* CLI */}
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-          <h3 className="mb-1 text-base font-semibold text-foreground">Command line</h3>
-          <p className="mb-4 text-sm text-secondary">Prefer the terminal? Install the open-source CLI:</p>
-          <div className="flex flex-col gap-3">
-            {os.cli.map((snip) => (
-              <div key={snip.label}>
-                <div className="mb-1 text-xs font-medium text-muted">{snip.label}</div>
-                <CodeBlock code={snip.command} prompt />
-              </div>
-            ))}
-          </div>
-          <div className="mt-4">
-            <div className="mb-1 text-xs font-medium text-muted">Or download the binary</div>
-            <div className="flex flex-wrap gap-2">
-              {os.archives.map((a) => (
-                <a
-                  key={a.href}
-                  href={a.href}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                >
-                  {a.arch ?? "download"}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p className="mt-5 text-sm text-muted">
-        Looking for `.deb`, `.rpm`, older versions, or the edge server?{" "}
-        <a href={releasesUrl} className="text-primary hover:underline">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+        <p>
+          Version {site.version} ·{" "}
+          <a href={checksumsUrl} className="text-brand hover:underline">
+            checksums.txt
+          </a>{" "}
+          · every build is signed
+        </p>
+        <a href={releasesUrl} className="text-brand hover:underline">
           Browse all releases →
         </a>
-      </p>
+      </div>
     </div>
   );
 }

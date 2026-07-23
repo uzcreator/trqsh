@@ -13,7 +13,7 @@ import (
 
 // PostgresStore is the production Store backed by Postgres. Its queries match
 // the goose migrations in internal/api/db/migrations. It is validated by
-// compilation + schema review here; run the migrations and point RIFT_DATABASE_URL
+// compilation + schema review here; run the migrations and point TRQSH_DATABASE_URL
 // at a live database to exercise it.
 type PostgresStore struct {
 	db *sql.DB

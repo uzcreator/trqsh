@@ -10,7 +10,7 @@ import (
 
 // Version is the API build version, overridable at link time with
 //
-//	-X github.com/rift/rift/internal/api.Version=v1.2.3
+//	-X github.com/trqsh-uz/trqsh/internal/api.Version=v1.2.3
 var Version = "0.1.0-dev"
 
 // processStart marks server boot, for uptime on /status.
@@ -40,7 +40,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 	sort.Strings(providers)
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"service":         "rift-control-api",
+		"service":         "trqsh-control-api",
 		"status":          "ok",
 		"version":         Version,
 		"store":           storeKind(s.cfg),
@@ -69,17 +69,17 @@ const docsHTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rift Control API — Docs</title>
+<title>trqsh Control API — Docs</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
 <style>
   :root { --brand:#2A78D6; }
   body { margin:0; background:#f7f7f5; font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  .rift-bar { display:flex; align-items:center; gap:14px; padding:12px 20px; background:#0d1526; color:#fff; position:sticky; top:0; z-index:10; }
-  .rift-logo { width:30px; height:30px; border-radius:8px; background:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:700; }
-  .rift-title { font-weight:600; font-size:15px; line-height:1.1; }
-  .rift-sub { color:#9aa4b2; font-size:12px; margin-top:2px; }
-  .rift-pills { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .trqsh-bar { display:flex; align-items:center; gap:14px; padding:12px 20px; background:#0d1526; color:#fff; position:sticky; top:0; z-index:10; }
+  .trqsh-logo { width:30px; height:30px; border-radius:8px; background:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:700; }
+  .trqsh-title { font-weight:600; font-size:15px; line-height:1.1; }
+  .trqsh-sub { color:#9aa4b2; font-size:12px; margin-top:2px; }
+  .trqsh-pills { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   .pill { display:inline-flex; align-items:center; gap:6px; background:#182338; color:#cbd5e1; border:1px solid #24314c; border-radius:999px; padding:4px 10px; font-size:12px; white-space:nowrap; }
   .dot { width:8px; height:8px; border-radius:50%; background:#8a8f98; }
   .dot.ok { background:#16c60c; box-shadow:0 0 0 3px rgba(22,198,12,.18); }
@@ -88,13 +88,13 @@ const docsHTML = `<!doctype html>
 </style>
 </head>
 <body>
-<div class="rift-bar">
-  <div class="rift-logo">R</div>
+<div class="trqsh-bar">
+  <div class="trqsh-logo">R</div>
   <div>
-    <div class="rift-title">Rift &middot; Control API</div>
-    <div class="rift-sub">Interactive reference &amp; live backend status</div>
+    <div class="trqsh-title">trqsh &middot; Control API</div>
+    <div class="trqsh-sub">Interactive reference &amp; live backend status</div>
   </div>
-  <div class="rift-pills" id="pills">
+  <div class="trqsh-pills" id="pills">
     <span class="pill"><span class="dot"></span><span>connecting&hellip;</span></span>
   </div>
 </div>

@@ -5,7 +5,7 @@
 **Blocks:** nothing; it is the **acquisition + activation funnel** (top of the revenue funnel).
 
 > Read `00-ARCHITECTURE.md` (§1 differentiators, §11 plans). This part is how developers discover,
-> understand, install, and start paying for Rift.
+> understand, install, and start paying for trqsh.
 
 ## Goal
 
@@ -31,11 +31,11 @@ download (per-OS installers), a 60-second quickstart, and complete docs incl. an
 
 ### T3 — Download page (`web/site/app/download/`)
 - Detect OS; show installers (macOS `.dmg`, Windows `.exe/.msi`, Linux AppImage/`.deb`) + CLI
-  install snippets (`brew install rift`, `winget install rift`, `curl -fsSL https://rift.dev/install.sh | sh`).
+  install snippets (`brew install trqsh`, `winget install trqsh`, `curl -fsSL https://trqsh.uz/install.sh | sh`).
   Pull artifact URLs from the Part 08 release feed. Show checksums/signatures.
 
 ### T4 — Docs (`docs/` + `web/site/app/docs/`)
-- Quickstart (install → `rift login` → `rift http 3000` → live URL in under a minute).
+- Quickstart (install → `trqsh login` → `trqsh http 3000` → live URL in under a minute).
 - Guides: HTTP/TCP/UDP tunnels, reserved subdomains, custom domains (DNS setup), basic-auth, the
   inspector, the GUI, config file (§10), CI/webhook use cases, self-host notes (open-source agent).
 - **API reference** generated from Part 05's OpenAPI. Troubleshooting mapped to §8 error codes
@@ -43,7 +43,7 @@ download (per-OS installers), a 60-second quickstart, and complete docs incl. an
 
 ### T5 — Onboarding / signup funnel
 - Signup → Part 05 OAuth → dashboard (Part 06) with a guided "create your first tunnel" flow (show
-  the exact `rift http` command with the user's key). Instrument activation events for the funnel.
+  the exact `trqsh http` command with the user's key). Instrument activation events for the funnel.
 - Lifecycle email hooks (welcome, activation nudge, near-limit upgrade) — templates here, sending via
   the Part 05/07 email hook.
 

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rift/rift/internal/api"
-	"github.com/rift/rift/internal/entitlerpc"
-	"github.com/rift/rift/pkg/authz"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/api"
+	"github.com/trqsh-uz/trqsh/internal/entitlerpc"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 func testServer(t *testing.T) *httptest.Server {
@@ -68,7 +68,7 @@ func signupAndKey(t *testing.T, ts *httptest.Server, email string) (string, stri
 		APIKey string `json:"api_key"`
 	}
 	resp := postJSON(t, ts.URL+"/v1/api-keys", signup.Tokens.Access, map[string]string{"name": "cli"}, &key)
-	if resp.StatusCode != http.StatusCreated || !strings.HasPrefix(key.APIKey, "rk_live_") {
+	if resp.StatusCode != http.StatusCreated || !strings.HasPrefix(key.APIKey, "tq_live_") {
 		t.Fatalf("create api-key failed: status %d key %q", resp.StatusCode, key.APIKey)
 	}
 	return signup.Tokens.Access, key.APIKey
@@ -84,7 +84,7 @@ func TestSignupAndAPIKeyLifecycle(t *testing.T) {
 	resp, _ := http.DefaultClient.Do(req)
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if !strings.Contains(string(body), "rk_live_") || strings.Contains(string(body), apiKey) {
+	if !strings.Contains(string(body), "tq_live_") || strings.Contains(string(body), apiKey) {
 		t.Fatalf("list should show prefix but not the full key: %s", body)
 	}
 
@@ -174,7 +174,7 @@ func TestDeviceFlow(t *testing.T) {
 		APIKey string `json:"api_key"`
 	}
 	postJSON(t, ts.URL+"/v1/auth/device/token", "", map[string]string{"device_code": code.DeviceCode}, &tok)
-	if !strings.HasPrefix(tok.APIKey, "rk_live_") {
+	if !strings.HasPrefix(tok.APIKey, "tq_live_") {
 		t.Fatalf("device token did not return an api key: %q", tok.APIKey)
 	}
 }

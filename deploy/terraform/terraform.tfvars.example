@@ -6,11 +6,11 @@
 # spaces_secret_key = "..."
 # internal_token    = "a-long-random-shared-edge-api-token"
 
-domain                = "rift.sh"
+domain                = "trqsh.uz"
 primary_region        = "fra1"
 edge_regions          = ["fra1", "nyc3", "sgp1"]
 edge_nodes_per_region = 2
-acme_email            = "ops@rift.dev"
+acme_email            = "ops@trqsh.uz"
 
 # SSH keys placed on edge droplets (DO fingerprints).
 # ssh_key_fingerprints = ["aa:bb:cc:..."]

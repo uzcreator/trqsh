@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How Rift handles your data.",
+  description: "How trqsh handles your data.",
 };
 
 export default function PrivacyPage() {
@@ -45,11 +45,11 @@ export default function PrivacyPage() {
         <h2>Your choices</h2>
         <p>
           You can export or delete your account data from the dashboard or by emailing
-          privacy@rift.dev. Revoking API keys immediately stops agents that use them.
+          privacy@trqsh.uz. Revoking API keys immediately stops agents that use them.
         </p>
 
         <h2>Contact</h2>
-        <p>Privacy questions? Email privacy@rift.dev.</p>
+        <p>Privacy questions? Email privacy@trqsh.uz.</p>
       </article>
     </div>
   );

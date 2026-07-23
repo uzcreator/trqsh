@@ -1,4 +1,4 @@
-// Command rift-gui is the Rift desktop application: a Wails v3 shell (native
+// Command trqsh-gui is the trqsh desktop application: a Wails v3 shell (native
 // window + WebView) around the same agent core the CLI uses (internal/agent).
 // The React/TS frontend in frontend/ drives it through the AgentService binding.
 package main
@@ -10,7 +10,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/rift/rift/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent"
 )
 
 // The built frontend (frontend/dist) is embedded into the binary and served by
@@ -25,19 +25,21 @@ var version = "0.1.0"
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// One agent core, loaded from ~/.rift/rift.yml, shared with the CLI.
+	// One agent core, loaded from ~/.trqsh-uz/trqsh.yml, shared with the CLI.
 	cfg, err := agent.Load(agent.DefaultConfigPath())
 	if err != nil {
 		log.Warn("load config; using defaults", "err", err)
 		cfg = agent.DefaultConfig()
 	}
-	svc := NewAgentService(agent.New(cfg, log), log)
+	svc := NewAgentService(agent.New(cfg, log), log, version)
+	winSvc := &WindowService{}
 
 	app := application.New(application.Options{
-		Name:        "Rift",
+		Name:        "trqsh",
 		Description: "Expose localhost to the internet — fast.",
 		Services: []application.Service{
 			application.NewService(svc),
+			application.NewService(winSvc),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -49,7 +51,7 @@ func main() {
 	})
 
 	win := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
-		Title:     "Rift",
+		Title:     "trqsh",
 		Width:     980,
 		Height:    680,
 		MinWidth:  760,
@@ -69,9 +71,12 @@ func main() {
 		URL: "/",
 	})
 
-	// Start the event pump (core.Events → "agent:event") and wire the tray.
-	svc.Attach(app)
-	setupTray(app, win)
+	// Wire the window into the services, start the event pump
+	// (core.Events → "agent:event"), and install the live system tray.
+	winSvc.set(app, win)
+	svc.Attach(app, win)
+	tray := setupTray(app, win, svc)
+	svc.OnState(tray.refresh)
 
 	if err := app.Run(); err != nil {
 		log.Error("application exited with error", "err", err)

@@ -1,4 +1,4 @@
-// Package proto defines Rift's wire protocol: the length-prefixed Protobuf
+// Package proto defines trqsh's wire protocol: the length-prefixed Protobuf
 // control messages (generated from proto/rift.proto) and the framed codec
 // shared by the edge and the agent.
 //

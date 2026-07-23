@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 // rawJoin welds a public connection to an agent data stream, copying bytes in
@@ -35,15 +35,15 @@ func rawJoin(clientConn net.Conn, clientRead io.Reader, agent tunnel.Stream) (up
 // branded404 is the response body for an unknown host — a small, on-brand page.
 func branded404(host string) string {
 	return fmt.Sprintf(`<!doctype html>
-<html><head><meta charset="utf-8"><title>Tunnel offline · Rift</title>
+<html><head><meta charset="utf-8"><title>Tunnel offline · trqsh</title>
 <style>body{font-family:ui-sans-serif,system-ui,sans-serif;background:#0b0d12;color:#e6e8ee;
 display:grid;place-items:center;height:100vh;margin:0}main{max-width:32rem;text-align:center;padding:2rem}
 h1{font-size:1.5rem;margin:0 0 .5rem}code{background:#181b22;padding:.15rem .4rem;border-radius:.35rem}
 p{color:#9aa3b2;line-height:1.5}a{color:#7aa2ff}</style></head>
 <body><main><h1>This tunnel is offline</h1>
 <p>No active tunnel is serving <code>%s</code>. If this is your tunnel, make sure the
-Rift agent is running and connected.</p>
-<p><a href="https://rift.sh">rift.sh</a></p></main></body></html>`, host)
+trqsh agent is running and connected.</p>
+<p><a href="https://trqsh.uz">trqsh.uz</a></p></main></body></html>`, host)
 }
 
 // writeHTTPResponse writes a minimal HTTP/1.1 response with a body to a raw conn.

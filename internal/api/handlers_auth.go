@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
 )
 
 type signupRequest struct {

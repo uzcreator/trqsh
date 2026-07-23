@@ -14,6 +14,7 @@ export function SiteFooter() {
               Your localhost, live on the internet — over QUIC, with a free tier that doesn&apos;t
               get in your way.
             </p>
+            <p className="mt-2 text-xs text-muted">trqsh.uz</p>
             <a
               href={site.githubUrl}
               target="_blank"
@@ -56,7 +57,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted sm:flex-row">
-          <p>© {new Date().getFullYear()} Rift. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} trqsh. All rights reserved.</p>
           <p className="tabular">
             v{site.version} · Built for developers who ship fast.
           </p>

@@ -1,9 +1,9 @@
-# Rift — developer tunneling SaaS. Build specs live in plan/.
+# trqsh — developer tunneling SaaS. Build specs live in plan/.
 # On Windows, run these with `make` (via scoop/choco/git-bash) or execute the
 # underlying commands directly. See docs/DEVELOPMENT.md.
 
 GO     ?= go
-MODULE := github.com/rift/rift
+MODULE := github.com/trqsh-uz/trqsh
 COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 
 .PHONY: help proto build test lint tidy dev dev-deps dev-web dev-down observability \
@@ -48,17 +48,17 @@ migrate: ## Apply DB migrations against the compose Postgres
 	$(COMPOSE) run --rm migrate up
 
 images: ## Build all container images locally
-	docker build -f deploy/docker/Dockerfile.edge      -t rift/edge .
-	docker build -f deploy/docker/Dockerfile.api       -t rift/api .
-	docker build -f deploy/docker/Dockerfile.migrate   -t rift/migrate .
-	docker build -f deploy/docker/Dockerfile.dashboard -t rift/dashboard .
+	docker build -f deploy/docker/Dockerfile.edge      -t trqsh/edge .
+	docker build -f deploy/docker/Dockerfile.api       -t trqsh/api .
+	docker build -f deploy/docker/Dockerfile.migrate   -t trqsh/migrate .
+	docker build -f deploy/docker/Dockerfile.dashboard -t trqsh/dashboard .
 
 helm-lint: ## Lint the Helm chart
-	helm lint deploy/helm/rift -f deploy/helm/rift/values.staging.yaml
+	helm lint deploy/helm/trqsh -f deploy/helm/trqsh/values.staging.yaml
 
 helm-template: ## Render the Helm chart (must succeed)
-	helm template rift deploy/helm/rift -f deploy/helm/rift/values.staging.yaml \
-		--set secrets.existingSecret=rift-secrets >/dev/null && echo "helm template OK"
+	helm template trqsh deploy/helm/trqsh -f deploy/helm/trqsh/values.staging.yaml \
+		--set secrets.existingSecret=trqsh-secrets >/dev/null && echo "helm template OK"
 
 tf-validate: ## terraform fmt + validate (no cloud creds needed)
 	terraform -chdir=deploy/terraform fmt -check -recursive
@@ -69,10 +69,10 @@ compose-config: ## Validate the compose file
 	$(COMPOSE) config --quiet && echo "compose OK"
 
 run-edge: ## Run the edge server with stub entitlements (Part 02)
-	RIFT_ENTITLEMENTS=stub RIFT_BASE_DOMAIN=lvh.me $(GO) run ./cmd/riftd
+	TRQSH_ENTITLEMENTS=stub TRQSH_BASE_DOMAIN=lvh.me $(GO) run ./cmd/trqshd
 
 run-agent: ## Run the agent, e.g. `make run-agent ARGS="http 3000"` (Part 03)
-	$(GO) run ./cmd/rift $(ARGS)
+	$(GO) run ./cmd/trqsh $(ARGS)
 
 site-plans: ## Regenerate web/site pricing catalog from internal/billing (Part 09)
 	$(GO) run ./web/site/scripts/genplans

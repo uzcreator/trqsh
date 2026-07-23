@@ -8,10 +8,10 @@ local development, and sharing an ephemeral URL from a CI job.
 Point a provider (Stripe, GitHub, Slack, …) at your machine while you develop:
 
 ```sh
-rift http 3000 --subdomain myapp
+trqsh http 3000 --subdomain myapp
 ```
 
-Give the provider `https://myapp.rift.sh/webhooks`. When events arrive, open the
+Give the provider `https://myapp.trqsh.uz/webhooks`. When events arrive, open the
 [inspector](/docs/inspector) at `localhost:4040` to see the exact payload — and
 **replay** it as you iterate on your handler, without asking the provider to send
 again.
@@ -19,7 +19,7 @@ again.
 A [reserved subdomain](/docs/reserved-subdomains) keeps the webhook URL stable so
 you don't have to reconfigure the provider on every restart.
 
-## Using Rift in CI
+## Using trqsh in CI
 
 Expose a service from a CI job — for example to run end-to-end tests against a
 preview, or to share a build with a reviewer.
@@ -28,8 +28,8 @@ preview, or to share a build with a reviewer.
 2. Provide it via the environment and start a tunnel in the background:
 
 ```sh
-export RIFT_API_KEY=rk_live_ci_key
-rift http 8080 --subdomain pr-${PR_NUMBER} &
+export TRQSH_API_KEY=tq_live_ci_key
+trqsh http 8080 --subdomain pr-${PR_NUMBER} &
 ```
 
 3. Use the resulting URL in your test job, then let the job end to tear the tunnel

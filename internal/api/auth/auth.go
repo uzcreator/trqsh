@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/rift/rift/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
 )
 
 // Errors surfaced by the auth layer.
@@ -80,7 +80,7 @@ func (a *Auth) sign(userID, orgID, kind string, ttl time.Duration) (string, erro
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
-			Issuer:    "rift-api",
+			Issuer:    "trqsh-api",
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(a.secret)

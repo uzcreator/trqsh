@@ -1,6 +1,6 @@
 # TCP & UDP tunnels
 
-Rift isn't just for web apps. Tunnel any TCP service — and, unlike ngrok, **UDP**
+trqsh isn't just for web apps. Tunnel any TCP service — and, unlike ngrok, **UDP**
 too.
 
 ## TCP tunnels
@@ -8,19 +8,19 @@ too.
 Expose a raw TCP port, such as SSH:
 
 ```sh
-rift tcp 22
+trqsh tcp 22
 ```
 
-Rift assigns a public host and port:
+trqsh assigns a public host and port:
 
 ```
-Forwarding  tcp://tcp.rift.sh:24187  →  localhost:22
+Forwarding  tcp://tcp.trqsh.uz:24187  →  localhost:22
 ```
 
 Connect through it like any other host:
 
 ```sh
-ssh -p 24187 user@tcp.rift.sh
+ssh -p 24187 user@tcp.trqsh.uz
 ```
 
 TCP tunnels are great for SSH, Postgres/MySQL, Redis, SMTP, and any custom
@@ -31,7 +31,7 @@ protocol.
 Ask for a specific remote port (subject to availability and your plan):
 
 ```sh
-rift tcp 22 --remote-port 2222
+trqsh tcp 22 --remote-port 2222
 ```
 
 A taken port returns [`ERR_PORT_UNAVAILABLE`](/docs/errors#err_port_unavailable);
@@ -43,11 +43,11 @@ UDP is a first-class citizen — QUIC makes it natural. Expose a UDP service suc
 a DNS resolver, game server, or WebRTC endpoint:
 
 ```sh
-rift udp 51820
+trqsh udp 51820
 ```
 
 ```
-Forwarding  udp://udp.rift.sh:39912  →  localhost:51820
+Forwarding  udp://udp.trqsh.uz:39912  →  localhost:51820
 ```
 
 UDP tunnels require a plan that includes UDP. On the free plan you'll see
@@ -60,7 +60,7 @@ To terminate TLS yourself (passthrough), use a `tls` tunnel so the edge forwards
 the encrypted stream untouched:
 
 ```sh
-rift tls 8443
+trqsh tls 8443
 ```
 
 ## Protocol support by plan

@@ -16,7 +16,7 @@ import (
 // first and transparently falls back to TCP+yamux when QUIC/UDP is blocked.
 type Dialer struct {
 	// TLSConfig is used for both QUIC and TLS-over-TCP. ALPN is forced to the
-	// rift protocol token if the caller left NextProtos empty.
+	// trqsh protocol token if the caller left NextProtos empty.
 	TLSConfig *tls.Config
 	// Prefer selects the primary transport. Zero value means KindQUIC.
 	Prefer Kind
@@ -87,7 +87,7 @@ func (d *Dialer) keepAlive() time.Duration {
 	return defaultKeepAlive
 }
 
-// tlsClone returns a copy of TLSConfig with the rift ALPN token ensured.
+// tlsClone returns a copy of TLSConfig with the trqsh ALPN token ensured.
 func (d *Dialer) tlsClone() *tls.Config {
 	var c *tls.Config
 	if d.TLSConfig != nil {

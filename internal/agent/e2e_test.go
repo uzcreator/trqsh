@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/agent"
-	"github.com/rift/rift/internal/server"
+	"github.com/trqsh-uz/trqsh/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/server"
 )
 
 func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -50,7 +50,7 @@ func newCore(t *testing.T, edgeAddr string) *agent.Agent {
 	cfg.Server = edgeAddr
 	cfg.Insecure = true
 	cfg.Transport = "quic" // dial the edge's QUIC listener (its advertised Addr)
-	cfg.APIKey = "rk_test"
+	cfg.APIKey = "tq_test"
 	core := agent.New(cfg, testLogger())
 	t.Cleanup(func() { _ = core.Shutdown(context.Background()) })
 	return core

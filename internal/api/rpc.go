@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rift/rift/internal/entitlerpc"
-	"github.com/rift/rift/pkg/authz"
+	"github.com/trqsh-uz/trqsh/internal/entitlerpc"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
 )
 
 // mountInternal registers the token-guarded entitlements RPC used by the edge.

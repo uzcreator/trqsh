@@ -1,0 +1,58 @@
+# Packaging trqsh
+
+Distribution wrappers so people can install the **trqsh** CLI through whatever
+package manager they already use. Every channel ultimately downloads the same
+signed release artifact built by GoReleaser (see [`../.goreleaser.yaml`](../.goreleaser.yaml)):
+
+```
+https://github.com/trqsh/trqsh/releases/download/v<version>/trqsh_<version>_<os>_<arch>.<ext>
+```
+
+`<os>` ∈ `darwin|linux|windows`, `<arch>` ∈ `amd64|arm64`, `<ext>` = `zip` on
+Windows else `tar.gz`. A `checksums.txt` (SHA-256) sits beside them and every
+wrapper verifies against it.
+
+| Channel | Path | Install command | Who builds it |
+|---|---|---|---|
+| **npm** | [`npm/`](./npm) | `npm i -g trqsh` · `npx trqsh` | wrapper here |
+| **PyPI** | [`pypi/`](./pypi) | `pip install trqsh` · `pipx install trqsh` | wrapper here |
+| **Shell** | [`install.sh`](./install.sh) | `curl -fsSL https://trqsh.uz/install.sh \| sh` | script here |
+| **Scoop** (Win) | [`scoop/trqsh.json`](./scoop) | `scoop install trqsh` | manifest here |
+| **winget** (Win) | [`winget/`](./winget) | `winget install trqsh.trqsh` | manifests here |
+| **Homebrew** (Mac/Linux) | goreleaser `brews:` | `brew install trqsh/tap/trqsh` | goreleaser → `trqsh/homebrew-tap` |
+| **apt / dnf** (`.deb`/`.rpm`) | goreleaser `nfpms:` | download from Releases | goreleaser |
+
+The npm and PyPI packages carry **no third-party dependencies** — they detect the
+platform, download the archive, verify its checksum, unpack the binary, and exec
+it. `install.sh` is also copied to [`../web/site/public/install.sh`](../web/site/public/install.sh)
+so the marketing site serves it at `trqsh.uz/install.sh`.
+
+## Releasing (per version)
+
+1. Tag `vX.Y.Z`; CI runs `goreleaser release` → publishes archives + `checksums.txt`
+   + the Homebrew tap + `.deb`/`.rpm`.
+2. **npm:** bump `version` in `npm/package.json`, then `cd npm && npm publish`.
+3. **PyPI:** bump `version` in `pypi/pyproject.toml` + `src/trqsh/__init__.py`,
+   then `cd pypi && python -m build && twine upload dist/*`.
+4. **Scoop:** update `version`/`hash` in `scoop/trqsh.json` (hashes from
+   `checksums.txt`) and push to the `trqsh/scoop-bucket` repo.
+5. **winget:** bump the version + `InstallerSha256` in `winget/*.yaml` and open a
+   PR to `microsoft/winget-pkgs` (or use `wingetcreate update trqsh.trqsh`).
+
+### Shared overrides
+
+All wrappers honor `TRQSH_VERSION` and `TRQSH_REPO` (and `TRQSH_SKIP_CHECKSUM=1`)
+so you can test against a pre-release or a fork before publishing.
+
+## Local smoke test (before a real release exists)
+
+```bash
+# npm: platform detection + syntax
+cd npm && node -e "console.log(require('./lib/common').target())"
+
+# pypi: import + target mapping
+cd pypi && python -c "import sys; sys.path.insert(0,'src'); from trqsh import _runtime; print(_runtime._target())"
+
+# shell: syntax
+sh -n install.sh
+```

@@ -1,12 +1,12 @@
 # Request inspector
 
-Every `rift` agent runs a local inspector — a web UI at
+Every `trqsh` agent runs a local inspector — a web UI at
 <http://localhost:4040> that shows traffic flowing through your HTTP tunnels in
 real time.
 
 ## Open it
 
-Start any HTTP tunnel and visit the address Rift prints:
+Start any HTTP tunnel and visit the address trqsh prints:
 
 ```
 Inspect     http://localhost:4040
@@ -21,7 +21,7 @@ Inspect     http://localhost:4040
 
 ## Replay
 
-Open a request in the inspector and choose **Replay**. Rift re-sends the exact same
+Open a request in the inspector and choose **Replay**. trqsh re-sends the exact same
 request to your local server, so you can iterate on your handler and re-run it
 instantly.
 

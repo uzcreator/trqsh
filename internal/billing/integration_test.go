@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/api"
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing"
-	"github.com/rift/rift/pkg/authz"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/api"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 // TestUpgradeLiftsEntitlements proves the Qadam 6 gate end to end through Part

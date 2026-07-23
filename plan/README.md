@@ -1,13 +1,13 @@
-# Rift — Build Plan (developer tunneling SaaS)
+# trqsh — Build Plan (developer tunneling SaaS)
 
-**Rift** is a developer tunnel service (expose `localhost` to the public internet), in the same
+**trqsh** is a developer tunnel service (expose `localhost` to the public internet), in the same
 category as **ngrok** and **Cloudflare Tunnel**, but positioned to be **faster** (QUIC-first
 transport), with a **more generous free tier**, a **first-class cross-platform desktop GUI**, and
 extras ngrok lacks (**UDP tunnels**, built-in inspector, open-source agent). It is a hosted **SaaS**
 with accounts + billing.
 
-> **Codename `Rift`** is a placeholder. Rename with a global find/replace before launch (run a
-> trademark check first). Binaries: `rift` (agent/CLI), `riftd` (edge server).
+> **Codename `trqsh`** is a placeholder. Rename with a global find/replace before launch (run a
+> trademark check first). Binaries: `trqsh` (agent/CLI), `trqshd` (edge server).
 
 This folder (`plan/`) contains the **build specifications**. The product is split into **10
 independent parts**, each written to be executed by a **separate Claude Code session**. Sessions
@@ -34,8 +34,8 @@ coordinate only through the **frozen shared contracts** defined in [`00-ARCHITEC
 |---|------|-------------|------------|
 | 00 | [Master Architecture & Contracts](./00-ARCHITECTURE.md) | *(shared)* | — |
 | 01 | [Protocol & Transport core](./01-protocol-transport.md) | `pkg/proto`, `pkg/tunnel`, `pkg/authz` | 00 |
-| 02 | [Edge server / data plane (`riftd`)](./02-edge-server.md) | `internal/server`, `cmd/riftd` | 01, (05 stubbed) |
-| 03 | [Agent core + CLI (`rift`)](./03-agent-cli.md) | `internal/agent`, `cmd/rift` | 01, (05 stubbed) |
+| 02 | [Edge server / data plane (`trqshd`)](./02-edge-server.md) | `internal/server`, `cmd/trqshd` | 01, (05 stubbed) |
+| 03 | [Agent core + CLI (`trqsh`)](./03-agent-cli.md) | `internal/agent`, `cmd/trqsh` | 01, (05 stubbed) |
 | 04 | [Desktop GUI (Wails v3)](./04-gui-desktop.md) | `gui/` | 03 |
 | 05 | [Control plane API & auth](./05-control-api.md) | `internal/api`, DB | 01 |
 | 06 | [Web dashboard & inspector](./06-web-dashboard.md) | `web/dashboard` | 05, 07 |
@@ -55,7 +55,7 @@ coordinate only through the **frozen shared contracts** defined in [`00-ARCHITEC
 
 - **M0 — Foundation:** `00`, `01`. Frozen contracts + green transport tests.
 - **M1 — MVP:** `02`, `03`, minimal `05` (API keys), minimal `08` (one edge via docker-compose).
-  Success: `rift http 3000` → live public HTTPS URL proxying to localhost, survives reconnect,
+  Success: `trqsh http 3000` → live public HTTPS URL proxying to localhost, survives reconnect,
   TCP/UDP tunnels work.
 - **M2 — Monetizable:** `04` GUI, `06` dashboard, `07` billing wired into `05` enforcement.
 - **M3 — Launch/scale:** full `08` (multi-region, signed installers, observability), `09` site+docs.

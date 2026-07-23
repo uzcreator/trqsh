@@ -1,9 +1,9 @@
 # Alert rules over the real edge metrics (internal/server/metrics.go).
 groups:
-  - name: rift-edge
+  - name: trqsh-edge
     rules:
-      - alert: RiftEdgeDown
-        expr: up{job="rift-edge"} == 0
+      - alert: TrqshEdgeDown
+        expr: up{job="trqsh-edge"} == 0
         for: 1m
         labels:
           severity: critical
@@ -11,34 +11,34 @@ groups:
           summary: "Edge {{ $labels.instance }} is down"
           description: "Prometheus cannot scrape the edge for over 1m."
 
-      - alert: RiftEdgeHighErrorRate
+      - alert: TrqshEdgeHighErrorRate
         # Sustained edge errors across any kind.
-        expr: sum(rate(rift_errors_total[5m])) > 1
+        expr: sum(rate(trqsh_errors_total[5m])) > 1
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: "Elevated edge error rate"
-          description: "rift_errors_total is averaging >1/s over 10m (by kind: {{ $labels.kind }})."
+          description: "trqsh_errors_total is averaging >1/s over 10m (by kind: {{ $labels.kind }})."
 
-      - alert: RiftNoActiveSessions
+      - alert: TrqshNoActiveSessions
         # A live edge should normally hold sessions; zero for a long window on a
         # production edge usually means agents can't connect.
-        expr: max_over_time(rift_sessions_active[15m]) == 0
+        expr: max_over_time(trqsh_sessions_active[15m]) == 0
         for: 15m
         labels:
           severity: warning
         annotations:
           summary: "No agent sessions on {{ $labels.instance }}"
-          description: "rift_sessions_active has been 0 for 15m."
+          description: "trqsh_sessions_active has been 0 for 15m."
 
-      - alert: RiftQUICFallbackSpike
+      - alert: TrqshQUICFallbackSpike
         # If almost all handshakes fall back to TCP, QUIC/UDP is likely blocked
         # on the path — the latency differentiator is degraded.
         expr: |
-          sum(rate(rift_agent_handshakes_total{kind="tcp"}[10m]))
+          sum(rate(trqsh_agent_handshakes_total{kind="tcp"}[10m]))
             /
-          clamp_min(sum(rate(rift_agent_handshakes_total[10m])), 0.001) > 0.8
+          clamp_min(sum(rate(trqsh_agent_handshakes_total[10m])), 0.001) > 0.8
         for: 15m
         labels:
           severity: warning

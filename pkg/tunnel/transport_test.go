@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 // testTLS returns a server config with a fresh self-signed cert and a matching
-// insecure client config, both advertising the rift ALPN token.
+// insecure client config, both advertising the trqsh ALPN token.
 func testTLS(t *testing.T) (server, client *tls.Config) {
 	t.Helper()
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -29,7 +29,7 @@ func testTLS(t *testing.T) (server, client *tls.Config) {
 	}
 	tmpl := x509.Certificate{
 		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: "rift-test"},
+		Subject:      pkix.Name{CommonName: "trqsh-test"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,

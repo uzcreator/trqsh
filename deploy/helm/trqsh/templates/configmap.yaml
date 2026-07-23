@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "trqsh.fullname" . }}-config
+  labels:
+    {{- include "trqsh.labels" . | nindent 4 }}
+data:
+  TRQSH_BASE_DOMAIN: {{ .Values.common.baseDomain | quote }}
+  TRQSH_API_PUBLIC_URL: {{ .Values.api.publicURL | quote }}

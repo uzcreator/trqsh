@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/server"
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/internal/server"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 func testLogger() *slog.Logger {
@@ -132,7 +132,7 @@ func (fa *fakeAgent) acceptStreams(handler func(tunnel.Stream)) {
 func TestEdgeHTTPWeld(t *testing.T) {
 	srv := startEdge(t, 0, 0)
 	fa := dialAgent(t, srv.AgentAddr().String())
-	fa.hello(t, "rk_test")
+	fa.hello(t, "tq_test")
 
 	resp := fa.bind(t, &proto.BindTunnel{
 		ClientTunnelId: "t1",
@@ -203,7 +203,7 @@ func TestEdgeTCPWeld(t *testing.T) {
 	port := freePort(t)
 	srv := startEdge(t, port, port)
 	fa := dialAgent(t, srv.AgentAddr().String())
-	fa.hello(t, "rk_test")
+	fa.hello(t, "tq_test")
 
 	resp := fa.bind(t, &proto.BindTunnel{
 		ClientTunnelId: "tcp1",

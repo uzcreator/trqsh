@@ -1,0 +1,123 @@
+{{- if .Values.edge.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "trqsh.fullname" . }}-edge
+  labels:
+    {{- include "trqsh.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge
+spec:
+  selector:
+    matchLabels:
+      {{- include "trqsh.selectorLabels" (dict "root" . "component" "edge") | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        {{- include "trqsh.selectorLabels" (dict "root" . "component" "edge") | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "trqsh.serviceAccountName" . }}
+      # Own :80/:443 (TCP+UDP) directly on each edge node; still resolve cluster
+      # DNS (the api Service) via ClusterFirstWithHostNet.
+      hostNetwork: {{ .Values.edge.hostNetwork }}
+      dnsPolicy: ClusterFirstWithHostNet
+      # SIGTERM triggers the edge's graceful drain (ShutdownMsg to agents).
+      terminationGracePeriodSeconds: {{ add .Values.edge.drainTimeoutSeconds 5 }}
+      {{- with .Values.edge.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.edge.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: edge
+          image: {{ include "trqsh.image" (dict "root" . "repo" .Values.edge.repository) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.edge.ports.http }}
+              protocol: TCP
+            - name: https
+              containerPort: {{ .Values.edge.ports.https }}
+              protocol: TCP
+            - name: agent-tcp
+              containerPort: {{ .Values.edge.ports.agent }}
+              protocol: TCP
+            - name: agent-udp
+              containerPort: {{ .Values.edge.ports.agent }}
+              protocol: UDP
+            - name: metrics
+              containerPort: {{ .Values.edge.ports.metrics }}
+              protocol: TCP
+          env:
+            - name: TRQSH_HTTP_ADDR
+              value: ":{{ .Values.edge.ports.http }}"
+            - name: TRQSH_HTTPS_ADDR
+              value: ":{{ .Values.edge.ports.https }}"
+            - name: TRQSH_QUIC_ADDR
+              value: ":{{ .Values.edge.ports.agent }}"
+            - name: TRQSH_TCP_ADDR
+              value: ":{{ .Values.edge.ports.agent }}"
+            - name: TRQSH_METRICS_ADDR
+              value: ":{{ .Values.edge.ports.metrics }}"
+            - name: TRQSH_BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "trqsh.fullname" . }}-config
+                  key: TRQSH_BASE_DOMAIN
+            - name: TRQSH_REGION
+              value: {{ .Values.edge.region | default .Values.common.baseDomain | quote }}
+            - name: TRQSH_EDGE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: TRQSH_ENTITLEMENTS
+              value: "api"
+            - name: TRQSH_API_URL
+              value: "http://{{ include "trqsh.fullname" . }}-api:{{ .Values.api.service.port }}"
+            - name: TRQSH_PORT_MIN
+              value: {{ .Values.edge.portRange.min | quote }}
+            - name: TRQSH_PORT_MAX
+              value: {{ .Values.edge.portRange.max | quote }}
+            - name: TRQSH_ACME_EMAIL
+              value: {{ .Values.edge.acme.email | quote }}
+            - name: TRQSH_ACME_STAGING
+              value: {{ .Values.edge.acme.staging | ternary "1" "0" | quote }}
+            - name: TRQSH_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "trqsh.secretName" . }}
+                  key: TRQSH_INTERNAL_TOKEN
+            - name: TRQSH_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "trqsh.secretName" . }}
+                  key: TRQSH_REDIS_URL
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.edge.resources | nindent 12 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

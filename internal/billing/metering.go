@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
 
 // CollectMeteredUsage rolls usage_records up into metered_usage push rows for

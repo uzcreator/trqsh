@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rift/rift/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -83,7 +83,7 @@ func newStartCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if len(cfg.Tunnels) == 0 {
-				return fmt.Errorf("no tunnels in config (%s); add some or use `rift http <port>`", agent.DefaultConfigPath())
+				return fmt.Errorf("no tunnels in config (%s); add some or use `trqsh http <port>`", agent.DefaultConfigPath())
 			}
 			specs := make([]agent.TunnelSpec, 0, len(cfg.Tunnels))
 			for name, t := range cfg.Tunnels {
@@ -202,7 +202,7 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Printf("rift %s", agent.Version)
+			fmt.Printf("trqsh %s", agent.Version)
 			if agent.Commit != "" {
 				fmt.Printf(" (%s)", agent.Commit)
 			}
@@ -221,7 +221,7 @@ func newUpdateCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			// TODO(part-08): query the release feed, compare versions, download +
 			// verify a signed binary, and swap in place.
-			fmt.Println("self-update is not available yet — see https://rift.sh/download")
+			fmt.Println("self-update is not available yet — see https://trqsh.uz/download")
 			return nil
 		},
 	}

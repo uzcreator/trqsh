@@ -1,4 +1,4 @@
-// Package api implements the Rift control plane: accounts, auth (OAuth/JWT/API
+// Package api implements the trqsh control plane: accounts, auth (OAuth/JWT/API
 // keys), reserved subdomains, custom domains, quotas, teams, and the real
 // authz.Entitlements implementation exposed to the edge.
 //

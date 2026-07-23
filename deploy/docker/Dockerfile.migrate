@@ -1,9 +1,9 @@
 # Database migration runner (goose + the control-plane migrations). Build
 # context = repo root:
-#   docker build -f deploy/docker/Dockerfile.migrate -t rift/migrate .
+#   docker build -f deploy/docker/Dockerfile.migrate -t trqsh/migrate .
 #
 # Run against a database (goose reads GOOSE_DBSTRING from the env):
-#   docker run --rm -e GOOSE_DBSTRING="postgres://rift:rift@db:5432/rift?sslmode=disable" rift/migrate up
+#   docker run --rm -e GOOSE_DBSTRING="postgres://trqsh:trqsh@db:5432/trqsh?sslmode=disable" trqsh/migrate up
 #
 # Used as a one-shot service in docker-compose and a pre-install/pre-upgrade
 # Helm hook Job so schema is applied before the API starts.

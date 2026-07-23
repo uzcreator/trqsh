@@ -14,13 +14,13 @@ output "kubeconfig" {
 }
 
 output "postgres_url" {
-  description = "Set as the API's RIFT_DATABASE_URL (in the k8s Secret)."
+  description = "Set as the API's TRQSH_DATABASE_URL (in the k8s Secret)."
   value       = digitalocean_database_cluster.postgres.private_uri
   sensitive   = true
 }
 
 output "redis_url" {
-  description = "Set as RIFT_REDIS_URL for the API and edges."
+  description = "Set as TRQSH_REDIS_URL for the API and edges."
   value       = digitalocean_database_cluster.redis.uri
   sensitive   = true
 }

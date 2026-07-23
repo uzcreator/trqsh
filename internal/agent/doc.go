@@ -1,4 +1,4 @@
-// Package agent implements the Rift agent core that both the CLI and the GUI
+// Package agent implements the trqsh agent core that both the CLI and the GUI
 // drive: dialing the edge, binding tunnels, forwarding traffic, reconnecting,
 // and the local inspector.
 //

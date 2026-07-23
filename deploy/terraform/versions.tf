@@ -17,7 +17,7 @@ terraform {
   # works locally before a bucket exists.
   # backend "s3" {
   #   endpoints                   = { s3 = "https://fra1.digitaloceanspaces.com" }
-  #   bucket                      = "rift-tfstate"
+  #   bucket                      = "trqsh-tfstate"
   #   key                         = "infra/terraform.tfstate"
   #   region                      = "us-east-1"
   #   skip_credentials_validation = true

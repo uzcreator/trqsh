@@ -18,8 +18,13 @@ const config: Config = {
       colors: {
         page: rgb("--page"),
         surface: rgb("--surface"),
+        "surface-2": rgb("--surface-2"),
         card: rgb("--surface"),
         foreground: rgb("--foreground"),
+        brand: rgb("--brand"),
+        "brand-2": rgb("--brand-2"),
+        "brand-3": rgb("--brand-3"),
+        glow: rgb("--glow"),
         secondary: rgb("--secondary-ink"),
         muted: rgb("--muted-ink"),
         border: rgb("--border"),
@@ -88,6 +93,13 @@ const config: Config = {
           "70%": { boxShadow: "0 0 0 6px rgb(var(--good) / 0)" },
           "100%": { boxShadow: "0 0 0 0 rgb(var(--good) / 0)" },
         },
+        "spin-slow": {
+          to: { transform: "rotate(360deg)" },
+        },
+        "slide-down": {
+          from: { opacity: "0", transform: "translateY(-12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.22,1,0.36,1) both",
@@ -97,6 +109,8 @@ const config: Config = {
         float: "float 6s ease-in-out infinite",
         shimmer: "shimmer 2s infinite",
         "pulse-ring": "pulse-ring 2s ease-out infinite",
+        "spin-slow": "spin-slow 24s linear infinite",
+        "slide-down": "slide-down 0.5s cubic-bezier(0.22,1,0.36,1) both",
       },
     },
   },

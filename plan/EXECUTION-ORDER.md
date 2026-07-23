@@ -36,9 +36,9 @@ Repo skeletini yaratadi: `go.work`, papka tuzilmasi, minimal dev muhiti.
 
 ```text
 Read plan/00-ARCHITECTURE.md in full (especially sections 4 and 5). Then bootstrap the repository
-skeleton for the Rift project at the repo root:
-- Root go.mod (module github.com/rift/rift — pick this org name and keep it forever) and go.work.
-- The full directory tree from section 4 (proto/, cmd/riftd, cmd/rift, pkg/{proto,tunnel,authz},
+skeleton for the trqsh project at the repo root:
+- Root go.mod (module github.com/trqsh-uz/trqsh — pick this org name and keep it forever) and go.work.
+- The full directory tree from section 4 (proto/, cmd/trqshd, cmd/trqsh, pkg/{proto,tunnel,authz},
   internal/{server,agent,api,billing}, gui/, web/{dashboard,site}, deploy/, docs/) with a .gitkeep
   or a tiny doc.go in each Go package dir so it compiles.
 - deploy/docker-compose.dev.yml with just Postgres 16 and Redis 7 (so Parts 02/05 can run early).
@@ -72,35 +72,35 @@ the fallback test lands on TCP when QUIC is blocked. Implement ONLY Part 01.
 
 ---
 
-## Qadam 3 — Part 02: Edge Server `riftd` (M1)
+## Qadam 3 — Part 02: Edge Server `trqshd` (M1)
 
 ```text
 Read plan/00-ARCHITECTURE.md, then plan/02-edge-server.md. Implement Part 02 (internal/server +
-cmd/riftd) exactly as specified: agent session handler (accept sessions via pkg/tunnel, read Hello,
+cmd/trqshd) exactly as specified: agent session handler (accept sessions via pkg/tunnel, read Hello,
 authenticate via authz.Entitlements), the Redis-backed tunnel registry, HTTP/HTTPS ingress with
 vhost/SNI routing, raw TCP + UDP port tunnels, wildcard TLS via CertMagic DNS-01, the data-stream
 weld (open stream -> WriteStreamInit -> io.Copy both ways), heartbeats, graceful drain, and
 Prometheus metrics. Depend on the authz.Entitlements INTERFACE and default to StubEntitlements
-(RIFT_ENTITLEMENTS=stub) so this runs before the control plane exists. Do NOT modify pkg/* contracts.
-Verify per the spec's Run/verify section using local Redis and RIFT_BASE_DOMAIN=lvh.me. Implement
+(TRQSH_ENTITLEMENTS=stub) so this runs before the control plane exists. Do NOT modify pkg/* contracts.
+Verify per the spec's Run/verify section using local Redis and TRQSH_BASE_DOMAIN=lvh.me. Implement
 ONLY Part 02.
 ```
 
-**✅ Gate:** `go run ./cmd/riftd` ishga tushadi, `/healthz` javob beradi (to'liq test Qadam 4 dan keyin).
+**✅ Gate:** `go run ./cmd/trqshd` ishga tushadi, `/healthz` javob beradi (to'liq test Qadam 4 dan keyin).
 
 ---
 
-## Qadam 4 — Part 03: Agent + CLI `rift` (M1)
+## Qadam 4 — Part 03: Agent + CLI `trqsh` (M1)
 
 ```text
 Read plan/00-ARCHITECTURE.md, then plan/03-agent-cli.md. Implement Part 03 (internal/agent +
-cmd/rift) exactly as specified: config loader (~/.rift/rift.yml per section 10), the agent Core
+cmd/trqsh) exactly as specified: config loader (~/.trqsh-uz/trqsh.yml per section 10), the agent Core
 (dial the edge via pkg/tunnel, open the control stream, send Hello, BindTunnel, accept incoming data
 streams and forward to the local service), auto-reconnect with backoff + re-bind, the local
 inspector at 127.0.0.1:4040 with replay, the local control API (unix socket / loopback) for the GUI,
-and the Cobra CLI (rift http/tcp/udp/start/status/login/config/version). Freeze the agent-core API
+and the Cobra CLI (trqsh http/tcp/udp/start/status/login/config/version). Freeze the agent-core API
 (Core, TunnelSpec, Tunnel, Event) — Part 04 depends on it. Do NOT modify pkg/* contracts. Verify
-end-to-end against the Part 02 edge (RIFT_ENTITLEMENTS=stub) per the spec. Implement ONLY Part 03.
+end-to-end against the Part 02 edge (TRQSH_ENTITLEMENTS=stub) per the spec. Implement ONLY Part 03.
 ```
 
 **✅ Gate (MVP verify):** Quyidagi ishlashi kerak —
@@ -108,12 +108,12 @@ end-to-end against the Part 02 edge (RIFT_ENTITLEMENTS=stub) per the spec. Imple
 # 1-terminal: local xizmat
 python3 -m http.server 3000
 # 2-terminal: edge (stub) + redis ko'tarilgan holda
-RIFT_ENTITLEMENTS=stub RIFT_BASE_DOMAIN=lvh.me go run ./cmd/riftd
+TRQSH_ENTITLEMENTS=stub TRQSH_BASE_DOMAIN=lvh.me go run ./cmd/trqshd
 # 3-terminal:
-go run ./cmd/rift http 3000 --server localhost:443
+go run ./cmd/trqsh http 3000 --server localhost:443
 curl -k https://<chiqarilgan-subdomain>.lvh.me     # python listing qaytishi kerak
 ```
-Tarmoqni uzib-ulasangiz avtomatik qayta ulanadi; `rift tcp 22` + ssh ishlaydi. **Bu M1 MVP — mahsulot tirik!**
+Tarmoqni uzib-ulasangiz avtomatik qayta ulanadi; `trqsh tcp 22` + ssh ishlaydi. **Bu M1 MVP — mahsulot tirik!**
 
 ---
 
@@ -156,7 +156,7 @@ Kichik ulash qadami — edge stub'dan real control plane'ga o'tadi.
 
 ```text
 Wire the edge (Part 02) to use the REAL authz.Entitlements from Part 05 instead of StubEntitlements:
-set RIFT_ENTITLEMENTS=api and RIFT_API_URL to the control API, implement/enable the edge-side
+set TRQSH_ENTITLEMENTS=api and TRQSH_API_URL to the control API, implement/enable the edge-side
 entitlements client with its short-TTL cache, and confirm the internal RPC auth. Then run the full
 stack (edge + control API + Postgres + Redis + agent) and verify: (1) a valid API key from Part 05
 authenticates and binds; (2) a Free-plan account is denied a reserved subdomain (ERR_SUBDOMAIN_
@@ -204,11 +204,11 @@ capabilities to the Part 03 core if needed. Verify with `wails3 dev` per the spe
 
 ```text
 Read plan/00-ARCHITECTURE.md (sections 3, 4, 5, 15), then plan/08-infra-deploy.md. Implement Part 08
-(deploy/ + .github/workflows) exactly as specified: multi-stage Dockerfiles for riftd + api, the full
+(deploy/ + .github/workflows) exactly as specified: multi-stage Dockerfiles for trqshd + api, the full
 docker-compose.dev.yml (Postgres, Redis, edge, api, mailhog), Helm charts (edge with host networking
 for :443 UDP+TCP, api, HPA, PDB, drain hooks), Terraform (cluster, managed Postgres/Redis, object
-storage, wildcard *.rift.sh DNS + DNS-01 creds, secrets, per-region edge pools + GeoDNS/anycast),
-CI (ci.yml) and release.yml (cross-compile rift/riftd for all OS/arch, build + SIGN/NOTARIZE the GUI
+storage, wildcard *.trqsh.uz DNS + DNS-01 creds, secrets, per-region edge pools + GeoDNS/anycast),
+CI (ci.yml) and release.yml (cross-compile trqsh/trqshd for all OS/arch, build + SIGN/NOTARIZE the GUI
 installers, publish GitHub Releases + Homebrew tap + winget/scoop + curl|sh + auto-update feed), and
 observability (OTel + Prometheus + Grafana dashboards, alerts) + secrets management. Verify per the
 spec (make dev, helm install to staging with Let's Encrypt staging, a test release tag). Implement ONLY Part 08.

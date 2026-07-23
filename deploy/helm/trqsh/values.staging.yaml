@@ -1,0 +1,41 @@
+# Staging overrides. Uses Let's Encrypt STAGING certs (untrusted but rate-limit
+# friendly) and pre-created secrets. `helm upgrade --install trqsh deploy/helm/trqsh
+#   -f deploy/helm/trqsh/values.staging.yaml`.
+
+image:
+  tag: "" # set by CI to the built SHA/tag
+
+common:
+  baseDomain: staging.trqsh.uz
+
+secrets:
+  existingSecret: trqsh-secrets # created by CI from SOPS/sealed-secrets
+
+api:
+  replicaCount: 2
+  publicURL: https://api.staging.trqsh.uz
+  devAuth: false
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+edge:
+  acme:
+    staging: true
+    email: ops@trqsh.uz
+
+dashboard:
+  replicaCount: 1
+
+ingress:
+  className: nginx
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-staging
+  hosts:
+    api: api.staging.trqsh.uz
+    app: app.staging.trqsh.uz
+
+serviceMonitor:
+  enabled: true

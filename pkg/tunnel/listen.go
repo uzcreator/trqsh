@@ -14,7 +14,7 @@ import (
 // Listen starts an edge-side Listener that accepts agent sessions over both
 // QUIC (on quicAddr, UDP) and TLS-over-TCP+yamux (on tcpAddr). Either address
 // may be empty to disable that transport, but at least one is required. The
-// same tlsConf backs both; its ALPN is forced to the rift protocol token when
+// same tlsConf backs both; its ALPN is forced to the trqsh protocol token when
 // the caller leaves NextProtos empty.
 func Listen(quicAddr, tcpAddr string, tlsConf *tls.Config) (Listener, error) {
 	if quicAddr == "" && tcpAddr == "" {

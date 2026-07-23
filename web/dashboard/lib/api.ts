@@ -1,6 +1,6 @@
 import { getTokens, setTokens, type Tokens } from "./session";
 
-const BASE = process.env.RIFT_API_URL || "http://localhost:8080";
+const BASE = process.env.TRQSH_API_URL || "http://localhost:8080";
 
 // ---- Domain types (mirror Part 05 responses; see docs/openapi.yaml) ----
 

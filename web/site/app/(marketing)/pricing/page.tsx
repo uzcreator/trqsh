@@ -4,7 +4,7 @@ import { PricingTable } from "@/components/pricing-table";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Simple, predictable pricing for Rift — a generous free tier, Pro, and Team plans. The prices shown are the exact limits our edge enforces.",
+    "Simple, predictable pricing for trqsh — a generous free tier, Pro, and Team plans. The prices shown are the exact limits our edge enforces.",
 };
 
 const FAQ = [

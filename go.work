@@ -1,5 +1,5 @@
 go 1.25.0
 
 // Single module today. The workspace is here so we can later split the
-// open-source client (cmd/rift + pkg/*) into its own module without churn.
+// open-source client (cmd/trqsh + pkg/*) into its own module without churn.
 use .

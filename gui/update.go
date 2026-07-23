@@ -10,7 +10,7 @@ import (
 
 // updateFeedURL points at the release channel published by Part 08's release
 // workflow. It returns the latest desktop build for auto-update prompts.
-const updateFeedURL = "https://downloads.rift.dev/desktop/latest.json"
+const updateFeedURL = "https://downloads.trqsh.uz/desktop/latest.json"
 
 // UpdateInfo is the result of a version check (frontend/src/lib/agent.ts).
 type UpdateInfo struct {

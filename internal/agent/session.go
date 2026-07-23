@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 var errEdgeDraining = errors.New("edge draining")
@@ -39,7 +39,7 @@ func (a *Agent) connect(ctx context.Context) error {
 
 	apiKey := a.cfg.APIKey
 	if apiKey == "" {
-		apiKey = "rk_dev_local" // dev fallback; a real edge requires a valid key
+		apiKey = "tq_dev_local" // dev fallback; a real edge requires a valid key
 	}
 	hello := &proto.Hello{
 		ProtocolVersion: "1",

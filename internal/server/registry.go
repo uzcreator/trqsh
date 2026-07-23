@@ -50,7 +50,7 @@ type memEntry struct {
 	expiry time.Time
 }
 
-// InMemoryRegistry is a process-local Registry used when RIFT_REDIS_URL is
+// InMemoryRegistry is a process-local Registry used when TRQSH_REDIS_URL is
 // unset and in tests. TTLs are honored lazily on Lookup.
 type InMemoryRegistry struct {
 	mu sync.RWMutex
@@ -104,8 +104,8 @@ func (r *InMemoryRegistry) Close() error { return nil }
 // --- redis ---
 
 const (
-	redisRoutePrefix = "rift:route:"
-	redisRouteEvents = "rift:routes"
+	redisRoutePrefix = "trqsh:route:"
+	redisRouteEvents = "trqsh:routes"
 )
 
 // RedisRegistry stores routes in Redis with a TTL and announces bind/unbind on

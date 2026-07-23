@@ -65,6 +65,6 @@ API keys, usage graphs, billing, and a **cloud request inspector/replay** — us
 ```bash
 cd web/dashboard
 pnpm install && pnpm dev            # against a running Part 05 API (localhost:8080)
-# smoke: login → create API key → use it with `rift` → tunnel appears live in the dashboard →
+# smoke: login → create API key → use it with `trqsh` → tunnel appears live in the dashboard →
 #        open Inspector → replay a request → open Billing → test-mode upgrade → limits change
 ```

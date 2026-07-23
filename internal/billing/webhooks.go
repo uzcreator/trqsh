@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
 
 // HandleWebhook is the Stripe webhook endpoint (public, but signature-verified).

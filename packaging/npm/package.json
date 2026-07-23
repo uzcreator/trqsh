@@ -1,0 +1,48 @@
+{
+  "name": "trqsh",
+  "version": "0.1.0",
+  "description": "Expose localhost to the internet — fast QUIC tunnels with a desktop app. This package installs the trqsh CLI binary for your platform.",
+  "keywords": [
+    "trqsh",
+    "tunnel",
+    "localhost",
+    "ngrok-alternative",
+    "quic",
+    "http3",
+    "reverse-proxy",
+    "webhook"
+  ],
+  "homepage": "https://trqsh.uz",
+  "bugs": "https://github.com/trqsh/trqsh/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trqsh/trqsh.git",
+    "directory": "packaging/npm"
+  },
+  "license": "Apache-2.0",
+  "author": "trqsh <ops@trqsh.uz>",
+  "bin": {
+    "trqsh": "bin/trqsh.js"
+  },
+  "scripts": {
+    "postinstall": "node ./lib/install.js"
+  },
+  "files": [
+    "bin/trqsh.js",
+    "lib/common.js",
+    "lib/install.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rift/rift/internal/agent/inspect"
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
 const localDialTimeout = 10 * time.Second

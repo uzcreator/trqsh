@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "webhook testing",
     "expose localhost",
   ],
-  authors: [{ name: "Rift" }],
+  authors: [{ name: "trqsh" }],
   openGraph: {
     type: "website",
     url: site.siteUrl,
@@ -38,17 +38,17 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// Applies the stored theme (or OS preference) before first paint — no flash, and
-// no cookie, so every page stays statically renderable.
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+export const viewport = {
+  themeColor: "#060908",
+  colorScheme: "dark",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // trqsh renders as a committed dark experience (black + dark-green + dark-blue),
+  // so the theme is fixed at the root — no toggle, no flash, fully static.
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body className="min-h-screen">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
         <SiteHeader />
         {children}
       </body>

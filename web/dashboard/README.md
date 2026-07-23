@@ -1,16 +1,16 @@
-# Rift Dashboard (Part 06)
+# trqsh Dashboard (Part 06)
 
 The authenticated web control surface: tunnels, domains, API keys, usage, billing,
 and the cloud request inspector. Next.js 15 (App Router) + TypeScript + Tailwind,
-talking only to the Part 05 control API (`riftapi`).
+talking only to the Part 05 control API (`trqshapi`).
 
 ## Run
 
 ```bash
 pnpm install
 # point at a running control API (Part 05); defaults to http://localhost:8080
-export RIFT_API_URL=http://localhost:8080
-export NEXT_PUBLIC_RIFT_BASE_DOMAIN=lvh.me
+export TRQSH_API_URL=http://localhost:8080
+export NEXT_PUBLIC_TRQSH_BASE_DOMAIN=lvh.me
 pnpm dev            # http://localhost:3000
 # production build:
 pnpm build && pnpm start

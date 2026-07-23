@@ -1,7 +1,7 @@
-# 03 — Agent Core + CLI (`rift`)
+# 03 — Agent Core + CLI (`trqsh`)
 
-**Owns:** `internal/agent`, `cmd/rift`
-**Depends on:** Part 01 (`pkg/proto`, `pkg/tunnel`) — hard. Part 05 for `rift login` / API-key issuance
+**Owns:** `internal/agent`, `cmd/trqsh`
+**Depends on:** Part 01 (`pkg/proto`, `pkg/tunnel`) — hard. Part 05 for `trqsh login` / API-key issuance
 — stub-friendly (any non-empty key works against the edge's `StubEntitlements`).
 **Blocks:** Part 04 (GUI embeds this core). **Defines:** the agent-core API the GUI consumes.
 
@@ -12,7 +12,7 @@
 ## Goal
 
 1. A reusable **agent core** (`internal/agent`) that the CLI and the GUI both drive.
-2. A polished **CLI** (`rift http 3000`, `rift tcp 22`, `rift start`, `rift login`, …).
+2. A polished **CLI** (`trqsh http 3000`, `trqsh tcp 22`, `trqsh start`, `trqsh login`, …).
 3. A **local inspector** at `127.0.0.1:4040` (capture/replay HTTP, like ngrok).
 4. A **local control API** (JSON over a unix socket / loopback HTTP) so the GUI (Part 04) drives the
    same core out-of-process.
@@ -20,8 +20,8 @@
 ## Scope / task breakdown
 
 ### T1 — Config (`internal/agent/config.go`)
-- Load `~/.rift/rift.yml` per §10; merge flags > env (`RIFT_*`) > file > defaults.
-- `rift config` subcommands to view/edit; `rift login` writes `api_key`.
+- Load `~/.trqsh-uz/trqsh.yml` per §10; merge flags > env (`TRQSH_*`) > file > defaults.
+- `trqsh config` subcommands to view/edit; `trqsh login` writes `api_key`.
 
 ### T2 — Agent core & session (`internal/agent/core.go`, `session.go`)
 - `type Core` with the **frozen agent-core API** (consumed by CLI + GUI):
@@ -61,17 +61,17 @@
   **replay** (re-issue a captured request to the local service). Stream captures as `Event`s too, so
   the GUI/dashboard can show live traffic.
 
-### T6 — CLI (`cmd/rift`, `internal/agent/cli/`)
+### T6 — CLI (`cmd/trqsh`, `internal/agent/cli/`)
 - `github.com/spf13/cobra`. Commands:
-  - `rift http <port|addr> [--subdomain] [--basic-auth] [--host-header]`
-  - `rift tcp <port|addr> [--remote-port]`, `rift udp <port|addr>`
-  - `rift start` (bind all tunnels from config), `rift status`, `rift stop`
-  - `rift login [--token]`, `rift config`, `rift version`, `rift update`
+  - `trqsh http <port|addr> [--subdomain] [--basic-auth] [--host-header]`
+  - `trqsh tcp <port|addr> [--remote-port]`, `trqsh udp <port|addr>`
+  - `trqsh start` (bind all tunnels from config), `trqsh status`, `trqsh stop`
+  - `trqsh login [--token]`, `trqsh config`, `trqsh version`, `trqsh update`
 - TTY UX: a live status panel (tunnel table + public URLs + request counter), copyable URLs, colored
   errors mapped from §8 codes (with upgrade hints for `ERR_PLAN_FORBIDS`). Support `--log json`.
 
 ### T7 — Packaging hooks
-- Version/build info via `-ldflags`. Self-update check (`rift update`) against the release feed
+- Version/build info via `-ldflags`. Self-update check (`trqsh update`) against the release feed
   (Part 08). Cross-platform paths for config, socket, and inspector.
 
 ## Interfaces honored (do not modify)
@@ -79,9 +79,9 @@
   (`Core`, `TunnelSpec`, `Tunnel`, `Event`) is defined here and **frozen for Part 04** — keep it stable.
 
 ## Done criteria
-- `go build ./cmd/rift`; `go test ./internal/agent/...` passes (unit + a loopback integration test
-  against a fake edge or the real `riftd` with `StubEntitlements`).
-- `rift http 3000` against a running edge yields a working public URL; killing the network and
+- `go build ./cmd/trqsh`; `go test ./internal/agent/...` passes (unit + a loopback integration test
+  against a fake edge or the real `trqshd` with `StubEntitlements`).
+- `trqsh http 3000` against a running edge yields a working public URL; killing the network and
   restoring it auto-reconnects and restores the URL.
 - Inspector at `:4040` shows requests and can replay one.
 - Local control API drives start/stop/list/events (exercised by a small test client).
@@ -91,9 +91,9 @@
 # terminal 1: local service
 python3 -m http.server 3000
 # terminal 2: edge (Part 02) with stub entitlements + redis
-RIFT_ENTITLEMENTS=stub RIFT_BASE_DOMAIN=lvh.me go run ./cmd/riftd
+TRQSH_ENTITLEMENTS=stub TRQSH_BASE_DOMAIN=lvh.me go run ./cmd/trqshd
 # terminal 3: the agent
-go run ./cmd/rift http 3000 --server localhost:443
+go run ./cmd/trqsh http 3000 --server localhost:443
 curl -k https://<printed-subdomain>.lvh.me   # returns the python server's listing
 open http://127.0.0.1:4040                    # inspector shows the request
 ```

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/rift/rift/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
 )
 
 // orgOf extracts the authenticated caller's org from the request context.

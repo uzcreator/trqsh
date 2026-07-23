@@ -1,6 +1,6 @@
 package agent
 
-import "github.com/rift/rift/pkg/proto"
+import "github.com/trqsh-uz/trqsh/pkg/proto"
 
 // Error wraps a frozen protocol error code (§8) with a human message and an
 // optional actionable hint (e.g. an upgrade prompt for plan limits).
@@ -20,9 +20,9 @@ func (e *Error) Error() string {
 func (e *Error) Hint() string {
 	switch e.Code {
 	case proto.CodeAuthRequired, proto.CodeAuthInvalid:
-		return "Run `rift login --token <key>` with a valid API key."
+		return "Run `trqsh login --token <key>` with a valid API key."
 	case proto.CodePlanForbids, proto.CodeQuotaTunnels, proto.CodeQuotaBandwidth, proto.CodeQuotaRequests:
-		return "Your plan does not allow this. Upgrade at https://rift.sh/pricing."
+		return "Your plan does not allow this. Upgrade at https://trqsh.uz/pricing."
 	case proto.CodeSubdomainTaken:
 		return "That subdomain is in use — try another or omit --subdomain for a random one."
 	case proto.CodeSubdomainForbidden:

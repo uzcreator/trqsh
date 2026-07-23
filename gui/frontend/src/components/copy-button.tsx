@@ -28,12 +28,14 @@ export function CopyButton({
   className,
   variant = "ghost",
   size = "icon",
+  onCopied,
 }: {
   value: string;
   label?: string;
   className?: string;
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
+  onCopied?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -45,6 +47,7 @@ export function CopyButton({
       onClick={async () => {
         await writeClipboard(value);
         setCopied(true);
+        onCopied?.();
         setTimeout(() => setCopied(false), 1200);
       }}
       title="Copy"

@@ -36,10 +36,10 @@ The code was **better than "beginner level"** — several controls were already 
 
 | # | Severity | Issue | Fix |
 |---|---|---|---|
-| 1 | **Critical** | `DefaultConfig()` shipped a hardcoded JWT secret, internal token, and `DevAuth=true`; `LoadConfig` only errored on an *empty* secret — so a prod deploy that forgot env vars silently ran with a **known JWT secret** (forgeable sessions) and **password-less auth**. | Added `RIFT_ENV=production` profile. `internal/api/config.go` now **fails closed**: rejects the dev-default secret, secrets < 32 chars, the default internal token, `DevAuth` on, the in-memory store, and non-HTTPS public URL. |
-| 2 | **High** | The **edge** defaulted to `RIFT_ENTITLEMENTS=stub` (allow-all binds) with no internal token — dangerous if shipped to prod. | `internal/server/config.go` production profile requires `RIFT_ENTITLEMENTS=api`, a non-default `RIFT_INTERNAL_TOKEN`, and `RIFT_ACME_EMAIL`. |
+| 1 | **Critical** | `DefaultConfig()` shipped a hardcoded JWT secret, internal token, and `DevAuth=true`; `LoadConfig` only errored on an *empty* secret — so a prod deploy that forgot env vars silently ran with a **known JWT secret** (forgeable sessions) and **password-less auth**. | Added `TRQSH_ENV=production` profile. `internal/api/config.go` now **fails closed**: rejects the dev-default secret, secrets < 32 chars, the default internal token, `DevAuth` on, the in-memory store, and non-HTTPS public URL. |
+| 2 | **High** | The **edge** defaulted to `TRQSH_ENTITLEMENTS=stub` (allow-all binds) with no internal token — dangerous if shipped to prod. | `internal/server/config.go` production profile requires `TRQSH_ENTITLEMENTS=api`, a non-default `TRQSH_INTERNAL_TOKEN`, and `TRQSH_ACME_EMAIL`. |
 | 3 | **High** | Four `http.Server` instances (control API, edge ops, agent localapi, inspector) had **no timeouts** → Slowloris / gosec **G112**. | Added `ReadHeaderTimeout` everywhere; full read/write/idle/`MaxHeaderBytes` on the API + ops servers. The two SSE servers (localapi, inspector) get `ReadHeaderTimeout` only, so streams aren't cut. |
-| 4 | **Medium-High** | **No rate limiting** — auth endpoints open to brute-force / account-spam, API open to flooding. | Dependency-free per-IP **token-bucket limiter** (`internal/api/middleware.go`): 5 rps/burst 10 on auth endpoints, 50 rps/burst 100 on the public API. Internal edge RPC is exempt (high-volume entitlement checks). `X-Forwarded-For` honored only when `RIFT_TRUST_PROXY` is set (no spoofing). |
+| 4 | **Medium-High** | **No rate limiting** — auth endpoints open to brute-force / account-spam, API open to flooding. | Dependency-free per-IP **token-bucket limiter** (`internal/api/middleware.go`): 5 rps/burst 10 on auth endpoints, 50 rps/burst 100 on the public API. Internal edge RPC is exempt (high-volume entitlement checks). `X-Forwarded-For` honored only when `TRQSH_TRUST_PROXY` is set (no spoofing). |
 | 5 | **Medium** | No security response headers. | `securityHeaders` middleware: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, COOP, and HSTS in production. |
 
 All timeout values align with published Go production guidance (see §6).
@@ -47,7 +47,7 @@ All timeout values align with published Go production guidance (see §6).
 ## 4. Professionalization
 
 - **`SECURITY.md`** — vulnerability reporting, the full security posture, and an **operator
-  hardening checklist** (the env vars `RIFT_ENV=production` enforces).
+  hardening checklist** (the env vars `TRQSH_ENV=production` enforces).
 - **`CONTRIBUTING.md`**, **`CODE_OF_CONDUCT.md`** (Contributor Covenant 2.1), **`.editorconfig`**.
 - **`.gitattributes`** — enforce LF (prevents CRLF/gofmt drift on Windows); mark generated files.
 - Issue templates (`bug_report`, `feature_request`, `config` steering security reports to advisories)
@@ -75,7 +75,7 @@ All timeout values align with published Go production guidance (see §6).
   *dev* defaults and `*.example.*` templates are committed.
 - Push is a manual step (needs your remote + credentials):
   ```bash
-  gh repo create <you>/rift --private --source=. --remote=origin --push
+  gh repo create <you>/trqsh --private --source=. --remote=origin --push
   ```
 
 ## 6. Threat-landscape research
@@ -86,7 +86,7 @@ All timeout values align with published Go production guidance (see §6).
   evade domain-reputation systems. **Recommendation (feature work, not just hardening):** screen
   public hostnames against phishing/malware feeds on bind, rate-limit new-subdomain creation, and
   keep the `abuse@` pathway (already in `SECURITY.md`).
-- **Misconfiguration → exposed databases** (a classic: `ngrok tcp 5432` with no auth). Rift already
+- **Misconfiguration → exposed databases** (a classic: `ngrok tcp 5432` with no auth). trqsh already
   supports per-tunnel basic-auth; an **IP-allowlist** tunnel option is a strong future addition.
 - **Go server timeouts**: confirmed `ReadHeaderTimeout` is the key Slowloris control; our values are
   within/stricter than the commonly recommended (20 s / 1 m / 2 m). Modern Go already prefers safe

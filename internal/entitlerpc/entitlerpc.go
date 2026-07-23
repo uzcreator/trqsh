@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rift/rift/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
 )
 
 // Internal auth header carrying the shared token between edge and API.
-const HeaderToken = "X-Rift-Internal-Token"
+const HeaderToken = "X-trqsh-Internal-Token"
 
 // Route paths for the internal entitlements endpoints.
 const (

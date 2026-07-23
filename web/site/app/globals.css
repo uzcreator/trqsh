@@ -3,69 +3,48 @@
 @tailwind utilities;
 
 /*
- * Design tokens — dataviz reference palette (light + dark, both selected).
- * Space-separated RGB channels so Tailwind opacity modifiers work (bg-good/10).
- * This block is copied verbatim from web/dashboard and gui/frontend so the three
- * surfaces are visually identical — the shared brand source of truth (Part 00 §-tokens).
+ * trqsh brand tokens — a committed dark theme: near-black page, rich dark-green
+ * primary, and a dark-blue secondary accent. Space-separated RGB channels so
+ * Tailwind opacity modifiers work (bg-brand/10). The site renders dark-only
+ * (see app/layout.tsx forcing `.dark`), so :root and .dark carry the same values
+ * — :root as the paint-safe fallback, .dark so `.dark`-scoped rules + `dark:`
+ * Tailwind variants stay active.
  */
-:root {
-  --page: 249 249 247;
-  --surface: 252 252 251;
-  --foreground: 11 11 11;
-  --secondary-ink: 82 81 78;
-  --muted-ink: 137 135 129;
-  --border: 225 224 217;
-  --border-strong: 195 194 183;
-  --primary: 42 120 214;
-  --primary-foreground: 255 255 255;
-  --accent: 238 244 252;
-  --ring: 42 120 214;
-
-  --good: 12 163 12;
-  --warning: 250 178 25;
-  --serious: 236 131 90;
-  --critical: 208 59 59;
-
-  /* Categorical slots 1..5 (light) */
-  --series-1: 42 120 214;
-  --series-2: 27 175 122;
-  --series-3: 237 161 0;
-  --series-4: 0 131 0;
-  --series-5: 74 58 167;
-
-  --grid: 225 224 217;
-  --baseline: 195 194 183;
-
-  color-scheme: light;
-}
-
+:root,
 .dark {
-  --page: 13 13 13;
-  --surface: 26 26 25;
-  --foreground: 255 255 255;
-  --secondary-ink: 195 194 183;
-  --muted-ink: 137 135 129;
-  --border: 44 44 42;
-  --border-strong: 56 56 53;
-  --primary: 57 135 229;
-  --primary-foreground: 255 255 255;
-  --accent: 19 35 58;
-  --ring: 57 135 229;
+  --page: 6 9 8; /* #060908 — near-black with a faint green cast */
+  --surface: 12 18 15; /* #0c120f — lifted panels */
+  --surface-2: 17 25 21; /* #111915 — cards on panels */
+  --foreground: 233 241 237; /* #e9f1ed */
+  --secondary-ink: 156 176 167; /* #9cb0a7 */
+  --muted-ink: 106 124 116; /* #6a7c74 */
+  --border: 26 38 32; /* #1a2620 */
+  --border-strong: 40 58 49; /* #283a31 */
+  --primary: 15 172 108; /* #0fac6c — rich dark emerald (dark-green brand) */
+  --primary-foreground: 3 14 9; /* near-black ink on the green — high contrast */
+  --accent: 15 40 30; /* #0f281e — dark-green chip / icon background */
+  --ring: 15 172 108;
 
-  --good: 12 163 12;
-  --warning: 250 178 25;
+  --good: 24 190 128;
+  --warning: 234 179 8;
   --serious: 236 131 90;
-  --critical: 208 59 59;
+  --critical: 226 74 74;
 
-  /* Categorical slots 1..5 (dark steps) */
-  --series-1: 57 135 229;
-  --series-2: 25 158 112;
-  --series-3: 201 133 0;
-  --series-4: 0 131 0;
-  --series-5: 144 133 233;
+  /* Brand accents used across gradients, glows and 3D visuals. */
+  --brand: 15 172 108; /* green */
+  --brand-2: 37 78 190; /* #254ebe — dark blue (used sparingly) */
+  --brand-3: 20 184 166; /* #14b8a6 — teal bridge between green↔blue */
+  --glow: 24 210 140; /* brighter green for light bloom */
 
-  --grid: 44 44 42;
-  --baseline: 56 56 53;
+  /* Categorical chart slots (assigned in fixed order, never cycled). */
+  --series-1: 24 200 132; /* ours (QUIC) — bright emerald for contrast */
+  --series-2: 52 110 228; /* blue */
+  --series-3: 214 160 46; /* amber — comparison line, kept distinct */
+  --series-4: 20 184 166; /* teal */
+  --series-5: 70 100 230; /* blue-violet glow */
+
+  --grid: 26 38 32;
+  --baseline: 40 58 49;
 
   color-scheme: dark;
 }
@@ -85,6 +64,29 @@
     color: rgb(var(--foreground));
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Fixed ambient wash so the near-black page reads as depth, not flat. */
+    background-image:
+      radial-gradient(70% 40% at 78% -6%, rgb(var(--brand-2) / 0.1), transparent 60%),
+      radial-gradient(60% 45% at 12% -4%, rgb(var(--brand) / 0.12), transparent 60%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+  ::selection {
+    background: rgb(var(--brand) / 0.28);
+    color: rgb(var(--foreground));
+  }
+  /* Custom scrollbar tuned to the dark-green brand. */
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-strong));
+    border-radius: 999px;
+    border: 3px solid rgb(var(--page));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--brand) / 0.6);
   }
   .tabular {
     font-variant-numeric: tabular-nums;
@@ -289,13 +291,220 @@
     animation: shimmer 0.9s ease;
   }
 
-  /* Gradient wordmark accent for hero highlights. */
+  /* Gradient wordmark accent for hero highlights — green → teal → dark blue. */
   .gradient-text {
-    background: linear-gradient(120deg, rgb(var(--series-1)), rgb(var(--series-5)));
+    background: linear-gradient(
+      110deg,
+      rgb(var(--brand)),
+      rgb(var(--brand-3)) 45%,
+      rgb(var(--brand-2))
+    );
+    background-size: 200% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    animation: gradient-pan 8s ease-in-out infinite;
   }
+
+  /* ---------------------------------------------------------------------------
+   * trqsh visual system — glassmorphism, aurora glow, perspective grid, 3D tilt,
+   * sticky scroll-stacking, animated nav highlight, marquee. Pure CSS, no deps.
+   * ------------------------------------------------------------------------- */
+
+  /* Frosted glass panel — sits over the animated hero/aurora. */
+  .glass {
+    background: linear-gradient(
+      160deg,
+      rgb(var(--surface-2) / 0.85),
+      rgb(var(--surface) / 0.7)
+    );
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid rgb(255 255 255 / 0.06);
+    box-shadow:
+      0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+      0 30px 60px -30px rgb(0 0 0 / 0.7);
+  }
+
+  /* Ambient aurora: slow-drifting green/blue blooms behind the hero. */
+  .aurora {
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 120%;
+    pointer-events: none;
+    filter: blur(60px);
+    opacity: 0.55;
+    background:
+      radial-gradient(38% 44% at 22% 28%, rgb(var(--brand) / 0.55), transparent 70%),
+      radial-gradient(34% 40% at 82% 18%, rgb(var(--brand-2) / 0.5), transparent 70%),
+      radial-gradient(46% 50% at 60% 82%, rgb(var(--brand-3) / 0.32), transparent 70%);
+    animation: aurora-drift 22s ease-in-out infinite alternate;
+  }
+
+  /* Receding perspective grid — the "tunnel floor" under dark sections. */
+  .tunnel-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+    mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+  }
+  .tunnel-grid::before {
+    content: "";
+    position: absolute;
+    left: -50%;
+    right: -50%;
+    bottom: -10%;
+    height: 160%;
+    background-image:
+      linear-gradient(rgb(var(--brand) / 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--brand) / 0.14) 1px, transparent 1px);
+    background-size: 46px 46px;
+    transform: perspective(520px) rotateX(62deg);
+    transform-origin: bottom center;
+    animation: grid-flow 8s linear infinite;
+  }
+
+  /* Gradient hairline border on hover (cards). */
+  .border-gradient {
+    position: relative;
+  }
+  .border-gradient::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgb(var(--brand) / 0.6), transparent 45%, rgb(var(--brand-2) / 0.5));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .border-gradient:hover::before {
+    opacity: 1;
+  }
+
+  /* 3D tilt — the wrapper sets --rx/--ry from pointer (see components/tilt.tsx). */
+  .tilt {
+    position: relative;
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transform-style: preserve-3d;
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .tilt-layer {
+    transform: translateZ(var(--z, 0px));
+    transform-style: preserve-3d;
+  }
+  .tilt-glare {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: var(--glare, 0);
+    background: radial-gradient(
+      circle at var(--gx, 50%) var(--gy, 0%),
+      rgb(255 255 255 / 0.22),
+      transparent 55%
+    );
+    transition: opacity 0.2s ease;
+  }
+
+  /* Sticky scroll-stacking — successive panels pile up over the previous one.
+   * Where the browser supports scroll-driven animations, the covered card also
+   * scales down + dims; elsewhere it degrades to a clean sticky stack. */
+  .stack-panel {
+    position: sticky;
+    top: var(--stack-top, 6rem);
+  }
+  @supports (animation-timeline: view()) {
+    .stack-card {
+      animation: stack-recede linear both;
+      animation-timeline: view();
+      animation-range: exit 5% exit 42%;
+    }
+  }
+
+  /* Animated nav highlight pill (position driven from components/site-header). */
+  .nav-highlight {
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.2s ease;
+  }
+
+  /* Top-of-page scroll progress bar. */
+  .scroll-progress {
+    background: linear-gradient(90deg, rgb(var(--brand)), rgb(var(--brand-3)), rgb(var(--brand-2)));
+    transform-origin: 0 50%;
+  }
+
+  /* Edge-faded marquee for the logo/trust strip. */
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  }
+  .marquee-track {
+    display: inline-flex;
+    width: max-content;
+    animation: marquee 30s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  /* Soft green glow behind primary CTAs / focal elements. */
+  .glow-brand {
+    box-shadow:
+      0 0 0 1px rgb(var(--brand) / 0.35),
+      0 10px 40px -8px rgb(var(--brand) / 0.45);
+  }
+  .text-glow {
+    text-shadow: 0 0 24px rgb(var(--glow) / 0.35);
+  }
+
+  /* Blinking terminal caret. */
+  .caret {
+    display: inline-block;
+    width: 0.55ch;
+    height: 1.05em;
+    translate: 0 0.15em;
+    background: rgb(var(--brand));
+    animation: caret-blink 1.1s steps(1) infinite;
+  }
+}
+
+/* Keyframes for the raw-CSS brand utilities above (Tailwind owns the rest). */
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes aurora-drift {
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
+  50% { transform: translate3d(4%, 2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 3%, 0) scale(1.03); }
+}
+@keyframes grid-flow {
+  to { background-position: 0 46px; }
+}
+@keyframes stack-recede {
+  to {
+    transform: scale(0.9) translateY(-2%);
+    filter: brightness(0.5) saturate(0.8);
+    opacity: 0.75;
+  }
+}
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+@keyframes caret-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
 }
 
 /* Respect users who prefer less motion: disable transforms/animations. */

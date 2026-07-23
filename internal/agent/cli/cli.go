@@ -1,4 +1,4 @@
-// Package cli implements the `rift` command-line interface over the agent core.
+// Package cli implements the `trqsh` command-line interface over the agent core.
 package cli
 
 import (
@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rift/rift/internal/agent"
-	"github.com/rift/rift/internal/agent/inspect"
+	"github.com/trqsh-uz/trqsh/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
 	"github.com/spf13/cobra"
 )
 
@@ -39,13 +39,13 @@ type globalFlags struct {
 func newRootCmd() *cobra.Command {
 	g := &globalFlags{}
 	root := &cobra.Command{
-		Use:          "rift",
-		Short:        "Rift — expose your localhost to the internet, fast.",
-		Long:         "Rift tunnels local services to a public URL over a QUIC-first, TCP-fallback transport.",
+		Use:          "trqsh",
+		Short:        "trqsh — expose your localhost to the internet, fast.",
+		Long:         "trqsh tunnels local services to a public URL over a QUIC-first, TCP-fallback transport.",
 		SilenceUsage: true,
 	}
 	pf := root.PersistentFlags()
-	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.rift/rift.yml)")
+	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.trqsh-uz/trqsh.yml)")
 	pf.StringVar(&g.server, "server", "", "edge server address (host:port)")
 	pf.StringVar(&g.region, "region", "", "preferred region (auto|us|eu|ap)")
 	pf.StringVar(&g.transport, "transport", "", "transport (auto|quic|tcp)")
@@ -127,7 +127,7 @@ func runTunnels(cmd *cobra.Command, g *globalFlags, specs []agent.TunnelSpec) er
 			}
 		}()
 	}
-	// Local control API (for the GUI / `rift status`).
+	// Local control API (for the GUI / `trqsh status`).
 	if cfg.ControlAddr != "" {
 		api := agent.NewLocalAPI(core)
 		go func() {

@@ -5,15 +5,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rift/rift/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent"
 )
 
 // AppSettings is the GUI settings surface (frontend/src/lib/agent.ts). Server
-// and Insecure live in the frozen agent config (~/.rift/rift.yml, §10); the
+// and Insecure live in the frozen agent config (~/.trqsh-uz/trqsh.yml, §10); the
 // purely-cosmetic prefs live alongside it in gui.json so we never mutate the
 // frozen schema.
 type AppSettings struct {
 	Server         string `json:"server"`
+	Transport      string `json:"transport"` // auto | quic | tcp
 	Insecure       bool   `json:"insecure"`
 	StartAtLogin   bool   `json:"start_at_login"`
 	MinimizeToTray bool   `json:"minimize_to_tray"`
@@ -60,8 +61,13 @@ func (s *AgentService) Settings() AppSettings {
 		cfg = agent.DefaultConfig()
 	}
 	p := loadPrefs()
+	transport := cfg.Transport
+	if transport == "" {
+		transport = "auto"
+	}
 	return AppSettings{
 		Server:         cfg.Server,
+		Transport:      transport,
 		Insecure:       cfg.Insecure,
 		StartAtLogin:   p.StartAtLogin,
 		MinimizeToTray: p.MinimizeToTray,
@@ -78,6 +84,9 @@ func (s *AgentService) SaveSettings(in AppSettings) error {
 	}
 	cfg.Server = in.Server
 	cfg.Insecure = in.Insecure
+	if t := in.Transport; t == "auto" || t == "quic" || t == "tcp" {
+		cfg.Transport = t
+	}
 	if err := cfg.Save(agent.DefaultConfigPath()); err != nil {
 		return err
 	}
@@ -90,7 +99,7 @@ func (s *AgentService) SaveSettings(in AppSettings) error {
 
 // --- API key storage ---
 //
-// The agent core already persists the API key to ~/.rift/rift.yml on Login.
+// The agent core already persists the API key to ~/.trqsh-uz/trqsh.yml on Login.
 // That is the shared source of truth with the CLI. For a hardened desktop
 // build the key should instead live in the OS keychain (Keychain / Windows
 // Credential Manager / libsecret) via e.g. github.com/zalando/go-keyring — this

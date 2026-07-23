@@ -41,8 +41,8 @@ export const docsNav: DocCategory[] = [
     title: "Tools",
     items: [
       { slug: "inspector", title: "Request inspector", description: "Inspect and replay traffic locally.", type: "md" },
-      { slug: "desktop-gui", title: "Desktop app", description: "The cross-platform Rift GUI.", type: "md" },
-      { slug: "configuration", title: "Configuration", description: "The ~/.rift/rift.yml schema.", type: "md" },
+      { slug: "desktop-gui", title: "Desktop app", description: "The cross-platform trqsh GUI.", type: "md" },
+      { slug: "configuration", title: "Configuration", description: "The ~/.trqsh-uz/trqsh.yml schema.", type: "md" },
     ],
   },
   {

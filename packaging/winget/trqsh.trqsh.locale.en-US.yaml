@@ -1,0 +1,24 @@
+PackageIdentifier: trqsh.trqsh
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: trqsh
+PublisherUrl: https://trqsh.uz
+PublisherSupportUrl: https://github.com/trqsh/trqsh/issues
+PackageName: trqsh
+PackageUrl: https://trqsh.uz
+License: Apache-2.0
+LicenseUrl: https://github.com/trqsh/trqsh/blob/main/LICENSE
+ShortDescription: Expose localhost to the internet — fast QUIC tunnels with a desktop app.
+Description: |-
+  trqsh exposes a local port to a public HTTPS URL in seconds — over QUIC for
+  lower latency, with UDP support, custom domains, a request inspector, and a
+  generous free tier. This package installs the open-source trqsh CLI.
+Tags:
+  - tunnel
+  - localhost
+  - quic
+  - http3
+  - ngrok-alternative
+  - webhook
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

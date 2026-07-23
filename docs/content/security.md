@@ -1,6 +1,6 @@
 # Security & abuse
 
-How Rift protects your traffic and your account — and how to report a problem.
+How trqsh protects your traffic and your account — and how to report a problem.
 
 ## Transport security
 
@@ -30,13 +30,13 @@ account rate limits and network-level DDoS protections run at the edge.
 
 ## Reporting abuse
 
-Seeing a Rift URL used for phishing or malware? Email **abuse@rift.dev** with the
+Seeing a trqsh URL used for phishing or malware? Email **abuse@trqsh.uz** with the
 hostname and details. We act on verified reports quickly.
 
 ## Reporting a vulnerability
 
-Found a security issue in Rift or the open-source agent? Please disclose it
-responsibly to **security@rift.dev** rather than filing a public issue. We'll
+Found a security issue in trqsh or the open-source agent? Please disclose it
+responsibly to **security@trqsh.uz** rather than filing a public issue. We'll
 acknowledge, investigate, and keep you updated. We don't take legal action against
 good-faith research that respects our users' privacy and data.
 

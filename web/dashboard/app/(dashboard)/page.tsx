@@ -66,13 +66,13 @@ export default async function OverviewPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <Step n={1} title="Install the agent">
-              <CodeLine text="curl -fsSL https://rift.sh/install | sh" />
+              <CodeLine text="curl -fsSL https://trqsh.uz/install | sh" />
             </Step>
             <Step n={2} title="Authenticate">
-              <CodeLine text="rift login" />
+              <CodeLine text="trqsh login" />
             </Step>
             <Step n={3} title="Start a tunnel">
-              <CodeLine text="rift http 3000" />
+              <CodeLine text="trqsh http 3000" />
             </Step>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 package api
 
-import "github.com/rift/rift/internal/billing"
+import "github.com/trqsh-uz/trqsh/internal/billing"
 
 // The plan/quota catalog (§11) is owned by internal/billing (Part 07) so there
 // is a single source of truth for limits, display pricing, and Stripe price IDs.

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
 
 // Metric names for metered usage (match the store's metered_usage.metric).
@@ -92,7 +92,7 @@ func (s *Service) ownerContact(ctx context.Context, orgID string) (email, name s
 	return u.Email, u.Name
 }
 
-// planForSubscription maps a Stripe subscription to a Rift plan code, preferring
+// planForSubscription maps a Stripe subscription to a trqsh plan code, preferring
 // the configured price ID and falling back to the subscription metadata.
 func (s *Service) planForSubscription(sub stripe.SubscriptionObject) string {
 	if code, ok := PlanForPriceID(s.cfg.Prices, sub.PriceID()); ok {

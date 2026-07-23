@@ -1,5 +1,5 @@
-# Rift edge server (riftd). Build context = repo root:
-#   docker build -f deploy/docker/Dockerfile.edge -t rift/edge .
+# trqsh edge server (trqshd). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.edge -t trqsh/edge .
 #
 # Static, CGO-free (quic-go is pure Go), shipped on distroless/static:nonroot.
 # The edge terminates public HTTP/HTTPS (:80/:443) and accepts agent sessions
@@ -18,14 +18,14 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
-RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/riftd ./cmd/riftd
+RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/trqshd ./cmd/trqshd
 
 # --- runtime ---
 FROM gcr.io/distroless/static:nonroot
-COPY --from=build /out/riftd /usr/local/bin/riftd
+COPY --from=build /out/trqshd /usr/local/bin/trqshd
 
 # HTTP, HTTPS, QUIC/agent (udp+tcp), metrics+health.
 EXPOSE 80/tcp 443/tcp 4443/tcp 4443/udp 9090/tcp
 
 USER nonroot:nonroot
-ENTRYPOINT ["/usr/local/bin/riftd"]
+ENTRYPOINT ["/usr/local/bin/trqshd"]

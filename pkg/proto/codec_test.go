@@ -41,7 +41,7 @@ func TestStreamInitRoundTrip(t *testing.T) {
 		ClientTunnelId: "tnl_abc123",
 		RemoteAddr:     "203.0.113.5:44012",
 		Proto:          "https",
-		Meta:           map[string]string{"sni": "abc.rift.sh", "alpn": "h2"},
+		Meta:           map[string]string{"sni": "abc.trqsh.uz", "alpn": "h2"},
 	}
 	var buf bytes.Buffer
 	if err := WriteStreamInit(&buf, want); err != nil {

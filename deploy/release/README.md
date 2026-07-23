@@ -7,25 +7,25 @@ Artifacts and package-manager manifests produced by `.github/workflows/release.y
 release/
 ├── install.sh            curl | sh installer for the CLI (Linux/macOS)
 ├── gen-update-feed.sh    emits the GUI/CLI auto-update feed (latest.json)
-└── scoop/rift.json       Scoop (Windows) manifest template
+└── scoop/trqsh.json       Scoop (Windows) manifest template
 ```
 
 ## Channels
 
 | Target | Mechanism |
 |---|---|
-| CLI (Linux/macOS) | `curl -fsSL https://rift.dev/install.sh \| sh` → GitHub Releases |
-| CLI (macOS) | Homebrew tap `rift/tap` (goreleaser `brews:`) |
-| CLI (Windows) | Scoop (`scoop/rift.json`) + winget manifest PR |
+| CLI (Linux/macOS) | `curl -fsSL https://trqsh.uz/install.sh \| sh` → GitHub Releases |
+| CLI (macOS) | Homebrew tap `trqsh/tap` (goreleaser `brews:`) |
+| CLI (Windows) | Scoop (`scoop/trqsh.json`) + winget manifest PR |
 | CLI (Linux) | `.deb` / `.rpm` (goreleaser `nfpms:`) |
-| Edge (`riftd`) | container image `ghcr.io/rift/edge` + archives |
+| Edge (`trqshd`) | container image `ghcr.io/trqsh/edge` + archives |
 | Desktop GUI | signed bundles per OS (macOS notarized, Windows Authenticode) |
 
 ## Auto-update feed
 
 `gen-update-feed.sh <tag>` emits `latest.json` matching the shape the GUI polls
 (`gui/update.go` → `{version, notes, url}`), published to
-`https://downloads.rift.dev/desktop/latest.json` (the Spaces `releases` bucket).
+`https://downloads.trqsh.uz/desktop/latest.json` (the Spaces `releases` bucket).
 
 ```bash
 deploy/release/gen-update-feed.sh v0.1.0

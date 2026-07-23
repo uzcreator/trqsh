@@ -26,7 +26,7 @@
 deploy/
 ├── docker-compose.dev.yml + .env.example   full M1 stack; profiles: web, observability
 ├── docker/         Dockerfile.{edge,api,migrate,dashboard}  (multi-stage, distroless/static)
-├── helm/rift/      Chart + values{,.staging,.prod} + 16 templates
+├── helm/trqsh/      Chart + values{,.staging,.prod} + 16 templates
 ├── terraform/      DigitalOcean: DOKS, PG, Redis, edge droplets, DNS, Spaces (11 files)
 ├── observability/  Prometheus (scrape+alerts) + Grafana (datasource+dashboard) + OTel collector
 ├── release/        install.sh + gen-update-feed.sh + scoop manifest
@@ -38,7 +38,7 @@ deploy/
 
 - **T1 Containers.** Multi-stage, CGO-free builds → `gcr.io/distroless/static:nonroot` for the edge and
   API; a goose-based `migrate` image; a Node image for the dashboard. `docker-compose.dev.yml` brings the
-  **whole M1 stack** up with correct wiring (edge → `RIFT_ENTITLEMENTS=api` → API; API → Postgres/Redis;
+  **whole M1 stack** up with correct wiring (edge → `TRQSH_ENTITLEMENTS=api` → API; API → Postgres/Redis;
   `migrate` gates the API via `service_completed_successfully`). Dashboard and the monitoring stack are
   opt-in **profiles** so `make dev` stays fast.
 - **T2 Helm.** One chart. **Edge** is a host-networked **DaemonSet** (owns :80/:443 TCP+UDP + QUIC on every
@@ -49,7 +49,7 @@ deploy/
   restricts the control API (internal entitlements RPC) to edge + dashboard + ingress only.
 - **T3 Terraform.** DigitalOcean single-provider story: **DOKS** control cluster + managed **Postgres 16**
   + **Redis 7** (VPC + firewalls), **per-region edge droplets** (cloud-init runs the edge container on the
-  host network) each with a **reserved IP**, the apex domain + **wildcard `*.rift.sh`** round-robined
+  host network) each with a **reserved IP**, the apex domain + **wildcard `*.trqsh.uz`** round-robined
   across edge IPs, and **Spaces** buckets (CertMagic cert cache + release artifacts). Sensitive DB/Redis
   URLs surface as outputs wired into the k8s Secret.
 - **T4 CI/CD.** `ci.yml` (go build/**test -race**/vet/golangci-lint, both frontends, **helm lint+template**,
@@ -58,8 +58,8 @@ deploy/
   **Windows Authenticode**; **auto-update feed** matching `gui/update.go`). `deploy.yml` (helm → **staging**
   on main, **prod** on tag behind an environment approval).
 - **T5 Observability.** Prometheus scrapes the edge `/metrics` (already exposed by `internal/server`);
-  alerts + a Grafana dashboard are built on the **real** metric names (`rift_sessions_active`,
-  `rift_bytes_total{dir}`, `rift_agent_handshakes_total{kind}` for QUIC-vs-TCP, `rift_errors_total{kind}`,
+  alerts + a Grafana dashboard are built on the **real** metric names (`trqsh_sessions_active`,
+  `trqsh_bytes_total{dir}`, `trqsh_agent_handshakes_total{kind}` for QUIC-vs-TCP, `trqsh_errors_total{kind}`,
   …). OTel collector receives OTLP and re-exports to Prometheus.
 - **T6 Secrets.** SOPS (`.sops.yaml`, only `data`/`stringData` encrypted) as the git-secret workflow; the
   chart consumes a pre-created Secret in staging/prod (`secrets.create` is dev-only). Security posture doc
@@ -71,8 +71,8 @@ Every env var and port comes straight from the binaries' own config, verified ag
 
 | Component | Ports | Key env |
 |---|---|---|
-| edge `riftd` | 80, 443, 4443 (tcp+udp), 9090 | `RIFT_{HTTP,HTTPS,QUIC,TCP,METRICS}_ADDR`, `RIFT_ENTITLEMENTS=api`, `RIFT_API_URL`, `RIFT_INTERNAL_TOKEN`, `RIFT_REDIS_URL`, `RIFT_ACME_*`, `RIFT_PORT_MIN/MAX` |
-| API `riftapi` | 8080 (`/healthz`) | `RIFT_API_ADDR`, `RIFT_DATABASE_URL`, `RIFT_REDIS_URL`, `RIFT_JWT_SECRET`, `RIFT_INTERNAL_TOKEN`, `RIFT_STRIPE_*` |
+| edge `trqshd` | 80, 443, 4443 (tcp+udp), 9090 | `TRQSH_{HTTP,HTTPS,QUIC,TCP,METRICS}_ADDR`, `TRQSH_ENTITLEMENTS=api`, `TRQSH_API_URL`, `TRQSH_INTERNAL_TOKEN`, `TRQSH_REDIS_URL`, `TRQSH_ACME_*`, `TRQSH_PORT_MIN/MAX` |
+| API `trqshapi` | 8080 (`/healthz`) | `TRQSH_API_ADDR`, `TRQSH_DATABASE_URL`, `TRQSH_REDIS_URL`, `TRQSH_JWT_SECRET`, `TRQSH_INTERNAL_TOKEN`, `TRQSH_STRIPE_*` |
 | migrate | — | `GOOSE_DBSTRING` (goose over `internal/api/db/migrations`) |
 
 ## Verification

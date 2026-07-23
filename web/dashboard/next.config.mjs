@@ -5,7 +5,7 @@ const nextConfig = {
   // it directly — reads go through Server Components and writes through Server
   // Actions, so the JWT stays server-side.
   env: {
-    RIFT_API_URL: process.env.RIFT_API_URL || "http://localhost:8080",
+    TRQSH_API_URL: process.env.TRQSH_API_URL || "http://localhost:8080",
   },
 };
 

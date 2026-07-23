@@ -172,7 +172,7 @@ func isHopByHop(k string) bool {
 }
 
 const indexHTML = `<!doctype html>
-<html><head><meta charset="utf-8"><title>Rift Inspector</title>
+<html><head><meta charset="utf-8"><title>trqsh Inspector</title>
 <style>
 :root{color-scheme:dark}
 body{font-family:ui-sans-serif,system-ui,sans-serif;margin:0;background:#0b0d12;color:#e6e8ee;display:flex;height:100vh}
@@ -191,7 +191,7 @@ h2{margin:.2rem 0 .6rem;font-size:1rem}small{color:#9aa3b2}
 </style></head>
 <body>
 <div class="col" id="list">
-  <header>Rift Inspector <small id="cnt"></small></header>
+  <header>trqsh Inspector <small id="cnt"></small></header>
   <div id="rows"></div>
 </div>
 <div id="detail"><p><small>Select a request.</small></p></div>

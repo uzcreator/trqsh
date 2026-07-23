@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 // CheckQuota compares an org's current-period usage against its plan limits and

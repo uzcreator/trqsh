@@ -1,4 +1,4 @@
-// Package billing owns monetization for Rift: the canonical plan/quota catalog
+// Package billing owns monetization for trqsh: the canonical plan/quota catalog
 // (§11 of 00-ARCHITECTURE.md), Stripe Checkout/Portal, signature-verified
 // webhooks that flip an org's plan, metered-usage ingestion, and the quota
 // enforcement surfaced through Part 05's authz.Entitlements. It reuses Part 05's
@@ -8,7 +8,7 @@ package billing
 import (
 	"time"
 
-	"github.com/rift/rift/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
 )
 
 // Byte-size helpers.

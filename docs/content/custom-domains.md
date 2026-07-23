@@ -5,19 +5,19 @@ automatically issued TLS certificate.
 
 ## 1. Add the domain
 
-In the dashboard, open **Domains** and add your hostname. Rift returns two DNS
+In the dashboard, open **Domains** and add your hostname. trqsh returns two DNS
 records to create:
 
 - A **TXT** record proving you control the domain.
-- A **CNAME** record pointing the hostname at the Rift edge.
+- A **CNAME** record pointing the hostname at the trqsh edge.
 
 ## 2. Create the DNS records
 
 At your DNS provider, add exactly what the dashboard shows. For example:
 
 ```
-TXT    _rift-challenge.tunnel.yourcompany.com    rift-verify=abc123…
-CNAME  tunnel.yourcompany.com                    edge.rift.sh
+TXT    _trqsh-challenge.tunnel.yourcompany.com    trqsh-verify=abc123…
+CNAME  tunnel.yourcompany.com                    edge.trqsh.uz
 ```
 
 DNS can take a few minutes (occasionally longer) to propagate.
@@ -25,12 +25,12 @@ DNS can take a few minutes (occasionally longer) to propagate.
 ## 3. Verify
 
 Click **Verify** in the dashboard. Once the TXT record is visible, the domain is
-marked verified and Rift begins issuing a certificate for it.
+marked verified and trqsh begins issuing a certificate for it.
 
 ## 4. Use it
 
 ```sh
-rift http 3000 --domain tunnel.yourcompany.com
+trqsh http 3000 --domain tunnel.yourcompany.com
 ```
 
 Or in a config file:
@@ -55,5 +55,5 @@ without them you'll get [`ERR_PLAN_FORBIDS`](/docs/errors#err_plan_forbids).
 
 ## Certificates
 
-Rift provisions and renews certificates for verified domains automatically via
+trqsh provisions and renews certificates for verified domains automatically via
 Let's Encrypt. You don't manage keys or renewals.

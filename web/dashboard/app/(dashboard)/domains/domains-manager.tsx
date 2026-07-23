@@ -155,7 +155,7 @@ function DomainRow({ domain, baseDomain }: { domain: CustomDomain; baseDomain: s
       </div>
       {!verified && open && (
         <div className="mt-3 rounded-md border border-border bg-page p-4">
-          <DnsRow type="TXT" name={`_rift-challenge.${domain.domain}`} value={domain.verify_token} />
+          <DnsRow type="TXT" name={`_trqsh-challenge.${domain.domain}`} value={domain.verify_token} />
           <DnsRow type="CNAME" name={domain.domain} value={baseDomain} />
         </div>
       )}

@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 
-	"github.com/rift/rift/internal/api/auth"
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/pkg/authz"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/api/auth"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 // QuotaChecker consults billing (Part 07) for current-period metered quota. It

@@ -1,0 +1,20 @@
+{{- if and .Values.serviceMonitor.enabled .Values.edge.enabled }}
+# Prometheus Operator scrape config for the edge /metrics endpoint.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "trqsh.fullname" . }}-edge
+  labels:
+    {{- include "trqsh.labels" . | nindent 4 }}
+    app.kubernetes.io/component: edge
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "trqsh.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: edge
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

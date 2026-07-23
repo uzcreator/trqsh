@@ -11,11 +11,11 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// API key format: "rk_live_<16-hex-prefix>_<48-hex-secret>". The prefix segment
-// (including "rk_live_") is the lookup key stored in the clear; the argon2id
+// API key format: "tq_live_<16-hex-prefix>_<48-hex-secret>". The prefix segment
+// (including "tq_live_") is the lookup key stored in the clear; the argon2id
 // hash of the full key is stored for verification. The plaintext is shown once.
 const (
-	keyEnv    = "rk_live_"
+	keyEnv    = "tq_live_"
 	prefixLen = 8  // bytes -> 16 hex chars
 	secretLen = 24 // bytes -> 48 hex chars
 )
@@ -23,7 +23,7 @@ const (
 // GeneratedKey is a freshly minted API key.
 type GeneratedKey struct {
 	Full   string // shown once to the user
-	Prefix string // stored for lookup (e.g. "rk_live_ab12…")
+	Prefix string // stored for lookup (e.g. "tq_live_ab12…")
 	Hash   string // argon2id encoded hash, stored
 }
 

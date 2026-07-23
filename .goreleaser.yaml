@@ -1,4 +1,4 @@
-# GoReleaser — cross-compile + package the CLI (rift) and edge (riftd).
+# GoReleaser — cross-compile + package the CLI (trqsh) and edge (trqshd).
 # The desktop GUI is built + signed separately in release.yml (Wails needs CGO
 # and per-OS signing). Run locally: `goreleaser release --clean --snapshot`.
 version: 2
@@ -8,18 +8,18 @@ before:
     - go mod tidy
 
 builds:
-  - id: rift
-    main: ./cmd/rift
-    binary: rift
+  - id: trqsh
+    main: ./cmd/trqsh
+    binary: trqsh
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
     ldflags: ["-s -w -X main.version={{.Version}}"]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
 
-  - id: riftd
-    main: ./cmd/riftd
-    binary: riftd
+  - id: trqshd
+    main: ./cmd/trqshd
+    binary: trqshd
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
     ldflags: ["-s -w -X main.version={{.Version}}"]
@@ -28,7 +28,7 @@ builds:
 
 archives:
   - id: default
-    builds: [rift, riftd]
+    builds: [trqsh, trqshd]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
@@ -45,34 +45,34 @@ changelog:
   filters:
     exclude: ["^docs:", "^test:", "^chore:"]
 
-# Homebrew tap for the CLI (github.com/rift/homebrew-tap).
+# Homebrew tap for the CLI (github.com/trqsh-uz/homebrew-tap).
 brews:
-  - name: rift
+  - name: trqsh
     ids: [default]
     repository:
-      owner: rift
+      owner: trqsh-uz
       name: homebrew-tap
-    homepage: "https://rift.dev"
+    homepage: "https://trqsh.uz"
     description: "Expose localhost to the internet — fast."
     license: "Apache-2.0"
     install: |
-      bin.install "rift"
+      bin.install "trqsh"
 
 # Linux packages for the CLI + edge.
 nfpms:
   - id: packages
-    package_name: rift
-    builds: [rift, riftd]
-    homepage: "https://rift.dev"
-    description: "Rift tunneling client (rift) and edge server (riftd)."
-    maintainer: "Rift <ops@rift.dev>"
+    package_name: trqsh
+    builds: [trqsh, trqshd]
+    homepage: "https://trqsh.uz"
+    description: "trqsh tunneling client (trqsh) and edge server (trqshd)."
+    maintainer: "trqsh <ops@trqsh.uz>"
     license: "Apache-2.0"
     formats: [deb, rpm]
     bindir: /usr/bin
 
 release:
   github:
-    owner: rift
-    name: rift
+    owner: trqsh-uz
+    name: trqsh
   draft: false
   prerelease: auto

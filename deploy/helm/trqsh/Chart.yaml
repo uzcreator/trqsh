@@ -1,0 +1,14 @@
+apiVersion: v2
+name: trqsh
+description: trqsh — developer tunneling platform (edge, control API, dashboard).
+type: application
+# Chart version; bump on template changes.
+version: 0.1.0
+# Default image tag when image.tag is unset.
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+maintainers:
+  - name: trqsh
+home: https://trqsh.uz
+sources:
+  - https://github.com/trqsh-uz/trqsh

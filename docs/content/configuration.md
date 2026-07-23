@@ -1,14 +1,14 @@
 # Configuration
 
-Rift reads a YAML config from `~/.rift/rift.yml`. Define your tunnels once, then
-start them all with `rift start`.
+trqsh reads a YAML config from `~/.trqsh-uz/trqsh.yml`. Define your tunnels once, then
+start them all with `trqsh start`.
 
 ## Full schema
 
 ```yaml
 version: 1
-api_key: "rk_live_xxx"          # or env RIFT_API_KEY, or `rift login`
-server: "edge.rift.dev:443"     # default endpoint (nearest region is resolved)
+api_key: "tq_live_xxx"          # or env TRQSH_API_KEY, or `trqsh login`
+server: "edge.trqsh.uz:443"     # default endpoint (nearest region is resolved)
 region: "auto"                  # auto | us | eu | ap ...
 transport: "auto"               # auto | quic | tcp
 tunnels:
@@ -30,20 +30,20 @@ log_level: "info"               # debug | info | warn | error
 ## Start everything
 
 ```sh
-rift start
+trqsh start
 ```
 
 This brings up every tunnel defined under `tunnels:`. To run a single one ad hoc,
-use the direct commands like `rift http 3000` instead.
+use the direct commands like `trqsh http 3000` instead.
 
 ## Precedence
 
-When the same setting is specified in more than one place, Rift uses this order
+When the same setting is specified in more than one place, trqsh uses this order
 (highest wins):
 
 1. **CLI flags** — e.g. `--subdomain`, `--region`
-2. **Environment variables** — `RIFT_API_KEY`, `RIFT_*`
-3. **Config file** — `~/.rift/rift.yml`
+2. **Environment variables** — `TRQSH_API_KEY`, `TRQSH_*`
+3. **Config file** — `~/.trqsh-uz/trqsh.yml`
 4. **Defaults**
 
 ## Transport
@@ -55,7 +55,7 @@ behavior on a locked-down network.
 ## Editing
 
 ```sh
-rift config
+trqsh config
 ```
 
 opens the config for editing and validates it. A malformed file is reported with

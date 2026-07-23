@@ -5,26 +5,60 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
-	"github.com/rift/rift/internal/agent/inspect"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
-// openBrowser opens url in the user's default browser. Using the OS launcher
-// keeps this independent of any specific Wails runtime API.
-func openBrowser(url string) error {
+// safeExternalURL validates a link before it is handed to the OS launcher.
+// The GUI only ever opens web links (tunnel URLs, dashboard/docs deep links),
+// so we hard-restrict the scheme to http/https. This closes the injection
+// surface where a crafted string (e.g. "file://…", "javascript:…", or a value
+// beginning with "-") could make the platform launcher run an unintended
+// handler or be parsed as a flag.
+func safeExternalURL(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.HasPrefix(raw, "-") {
+		return "", fmt.Errorf("%s: refusing to open %q", proto.CodeInternal, raw)
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("%s: parse url: %w", proto.CodeInternal, err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https":
+		if u.Host == "" {
+			return "", fmt.Errorf("%s: url has no host: %q", proto.CodeInternal, raw)
+		}
+		return u.String(), nil
+	default:
+		return "", fmt.Errorf("%s: unsupported url scheme %q", proto.CodeInternal, u.Scheme)
+	}
+}
+
+// openBrowser opens a validated http/https url in the user's default browser.
+// Using the OS launcher keeps this independent of any specific Wails runtime API.
+func openBrowser(raw string) error {
+	safe, err := safeExternalURL(raw)
+	if err != nil {
+		return err
+	}
 	var name string
 	var args []string
 	switch runtime.GOOS {
 	case "windows":
-		name, args = "rundll32", []string{"url.dll,FileProtocolHandler", url}
+		// "--" stops rundll from treating a "-"-leading value as an option;
+		// safeExternalURL already rejects those, this is defense in depth.
+		name, args = "rundll32", []string{"url.dll,FileProtocolHandler", safe}
 	case "darwin":
-		name, args = "open", []string{url}
+		name, args = "open", []string{safe}
 	default:
-		name, args = "xdg-open", []string{url}
+		name, args = "xdg-open", []string{safe}
 	}
 	return exec.Command(name, args...).Start()
 }

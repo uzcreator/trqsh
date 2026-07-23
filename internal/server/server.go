@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rift/rift/internal/entitlerpc"
-	"github.com/rift/rift/pkg/authz"
-	"github.com/rift/rift/pkg/proto"
-	"github.com/rift/rift/pkg/tunnel"
+	"github.com/trqsh-uz/trqsh/internal/entitlerpc"
+	"github.com/trqsh-uz/trqsh/pkg/authz"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
+	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
-// Server is the Rift edge (`riftd`): it accepts agent sessions, tracks tunnels,
+// Server is the trqsh edge (`trqshd`): it accepts agent sessions, tracks tunnels,
 // and welds public traffic to the owning agent.
 type Server struct {
 	cfg     Config
@@ -91,7 +91,7 @@ func buildEntitlements(cfg Config) (authz.Entitlements, error) {
 		// with a short-TTL auth cache). See internal/entitlerpc.
 		return entitlerpc.NewClient(cfg.APIURL, cfg.InternalToken), nil
 	default:
-		return nil, fmt.Errorf("server: unknown RIFT_ENTITLEMENTS=%q", cfg.EntitlementsMode)
+		return nil, fmt.Errorf("server: unknown TRQSH_ENTITLEMENTS=%q", cfg.EntitlementsMode)
 	}
 }
 
@@ -133,7 +133,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() { defer s.wg.Done(); s.acceptAgents(ctx) }()
 
 	close(s.ready)
-	s.log.Info("riftd ready", "base_domain", s.cfg.BaseDomain, "region", s.cfg.Region, "edge", s.cfg.EdgeID)
+	s.log.Info("trqshd ready", "base_domain", s.cfg.BaseDomain, "region", s.cfg.Region, "edge", s.cfg.EdgeID)
 
 	<-ctx.Done()
 	return s.drain()
@@ -159,7 +159,7 @@ func (s *Server) HTTPAddr() net.Addr {
 }
 
 func (s *Server) agentTLSConfig() (*tls.Config, error) {
-	// Agents connect with the rift ALPN; reuse the dev self-signed cert.
+	// Agents connect with the trqsh ALPN; reuse the dev self-signed cert.
 	cert, err := s.certs.GetCertificate(&tls.ClientHelloInfo{ServerName: s.cfg.EdgeID})
 	if err != nil {
 		return nil, err

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Error reference",
   description:
-    "Every Rift error code, what it means, and how to fix it. The CLI, desktop app, and dashboard deep-link here.",
+    "Every trqsh error code, what it means, and how to fix it. The CLI, desktop app, and dashboard deep-link here.",
 };
 
 export default function ErrorsPage() {
@@ -18,7 +18,7 @@ export default function ErrorsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Error reference</h1>
         <p className="mt-3 max-w-2xl text-secondary">
-          When Rift declines a request, it returns one of these stable codes. The CLI, desktop app,
+          When trqsh declines a request, it returns one of these stable codes. The CLI, desktop app,
           and dashboard link straight to the matching entry below — so you always know what happened
           and what to do next.
         </p>

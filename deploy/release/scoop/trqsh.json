@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0",
+  "description": "Expose localhost to the internet — fast.",
+  "homepage": "https://trqsh.uz",
+  "license": "Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/trqsh-uz/trqsh/releases/download/v0.1.0/trqsh_0.1.0_windows_amd64.zip",
+      "hash": "REPLACED_BY_RELEASE_WORKFLOW",
+      "bin": "trqsh.exe"
+    },
+    "arm64": {
+      "url": "https://github.com/trqsh-uz/trqsh/releases/download/v0.1.0/trqsh_0.1.0_windows_arm64.zip",
+      "hash": "REPLACED_BY_RELEASE_WORKFLOW",
+      "bin": "trqsh.exe"
+    }
+  },
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/trqsh-uz/trqsh/releases/download/v$version/trqsh_$version_windows_amd64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/trqsh-uz/trqsh/releases/download/v$version/trqsh_$version_windows_arm64.zip"
+      }
+    }
+  }
+}

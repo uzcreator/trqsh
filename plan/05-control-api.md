@@ -10,7 +10,7 @@ upgrades Parts 02/03 from the stub to real auth.
 
 ## Goal
 
-1. A REST API (`https://api.rift.dev/v1`) for accounts, API keys, tunnels view, subdomains, custom
+1. A REST API (`https://api.trqsh.uz/v1`) for accounts, API keys, tunnels view, subdomains, custom
    domains, usage, teams — documented with **OpenAPI**.
 2. Auth: OAuth (GitHub/Google) + email, **JWT** sessions for the dashboard, **API keys** for agents.
 3. The real **`authz.Entitlements`** implementation (backed by Postgres + Part 07 quotas), exposed
@@ -36,7 +36,7 @@ upgrades Parts 02/03 from the stub to real auth.
 ### T1 — Auth (`internal/api/auth/`)
 - OAuth GitHub + Google (authorization-code + a **device flow** for the CLI/GUI), email magic-link
   optional. Issue short-lived **JWT** access + refresh; `/auth/session` for the dashboard.
-- **API keys**: `POST /api-keys` returns the key **once** (`rk_live_<random>`), store argon2id hash +
+- **API keys**: `POST /api-keys` returns the key **once** (`tq_live_<random>`), store argon2id hash +
   a display prefix; `GET`/`DELETE` (revoke). Middleware authenticates either JWT (browser) or API key.
 
 ### T2 — Core resources (`internal/api/handlers/`)
@@ -68,7 +68,7 @@ upgrades Parts 02/03 from the stub to real auth.
 
 ## Interfaces honored / provided
 - Implements `authz.Entitlements` (§9) — **the contract Part 02 depends on**.
-- Publishes the REST/OpenAPI surface (§12) consumed by 03 (`rift login` device flow), 06, 07, 09.
+- Publishes the REST/OpenAPI surface (§12) consumed by 03 (`trqsh login` device flow), 06, 07, 09.
 
 ## Done criteria
 - `goose up` builds the schema; `go test ./internal/api/...` passes (handlers + entitlements logic).
@@ -81,8 +81,8 @@ upgrades Parts 02/03 from the stub to real auth.
 ```bash
 docker compose -f deploy/docker-compose.dev.yml up -d postgres redis
 goose -dir internal/api/db/migrations up
-go run ./cmd/riftapi          # or the api entrypoint defined here
+go run ./cmd/trqshapi          # or the api entrypoint defined here
 # exercise:
-curl -X POST localhost:8080/v1/api-keys -H "authorization: Bearer <jwt>"   # returns rk_live_...
-# then run edge with RIFT_ENTITLEMENTS=api RIFT_API_URL=... and bind with that key via the agent
+curl -X POST localhost:8080/v1/api-keys -H "authorization: Bearer <jwt>"   # returns tq_live_...
+# then run edge with TRQSH_ENTITLEMENTS=api TRQSH_API_URL=... and bind with that key via the agent
 ```

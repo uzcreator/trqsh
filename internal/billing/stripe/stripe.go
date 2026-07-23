@@ -1,5 +1,5 @@
 // Package stripe is a small, dependency-free Stripe client covering exactly the
-// surface Rift needs: create customers, Checkout and Customer-Portal sessions,
+// surface trqsh needs: create customers, Checkout and Customer-Portal sessions,
 // push metered usage via the Billing Meters API, and verify webhook signatures.
 //
 // We deliberately avoid the full github.com/stripe/stripe-go SDK: the pieces
@@ -69,7 +69,7 @@ type Session struct {
 // MeterEventParams reports one usage value for a metered price via the Billing
 // Meters API (keyed by customer, so no subscription-item bookkeeping is needed).
 type MeterEventParams struct {
-	EventName  string // configured meter event_name, e.g. "rift_bandwidth"
+	EventName  string // configured meter event_name, e.g. "trqsh_bandwidth"
 	CustomerID string
 	Value      int64
 	Identifier string // idempotency: unique per usage window

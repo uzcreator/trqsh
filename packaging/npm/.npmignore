@@ -1,0 +1,4 @@
+# The binary is downloaded at install time, never published.
+vendor/
+*.tar.gz
+*.zip

@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"sort"
 
-	"github.com/rift/rift/internal/billing"
+	"github.com/trqsh-uz/trqsh/internal/billing"
 )
 
 // outPlan mirrors the dashboard's TS `Plan` shape (web/dashboard/lib/api.ts) and

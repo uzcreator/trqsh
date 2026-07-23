@@ -1,13 +1,13 @@
 # Security Policy
 
-Security is a first-class concern for Rift: we route other people's traffic and hold their
+Security is a first-class concern for trqsh: we route other people's traffic and hold their
 credentials. This document describes how to report issues and the controls already in place.
 
 ## Reporting a vulnerability
 
 **Please do not open a public issue for security problems.**
 
-Email **security@rift.dev** with:
+Email **security@trqsh.uz** with:
 
 - a description of the issue and its impact,
 - steps to reproduce (a proof-of-concept if possible),
@@ -17,7 +17,7 @@ We aim to acknowledge within **48 hours**, provide an initial assessment within 
 days**, and coordinate a fix and disclosure timeline with you. We do not pursue legal action
 against good-faith research that respects user privacy and data and does not degrade the service.
 
-For abuse (phishing/malware hosted on a tunnel), email **abuse@rift.dev** with the hostname.
+For abuse (phishing/malware hosted on a tunnel), email **abuse@trqsh.uz** with the hostname.
 
 ## Supported versions
 
@@ -40,7 +40,7 @@ The controls below are implemented in this repository.
 - Dashboard sessions are HMAC (HS256) JWTs with the signing method **pinned** on parse (no
   `alg=none` / algorithm-confusion), short access TTL + refresh rotation.
 - The edge↔API internal RPC token and Stripe webhook signatures are compared in **constant time**.
-- **Fail-closed production config:** with `RIFT_ENV=production`, the API and edge refuse to start
+- **Fail-closed production config:** with `TRQSH_ENV=production`, the API and edge refuse to start
   on any dev-default or weak secret — see the operator checklist below.
 - Secrets come from the environment / a secret manager (SOPS in `deploy/secrets`), never committed.
   Webhook signatures are always verified before a payload is trusted.
@@ -50,7 +50,7 @@ The controls below are implemented in this repository.
   mitigating Slowloris-style attacks.
 - Per-IP **rate limiting**: a strict limit on auth endpoints (brute-force / account spam) and a
   broad flood limit on the rest of the public API. Client IP is only taken from
-  `X-Forwarded-For` when `RIFT_TRUST_PROXY` is set (no spoofing otherwise).
+  `X-Forwarded-For` when `TRQSH_TRUST_PROXY` is set (no spoofing otherwise).
 - Request bodies are size-limited (`http.MaxBytesReader`); outbound reads use `io.LimitReader`.
 - Per-account quotas + protocol entitlements are enforced **at the edge on every bind**, not just
   in the UI, so limits cannot be bypassed by scripting the agent.
@@ -65,18 +65,18 @@ The controls below are implemented in this repository.
 
 ## Operator hardening checklist (production)
 
-Set `RIFT_ENV=production` — start-up then **fails closed** unless all of these hold:
+Set `TRQSH_ENV=production` — start-up then **fails closed** unless all of these hold:
 
 | Variable | Requirement |
 |---|---|
-| `RIFT_JWT_SECRET` | strong random, ≥ 32 chars, not the dev default |
-| `RIFT_INTERNAL_TOKEN` | strong random, shared by edge + API, not the dev default |
-| `RIFT_DEV_AUTH` | disabled (password-less auth off; use OAuth) |
-| `RIFT_DATABASE_URL` | set (the in-memory store is dev-only) |
-| `RIFT_API_PUBLIC_URL` | `https://…` |
-| `RIFT_ENTITLEMENTS` (edge) | `api` (never `stub`, which allows all binds) |
-| `RIFT_ACME_EMAIL` (edge) | set for automatic TLS |
-| `RIFT_TRUST_PROXY` | only if behind a trusted proxy/LB |
+| `TRQSH_JWT_SECRET` | strong random, ≥ 32 chars, not the dev default |
+| `TRQSH_INTERNAL_TOKEN` | strong random, shared by edge + API, not the dev default |
+| `TRQSH_DEV_AUTH` | disabled (password-less auth off; use OAuth) |
+| `TRQSH_DATABASE_URL` | set (the in-memory store is dev-only) |
+| `TRQSH_API_PUBLIC_URL` | `https://…` |
+| `TRQSH_ENTITLEMENTS` (edge) | `api` (never `stub`, which allows all binds) |
+| `TRQSH_ACME_EMAIL` (edge) | set for automatic TLS |
+| `TRQSH_TRUST_PROXY` | only if behind a trusted proxy/LB |
 
 ## Automated scanning
 

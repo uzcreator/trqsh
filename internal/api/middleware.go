@@ -101,7 +101,7 @@ func (rl *rateLimiter) middleware(next http.Handler) http.Handler {
 }
 
 // clientIP returns the source IP. X-Forwarded-For / X-Real-IP are honored ONLY
-// when trustXFF is set (RIFT_TRUST_PROXY), since otherwise a client can spoof
+// when trustXFF is set (TRQSH_TRUST_PROXY), since otherwise a client can spoof
 // them to evade per-IP limits.
 func clientIP(r *http.Request, trustXFF bool) string {
 	if trustXFF {

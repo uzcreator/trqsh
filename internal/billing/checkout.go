@@ -3,7 +3,7 @@ package billing
 import (
 	"net/http"
 
-	"github.com/rift/rift/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
 
 // HandleCheckout creates a Stripe Checkout Session for the caller's org to

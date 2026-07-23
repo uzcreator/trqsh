@@ -18,7 +18,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestLoadFileOverridesDefaults(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "rift.yml")
+	path := filepath.Join(dir, "trqsh.yml")
 	yaml := "version: 1\nserver: edge.example:4443\nregion: eu\ntransport: tcp\n" +
 		"tunnels:\n  web:\n    proto: http\n    addr: localhost:3000\n    subdomain: myapp\n"
 	if err := writeFile(t, path, yaml); err != nil {
@@ -38,12 +38,12 @@ func TestLoadFileOverridesDefaults(t *testing.T) {
 
 func TestEnvOverridesFile(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "rift.yml")
+	path := filepath.Join(dir, "trqsh.yml")
 	if err := writeFile(t, path, "version: 1\nserver: file.example:4443\n"); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("RIFT_SERVER", "env.example:4443")
-	t.Setenv("RIFT_API_KEY", "rk_from_env")
+	t.Setenv("TRQSH_SERVER", "env.example:4443")
+	t.Setenv("TRQSH_API_KEY", "tq_from_env")
 	c, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -51,16 +51,16 @@ func TestEnvOverridesFile(t *testing.T) {
 	if c.Server != "env.example:4443" {
 		t.Errorf("env should override file: got %q", c.Server)
 	}
-	if c.APIKey != "rk_from_env" {
+	if c.APIKey != "tq_from_env" {
 		t.Errorf("api key from env not applied: %q", c.APIKey)
 	}
 }
 
 func TestSaveRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "sub", "rift.yml")
+	path := filepath.Join(dir, "sub", "trqsh.yml")
 	c := DefaultConfig()
-	c.APIKey = "rk_saved"
+	c.APIKey = "tq_saved"
 	c.Server = "roundtrip:4443"
 	if err := c.Save(path); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -69,7 +69,7 @@ func TestSaveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if got.APIKey != "rk_saved" || got.Server != "roundtrip:4443" {
+	if got.APIKey != "tq_saved" || got.Server != "roundtrip:4443" {
 		t.Fatalf("round-trip mismatch: %+v", got)
 	}
 }

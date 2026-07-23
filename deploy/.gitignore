@@ -12,5 +12,5 @@ terraform/kubeconfig.yaml
 
 # Decrypted secrets must never be written to disk here.
 secrets/*.dec.yaml
-secrets/rift-secrets.yaml
+secrets/trqsh-secrets.yaml
 kubeconfig*.yaml

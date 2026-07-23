@@ -23,8 +23,8 @@ export function KeysManager({ keys }: { keys: ApiKey[] }) {
         <CardHeader>
           <CardTitle>Create an API key</CardTitle>
           <CardDescription>
-            Use it with <code className="font-mono text-xs">rift login --key</code> or the{" "}
-            <code className="font-mono text-xs">RIFT_API_KEY</code> env var.
+            Use it with <code className="font-mono text-xs">trqsh login --key</code> or the{" "}
+            <code className="font-mono text-xs">TRQSH_API_KEY</code> env var.
           </CardDescription>
         </CardHeader>
         <CardContent>

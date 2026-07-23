@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rift/rift/internal/api/store"
-	"github.com/rift/rift/internal/billing/stripe"
-	"github.com/rift/rift/pkg/proto"
+	"github.com/trqsh-uz/trqsh/internal/api/store"
+	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
 
 // --- fakes / helpers ---
@@ -51,8 +51,8 @@ func testService(t *testing.T) (*Service, store.Store, *fakeStripe) {
 		PlanTeam: {Monthly: "price_team_m"},
 		PlanPAYG: {Metered: "price_payg"},
 	}
-	cfg.MeterBandwidth = "rift_bandwidth"
-	cfg.MeterRequests = "rift_requests"
+	cfg.MeterBandwidth = "trqsh_bandwidth"
+	cfg.MeterRequests = "trqsh_requests"
 	return New(st, fs, cfg, slog.New(slog.NewTextHandler(io.Discard, nil))), st, fs
 }
 

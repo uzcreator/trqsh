@@ -1,23 +1,23 @@
-# Step 3 — Part 02: Edge Server (`riftd`)
+# Step 3 — Part 02: Edge Server (`trqshd`)
 
 - **Date:** 2026-07-17
 - **Step:** 3 of 11 (see [`../../plan/EXECUTION-ORDER.md`](../../plan/EXECUTION-ORDER.md))
 - **Spec:** [`../../plan/02-edge-server.md`](../../plan/02-edge-server.md)
 - **Milestone:** M1 — MVP (edge half)
-- **Status:** ✅ Complete — `go build ./cmd/riftd`, `go vet`, `go test ./internal/server/...` green; `riftd` boots and serves.
+- **Status:** ✅ Complete — `go build ./cmd/trqshd`, `go vet`, `go test ./internal/server/...` green; `trqshd` boots and serves.
 
-> **TL;DR (Uz):** Edge server `riftd` yozildi — agent sessiyalarini qabul qiladi (Part 01 transport),
+> **TL;DR (Uz):** Edge server `trqshd` yozildi — agent sessiyalarini qabul qiladi (Part 01 transport),
 > tunnellarni registrga yozadi, va **public traffic'ni** (HTTP/HTTPS/TCP/UDP) agentga **weld** qiladi.
 > Entitlements `StubEntitlements` orqali (Part 05 gacha). Integration test: **soxta agent → edge →
-> public HTTP so'rov** to'liq ishlaydi; TCP echo ham. `riftd` ishga tushadi: `/healthz`, `/readyz`,
+> public HTTP so'rov** to'liq ishlaydi; TCP echo ham. `trqshd` ishga tushadi: `/healthz`, `/readyz`,
 > `/metrics`, va noma'lum host uchun brendlangan 404. Keyingi qadam: **Part 03 — Agent + CLI** (haqiqiy agent).
 
 ## What was built
 
-`riftd` — the public edge/data plane. All code in `internal/server` + `cmd/riftd`.
+`trqshd` — the public edge/data plane. All code in `internal/server` + `cmd/trqshd`.
 
 ```
-cmd/riftd/main.go            flags/env → Config → Server.Run with signal drain
+cmd/trqshd/main.go            flags/env → Config → Server.Run with signal drain
 internal/server/config.go    Config + LoadConfig (env, §T1)
 internal/server/server.go    Server lifecycle, bind authorization, /healthz /readyz /metrics, drain
 internal/server/session.go   agent handshake (Hello→Auth→AuthResp) + control loop + heartbeat
@@ -53,17 +53,17 @@ internal/server/*_test.go    registry unit tests + full weld integration tests (
 ## Key decisions
 
 - **Entitlements is injected** (`authz.Entitlements`); default `StubEntitlements` (allow-all).
-  `RIFT_ENTITLEMENTS=api` currently also falls back to the stub with a `TODO(part-05)` seam — the real
+  `TRQSH_ENTITLEMENTS=api` currently also falls back to the stub with a `TODO(part-05)` seam — the real
   edge-side client (internal RPC + short-TTL cache) lands when Part 05 exists. Frozen §9 unchanged.
-- **Registry is pluggable**: `InMemoryRegistry` when `RIFT_REDIS_URL` is empty (single edge, tests);
+- **Registry is pluggable**: `InMemoryRegistry` when `TRQSH_REDIS_URL` is empty (single edge, tests);
   `RedisRegistry` (go-redis) otherwise, with TTL refresh + a bind/unbind pub/sub channel for peers.
   The in-process **Hub** is the fast path; the Registry is the shared/cross-edge view.
 - **TLS = dev self-signed** (`devCertManager`, cached per SNI) so `curl -k` works locally. A clear
   `TODO(prod)` documents the CertMagic DNS-01 wildcard + on-demand custom-domain path. CertMagic was
   intentionally **not** pulled in yet (heavy deps + needs real DNS creds that can't be exercised here).
 - **Agent port vs public port:** `pkg/tunnel.Listen` owns its own socket and the frozen §7 API has no
-  "wrap an accepted conn" helper, so agent sessions listen on a **dedicated port** (`RIFT_QUIC_ADDR`/
-  `RIFT_TCP_ADDR`, default `:4443`) distinct from public `:80`/`:443`. Sharing `:443` via ALPN demux is
+  "wrap an accepted conn" helper, so agent sessions listen on a **dedicated port** (`TRQSH_QUIC_ADDR`/
+  `TRQSH_TCP_ADDR`, default `:4443`) distinct from public `:80`/`:443`. Sharing `:443` via ALPN demux is
   a documented follow-up (would require an additive Part 01 contract change, announced via 00-ARCH).
   → **Part 03 note:** the agent's default `--server` must target `:4443` (not `:443`); the EXECUTION-ORDER
   MVP snippet will be reconciled when Part 03 lands.
@@ -79,8 +79,8 @@ internal/server/*_test.go    registry unit tests + full weld integration tests (
 | `go build ./...` / `go vet ./...` | ✅ |
 | `go test ./internal/server/...` | ✅ ok (6 tests) |
 | Stress `-count=6 -run Edge` | ✅ stable |
-| `riftd` boots, `/healthz` + `/readyz` | ✅ HTTP 200 (`ok` / `ready`) |
-| `/metrics` exposes collectors | ✅ `rift_sessions_active`, `rift_tunnels_active`, … |
+| `trqshd` boots, `/healthz` + `/readyz` | ✅ HTTP 200 (`ok` / `ready`) |
+| `/metrics` exposes collectors | ✅ `trqsh_sessions_active`, `trqsh_tunnels_active`, … |
 | Unknown host | ✅ branded **404** |
 
 Integration tests prove the edge half of the MVP against a **fake agent** built on the Part 01 transport:
@@ -95,11 +95,11 @@ Integration tests prove the edge half of the MVP against a **fake agent** built 
 ### Run locally
 ```powershell
 # minimal: no Redis needed (in-memory registry), high ports avoid admin
-$env:RIFT_ENTITLEMENTS="stub"; $env:RIFT_BASE_DOMAIN="lvh.me"
-$env:RIFT_HTTP_ADDR="127.0.0.1:8080"; $env:RIFT_HTTPS_ADDR="127.0.0.1:8443"
-$env:RIFT_QUIC_ADDR="127.0.0.1:4443"; $env:RIFT_TCP_ADDR="127.0.0.1:4443"
-$env:RIFT_METRICS_ADDR="127.0.0.1:9099"
-go run ./cmd/riftd
+$env:TRQSH_ENTITLEMENTS="stub"; $env:TRQSH_BASE_DOMAIN="lvh.me"
+$env:TRQSH_HTTP_ADDR="127.0.0.1:8080"; $env:TRQSH_HTTPS_ADDR="127.0.0.1:8443"
+$env:TRQSH_QUIC_ADDR="127.0.0.1:4443"; $env:TRQSH_TCP_ADDR="127.0.0.1:4443"
+$env:TRQSH_METRICS_ADDR="127.0.0.1:9099"
+go run ./cmd/trqshd
 # elsewhere: curl http://127.0.0.1:9099/healthz  → ok
 ```
 
@@ -115,7 +115,7 @@ go run ./cmd/riftd
 
 ## What's next
 
-**Part 03 — Agent + CLI (`rift`)** (`plan/03-agent-cli.md`). It dials this edge over `pkg/tunnel`,
+**Part 03 — Agent + CLI (`trqsh`)** (`plan/03-agent-cli.md`). It dials this edge over `pkg/tunnel`,
 opens the control stream, sends `Hello`/`BindTunnel`, accepts data streams, and forwards to the local
-service — completing the **M1 MVP** (`rift http 3000` → live public URL). Mirror the UDP framing and
+service — completing the **M1 MVP** (`trqsh http 3000` → live public URL). Mirror the UDP framing and
 target `:4443` for the default server address.
