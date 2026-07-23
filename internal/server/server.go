@@ -61,10 +61,6 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	certs, err := NewDevCertManager(cfg.BaseDomain)
-	if err != nil {
-		return nil, err
-	}
 	m := NewMetrics()
 	s := &Server{
 		cfg:     cfg,
@@ -72,14 +68,56 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 		ent:     ent,
 		hub:     NewHub(),
 		reg:     reg,
-		certs:   certs,
 		metrics: m,
 		usage:   newUsageAgg(ent, 30*time.Second),
 		fwd:     NewForwarder(),
 		ports:   newPortManager(cfg.PortMin, cfg.PortMax),
 		ready:   make(chan struct{}),
 	}
+	// Cert manager depends on the server (its on-demand decision consults the hub
+	// + registry), so build it after s exists.
+	certs, err := buildCertManager(cfg, s.tlsDecision)
+	if err != nil {
+		return nil, err
+	}
+	s.certs = certs
 	return s, nil
+}
+
+// buildCertManager chooses TLS: real ACME (Let's Encrypt) when an ACME email is
+// configured, otherwise a dev self-signed manager for local `curl -k` testing.
+func buildCertManager(cfg Config, decide func(ctx context.Context, name string) error) (CertManager, error) {
+	if cfg.ACMEEmail == "" {
+		return NewDevCertManager(cfg.BaseDomain)
+	}
+	return newACMECertManager(cfg, decide)
+}
+
+// tlsDecision gates on-demand certificate issuance (the CertMagic DecisionFunc):
+// the edge only asks Let's Encrypt for our own zone or for a custom domain an
+// agent has actually bound — never for arbitrary hostnames.
+func (s *Server) tlsDecision(ctx context.Context, name string) error {
+	if s.allowTLSName(ctx, name) {
+		return nil
+	}
+	return fmt.Errorf("server: TLS issuance not allowed for %q", name)
+}
+
+func (s *Server) allowTLSName(ctx context.Context, name string) bool {
+	name = strings.ToLower(strings.TrimSuffix(name, "."))
+	base := strings.ToLower(s.cfg.BaseDomain)
+	if name == base || strings.HasSuffix(name, "."+base) {
+		return true // our own zone (also covered by the wildcard)
+	}
+	// Custom domain: allow only if bound on this edge or present in the shared
+	// registry — i.e. an agent proved control and the control plane verified it.
+	if s.hub.LookupHost(name) != nil {
+		return true
+	}
+	if _, ok, err := s.reg.Lookup(ctx, Route{Host: name}); err == nil && ok {
+		return true
+	}
+	return false
 }
 
 func buildEntitlements(cfg Config) (authz.Entitlements, error) {
@@ -126,6 +164,13 @@ func (s *Server) Run(ctx context.Context) error {
 	if err := s.startHTTPS(ctx); err != nil {
 		return err
 	}
+	// Pre-provision the wildcard cert (ACME/DNS-01) when a DNS token is set;
+	// on-demand issuance covers everything else, so this is best-effort.
+	if w, ok := s.certs.(certWarmer); ok {
+		if err := w.Warm(ctx); err != nil {
+			s.log.Warn("tls: wildcard warm failed; using on-demand issuance", "err", err)
+		}
+	}
 	s.startOps(ctx)
 	s.usage.run()
 
@@ -159,15 +204,13 @@ func (s *Server) HTTPAddr() net.Addr {
 }
 
 func (s *Server) agentTLSConfig() (*tls.Config, error) {
-	// Agents connect with the trqsh ALPN; reuse the dev self-signed cert.
-	cert, err := s.certs.GetCertificate(&tls.ClientHelloInfo{ServerName: s.cfg.EdgeID})
-	if err != nil {
-		return nil, err
-	}
+	// Agents connect with the trqsh ALPN; the certificate is served per-SNI by
+	// the cert manager — self-signed in dev, managed ACME (the wildcard covers
+	// the agent-facing hostname) in production.
 	return &tls.Config{
-		Certificates: []tls.Certificate{*cert},
-		NextProtos:   []string{tunnel.ALPNProto},
-		MinVersion:   tls.VersionTLS12,
+		GetCertificate: s.certs.GetCertificate,
+		NextProtos:     []string{tunnel.ALPNProto},
+		MinVersion:     tls.VersionTLS12,
 	}, nil
 }
 

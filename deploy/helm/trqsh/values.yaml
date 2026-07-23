@@ -29,6 +29,9 @@ secrets:
     TRQSH_REDIS_URL: ""
     TRQSH_STRIPE_SECRET_KEY: ""
     TRQSH_STRIPE_WEBHOOK_SECRET: ""
+    # Cloudflare API token (Zone.DNS:Edit) for the DNS-01 wildcard cert. Optional:
+    # leave empty to use on-demand per-subdomain issuance instead.
+    TRQSH_CLOUDFLARE_API_TOKEN: ""
 
 # --- One-shot DB migrations (pre-install / pre-upgrade hook) ---
 migrations:
@@ -78,8 +81,12 @@ edge:
     min: 20000
     max: 20100
   acme:
-    staging: true
+    staging: true # flip to false for real Let's Encrypt certs
     email: ops@trqsh.uz
+    # Where issued certs are cached. For real persistence across restarts (and to
+    # respect Let's Encrypt rate limits) back this with a hostPath/PVC volume; the
+    # DNS-01 wildcard needs only one cert, so it tolerates the ephemeral default.
+    storageDir: /var/lib/trqsh/certs
   drainTimeoutSeconds: 25
   resources:
     requests: { cpu: 200m, memory: 128Mi }

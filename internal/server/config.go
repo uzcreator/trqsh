@@ -40,7 +40,14 @@ type Config struct {
 
 	// TLS / ACME.
 	ACMEStaging bool   // TRQSH_ACME_STAGING=1 uses LE staging (or dev self-signed)
-	ACMEEmail   string // TRQSH_ACME_EMAIL
+	ACMEEmail   string // TRQSH_ACME_EMAIL; when set, the edge issues real ACME certs
+	// DNS-01 provider token for the wildcard cert (*.<base>). With Cloudflare set,
+	// one cert covers every subdomain; without it, subdomains use on-demand
+	// TLS-ALPN issuance and only custom domains strictly need per-name certs.
+	CloudflareToken string // TRQSH_CLOUDFLARE_API_TOKEN (Zone.DNS:Edit)
+	// Where issued certs/keys are cached so restarts don't re-issue. Empty => the
+	// CertMagic default location.
+	TLSStorageDir string // TRQSH_TLS_STORAGE_DIR
 
 	// Public TCP/UDP tunnel port pool.
 	PortMin int // TRQSH_PORT_MIN
@@ -96,6 +103,8 @@ func LoadConfig() (Config, error) {
 	envStr(&c.APIURL, "TRQSH_API_URL")
 	envStr(&c.InternalToken, "TRQSH_INTERNAL_TOKEN")
 	envStr(&c.ACMEEmail, "TRQSH_ACME_EMAIL")
+	envStr(&c.CloudflareToken, "TRQSH_CLOUDFLARE_API_TOKEN")
+	envStr(&c.TLSStorageDir, "TRQSH_TLS_STORAGE_DIR")
 	envStr(&c.MetricsAddr, "TRQSH_METRICS_ADDR")
 	c.ACMEStaging = envBool("TRQSH_ACME_STAGING", c.ACMEStaging)
 	envInt(&c.PortMin, "TRQSH_PORT_MIN")

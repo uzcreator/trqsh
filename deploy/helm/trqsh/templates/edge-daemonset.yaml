@@ -92,6 +92,16 @@ spec:
               value: {{ .Values.edge.acme.email | quote }}
             - name: TRQSH_ACME_STAGING
               value: {{ .Values.edge.acme.staging | ternary "1" "0" | quote }}
+            # DNS-01 wildcard token (optional): with it, one *.<base> cert covers
+            # every subdomain; without it, subdomains fall back to on-demand issuance.
+            - name: TRQSH_CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "trqsh.secretName" . }}
+                  key: TRQSH_CLOUDFLARE_API_TOKEN
+                  optional: true
+            - name: TRQSH_TLS_STORAGE_DIR
+              value: {{ .Values.edge.acme.storageDir | quote }}
             - name: TRQSH_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:
