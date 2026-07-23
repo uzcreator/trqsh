@@ -31,7 +31,8 @@ trqsh http 3000        # expose localhost:3000 over a public HTTPS URL
 |---|---|
 | `TRQSH_VERSION` | Pin a specific release (defaults to the package version). |
 | `TRQSH_REPO` | Alternate `owner/repo` for the release download. |
+| `TRQSH_DOWNLOAD_BASE` | Full base URL of a mirror serving the release assets (for air-gapped/internal mirrors). |
 | `TRQSH_SKIP_CHECKSUM=1` | Skip SHA-256 verification (not recommended). |
 
-No third-party dependencies; extraction uses the system `tar` (bsdtar on
-Windows 10+). Licensed Apache-2.0.
+No third-party dependencies; unpacking uses PowerShell's `Expand-Archive` on
+Windows and `tar` elsewhere. Licensed Apache-2.0.

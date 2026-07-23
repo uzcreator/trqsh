@@ -8,6 +8,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 const { execFileSync } = require("child_process");
@@ -16,7 +17,9 @@ const C = require("./common");
 function fetch(url, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 10) return reject(new Error("too many redirects"));
-    https
+    // https by default; http only for an explicit TRQSH_DOWNLOAD_BASE mirror.
+    const transport = url.startsWith("http://") ? http : https;
+    transport
       .get(url, { headers: { "User-Agent": "trqsh-npm-installer" } }, (res) => {
         const { statusCode, headers } = res;
         if ([301, 302, 303, 307, 308].includes(statusCode) && headers.location) {
@@ -86,8 +89,16 @@ async function install() {
   const tmp = path.join(os.tmpdir(), `trqsh-${process.pid}-${archive}`);
   fs.writeFileSync(tmp, buf);
   try {
-    // `tar` (bsdtar on Windows 10+, GNU tar elsewhere) auto-detects .tar.gz and .zip.
-    execFileSync("tar", ["-xf", tmp, "-C", C.vendorDir], { stdio: "ignore" });
+    if (process.platform === "win32") {
+      // PowerShell ships with Windows; more reliable than tar for .zip.
+      execFileSync(
+        "powershell",
+        ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${tmp}' -DestinationPath '${C.vendorDir}' -Force`],
+        { stdio: "ignore" }
+      );
+    } else {
+      execFileSync("tar", ["-xzf", tmp, "-C", C.vendorDir], { stdio: "ignore" });
+    }
   } finally {
     fs.rmSync(tmp, { force: true });
   }

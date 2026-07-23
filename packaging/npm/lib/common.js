@@ -27,7 +27,10 @@ function target() {
 const binName = process.platform === "win32" ? "trqsh.exe" : "trqsh";
 const vendorDir = path.join(__dirname, "..", "vendor");
 const binPath = path.join(vendorDir, binName);
-const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
+// Where release assets live. Overridable (TRQSH_DOWNLOAD_BASE) for mirrors,
+// air-gapped installs, or testing against a local server.
+const baseUrl =
+  process.env.TRQSH_DOWNLOAD_BASE || `https://github.com/${REPO}/releases/download/v${VERSION}`;
 
 module.exports = {
   REPO,

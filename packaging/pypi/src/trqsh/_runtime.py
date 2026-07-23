@@ -107,7 +107,8 @@ def ensure_binary() -> Path:
 
     goos, goarch, ext = _target()
     archive = f"trqsh_{VERSION}_{goos}_{goarch}.{ext}"
-    base = f"https://github.com/{REPO}/releases/download/v{VERSION}"
+    # Overridable (TRQSH_DOWNLOAD_BASE) for mirrors, air-gapped installs, or tests.
+    base = os.environ.get("TRQSH_DOWNLOAD_BASE") or f"https://github.com/{REPO}/releases/download/v{VERSION}"
 
     print(f"trqsh: downloading {archive} (v{VERSION})...", file=sys.stderr)
     data = _download(f"{base}/{archive}")

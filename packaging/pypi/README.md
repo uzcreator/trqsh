@@ -26,6 +26,7 @@ it. Pure standard library — no runtime dependencies.
 |---|---|
 | `TRQSH_VERSION` | Pin a specific release (defaults to the package version). |
 | `TRQSH_REPO` | Alternate `owner/repo` for the release download. |
+| `TRQSH_DOWNLOAD_BASE` | Full base URL of a mirror serving the release assets (for air-gapped/internal mirrors). |
 | `TRQSH_SKIP_CHECKSUM=1` | Skip SHA-256 verification (not recommended). |
 
 Licensed Apache-2.0.
