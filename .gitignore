@@ -61,3 +61,10 @@ gui/frontend/dist/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# npm wrapper downloads the binary at install time
+packaging/npm/vendor/
