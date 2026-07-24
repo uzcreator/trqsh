@@ -21,12 +21,15 @@ jobs:
           version: "~> 2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Push to the Homebrew tap repo.
+          # PAT with contents:write on the PUBLIC trqsh-uz/downloads repo, so the
+          # release + assets land there (source stays private in trqsh-uz/trqsh).
+          GITHUB_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
-  # Desktop GUI (Wails v3) — one signed bundle per OS.
+  # Desktop GUI (Wails v3) — one signed bundle per OS. Opt-in: needs signing /
+  # notarization secrets, so it only runs when the repo variable RELEASE_GUI=true.
   gui:
+    if: ${{ vars.RELEASE_GUI == 'true' }}
     strategy:
       fail-fast: false
       matrix:

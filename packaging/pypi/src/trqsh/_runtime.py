@@ -21,7 +21,7 @@ from pathlib import Path
 
 from . import __version__
 
-REPO = os.environ.get("TRQSH_REPO", "trqsh/trqsh")
+REPO = os.environ.get("TRQSH_REPO", "trqsh-uz/downloads")
 VERSION = os.environ.get("TRQSH_VERSION", __version__)
 
 

@@ -7,7 +7,7 @@
 const path = require("path");
 const pkg = require("../package.json");
 
-const REPO = process.env.TRQSH_REPO || "trqsh/trqsh";
+const REPO = process.env.TRQSH_REPO || "trqsh-uz/downloads";
 const VERSION = process.env.TRQSH_VERSION || pkg.version;
 
 /** Map Node's platform/arch onto goreleaser's os/arch + archive extension. */

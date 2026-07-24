@@ -45,18 +45,19 @@ changelog:
   filters:
     exclude: ["^docs:", "^test:", "^chore:"]
 
-# Homebrew tap for the CLI (github.com/trqsh-uz/homebrew-tap).
-brews:
-  - name: trqsh
-    ids: [default]
-    repository:
-      owner: trqsh-uz
-      name: homebrew-tap
-    homepage: "https://trqsh.uz"
-    description: "Expose localhost to the internet — fast."
-    license: "Apache-2.0"
-    install: |
-      bin.install "trqsh"
+# Homebrew tap — disabled for the first release. Re-enable once the tap repo
+# (github.com/trqsh-uz/homebrew-tap) exists and HOMEBREW_TAP_TOKEN is set.
+# brews:
+#   - name: trqsh
+#     ids: [default]
+#     repository:
+#       owner: trqsh-uz
+#       name: homebrew-tap
+#     homepage: "https://trqsh.uz"
+#     description: "Expose localhost to the internet — fast."
+#     license: "Apache-2.0"
+#     install: |
+#       bin.install "trqsh"
 
 # Linux packages for the CLI + edge.
 nfpms:
@@ -71,8 +72,11 @@ nfpms:
     bindir: /usr/bin
 
 release:
+  # Binaries are published to the PUBLIC releases repo (source stays private in
+  # trqsh-uz/trqsh). Requires RELEASE_REPO_TOKEN (a PAT with contents:write on
+  # trqsh-uz/downloads) as GITHUB_TOKEN in release.yml.
   github:
     owner: trqsh-uz
-    name: trqsh
+    name: downloads
   draft: false
   prerelease: auto

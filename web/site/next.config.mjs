@@ -12,7 +12,7 @@ const nextConfig = {
     // Control API (Part 05) — used for the OAuth deep-links on signup.
     TRQSH_API_URL: process.env.TRQSH_API_URL || "https://api.trqsh.uz",
     // GitHub repo that hosts releases (Part 08 goreleaser output).
-    TRQSH_GITHUB_REPO: process.env.TRQSH_GITHUB_REPO || "trqsh-uz/trqsh",
+    TRQSH_GITHUB_REPO: process.env.TRQSH_GITHUB_REPO || "trqsh-uz/downloads",
     // Canonical public origin (sitemap, robots, Open Graph, docs links).
     TRQSH_SITE_URL: process.env.TRQSH_SITE_URL || "https://trqsh.uz",
     // Latest published version — drives download filenames (matches goreleaser
