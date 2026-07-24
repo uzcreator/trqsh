@@ -1,0 +1,132 @@
+# Production trqsh stack for a single host (edge + control plane).
+#   Postgres + Redis + migrations + control API + edge data plane.
+#
+# Secrets come from deploy/.env (copy deploy/.env.prod.example → deploy/.env and
+# fill it in). `.env` is gitignored — never commit real secrets.
+#
+#   cd /opt/trqsh/deploy
+#   cp .env.prod.example .env && nano .env         # fill in the secrets
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# See deploy/PRODUCTION.md for the full walkthrough (DNS, TLS, first tunnel).
+#
+# Notes:
+#  * The edge image is distroless/nonroot, which cannot bind privileged ports
+#    (<1024). So it listens on :8080/:8443 inside the container and Docker maps
+#    the public :80/:443 onto them. ACME (TLS-ALPN on :443, HTTP on :80) still
+#    works because the mapping is transparent to Let's Encrypt.
+#  * Postgres/Redis/metrics have NO host ports — internal only (defence in depth;
+#    the firewall also blocks them).
+
+name: trqsh
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trqsh
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: trqsh
+    volumes:
+      - trqsh_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trqsh -d trqsh"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - trqsh_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot schema migration (goose up), then exits 0.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.migrate
+    environment:
+      GOOSE_DBSTRING: postgres://trqsh:${POSTGRES_PASSWORD}@postgres:5432/trqsh?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Control plane: accounts, API keys, quotas, entitlements, billing.
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      TRQSH_ENV: production
+      TRQSH_API_ADDR: ":8080"
+      TRQSH_DATABASE_URL: postgres://trqsh:${POSTGRES_PASSWORD}@postgres:5432/trqsh?sslmode=disable
+      TRQSH_REDIS_URL: redis://redis:6379/0
+      TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
+      TRQSH_API_PUBLIC_URL: https://api.${TRQSH_BASE_DOMAIN:-trqsh.uz}
+      TRQSH_JWT_SECRET: ${TRQSH_JWT_SECRET:?set TRQSH_JWT_SECRET in deploy/.env}
+      TRQSH_INTERNAL_TOKEN: ${TRQSH_INTERNAL_TOKEN:?set TRQSH_INTERNAL_TOKEN in deploy/.env}
+      TRQSH_TRUST_PROXY: "1"
+      TRQSH_GITHUB_CLIENT_ID: ${TRQSH_GITHUB_CLIENT_ID:-}
+      TRQSH_GITHUB_CLIENT_SECRET: ${TRQSH_GITHUB_CLIENT_SECRET:-}
+      TRQSH_GOOGLE_CLIENT_ID: ${TRQSH_GOOGLE_CLIENT_ID:-}
+      TRQSH_GOOGLE_CLIENT_SECRET: ${TRQSH_GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Edge data plane: public ingress (:80/:443) + agent sessions (:4443 tcp+udp).
+  edge:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.edge
+    restart: unless-stopped
+    environment:
+      TRQSH_ENV: production
+      TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
+      TRQSH_REGION: ${TRQSH_REGION:-eu}
+      TRQSH_EDGE_ID: ${TRQSH_EDGE_ID:-edge-1}
+      TRQSH_REDIS_URL: redis://redis:6379/0
+      TRQSH_ENTITLEMENTS: api
+      TRQSH_API_URL: http://api:8080
+      TRQSH_INTERNAL_TOKEN: ${TRQSH_INTERNAL_TOKEN:?set TRQSH_INTERNAL_TOKEN in deploy/.env}
+      # Public ports bound high inside the container (nonroot); Docker maps 80/443.
+      TRQSH_HTTP_ADDR: ":8080"
+      TRQSH_HTTPS_ADDR: ":8443"
+      TRQSH_QUIC_ADDR: ":4443"
+      TRQSH_TCP_ADDR: ":4443"
+      # TLS / Let's Encrypt.
+      TRQSH_ACME_EMAIL: ${TRQSH_ACME_EMAIL:?set TRQSH_ACME_EMAIL in deploy/.env}
+      TRQSH_ACME_STAGING: ${TRQSH_ACME_STAGING:-1}
+      TRQSH_CLOUDFLARE_API_TOKEN: ${TRQSH_CLOUDFLARE_API_TOKEN:-}
+      TRQSH_TLS_STORAGE_DIR: /var/lib/trqsh/tls
+      TRQSH_METRICS_ADDR: ":9090"
+    volumes:
+      - trqsh_tls:/var/lib/trqsh/tls
+    ports:
+      - "80:8080"
+      - "443:8443"
+      - "4443:4443/tcp"
+      - "4443:4443/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+volumes:
+  trqsh_pg:
+  trqsh_redis:
+  trqsh_tls:
