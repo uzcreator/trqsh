@@ -5,10 +5,9 @@ import { Apple, ArrowRight, Cpu, Download, Monitor, Terminal as TerminalIcon } f
 import Link from "next/link";
 import {
   ARCH_LABEL,
-  OS_DOWNLOADS,
   OS_LABEL,
   OS_ORDER,
-  desktopFor,
+  archiveFor,
   primaryCli,
   type Arch,
   type OSId,
@@ -50,7 +49,7 @@ export function SmartDownload({
     };
   }, []);
 
-  const desktop = desktopFor(os, arch);
+  const primary = archiveFor(os, arch);
   const cli = primaryCli(os);
   const Icon = OS_ICON[os];
 
@@ -94,7 +93,7 @@ export function SmartDownload({
       <div className={cn("flex flex-col gap-3", className)}>
         <div className="flex flex-wrap items-center gap-3">
           <a
-            href={desktop.href}
+            href={primary.href}
             className={cn(buttonVariants({ size: "xl" }), "btn-shine glow-brand group")}
           >
             <Download className="h-5 w-5" />
@@ -135,17 +134,17 @@ export function SmartDownload({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col">
           <span className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-            Desktop app · recommended
+            Direct download · recommended
           </span>
           <a
-            href={desktop.href}
+            href={primary.href}
             className={cn(buttonVariants({ size: "lg" }), "btn-shine glow-brand w-full justify-center")}
           >
             <Download className="h-4 w-4" />
-            {desktop.label}
+            Download for {OS_LABEL[os]}
           </a>
           <span className="mt-2 text-xs text-muted">
-            {desktop.kind ? `${desktop.kind} · ` : ""}v{site.version} · signed &amp; notarized
+            {primary.kind ? `${primary.kind} · ` : ""}v{site.version} · checksummed
           </span>
         </div>
 

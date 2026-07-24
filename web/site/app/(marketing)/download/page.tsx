@@ -9,7 +9,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Download",
   description:
-    "Download the trqsh desktop app for macOS, Windows, and Linux, or install the open-source CLI with Homebrew, winget, Scoop, apt, or a one-line script. The site auto-detects your platform.",
+    "Install the trqsh CLI on macOS, Windows, and Linux — a one-line script, npm, pip, .deb/.rpm, or a static binary. The site auto-detects your platform.",
 };
 
 export default function DownloadPage() {
@@ -22,7 +22,7 @@ export default function DownloadPage() {
             Download <span className="gradient-text">trqsh</span>
           </h1>
           <p className="mt-4 text-lg text-secondary">
-            The desktop app or the open-source CLI — on every OS. Signed, notarized, and checksummed.
+            The open-source CLI on every OS — a one-line script, npm, pip, or a static binary.
             We&apos;ve already picked the right build for your machine.
           </p>
         </header>

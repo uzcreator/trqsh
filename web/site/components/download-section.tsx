@@ -62,19 +62,21 @@ export function DownloadSection() {
                 </div>
               </div>
 
-              {/* Desktop app */}
-              <div className="flex flex-col gap-2">
-                {os.desktop.map((a) => (
-                  <a
-                    key={a.href}
-                    href={a.href}
-                    className={cn(buttonVariants({ size: "sm" }), "w-full justify-center")}
-                  >
-                    <Download className="h-4 w-4" /> {a.label}
-                    {a.kind && <span className="opacity-70">· {a.kind}</span>}
-                  </a>
-                ))}
-              </div>
+              {/* Desktop app (empty until the GUI ships) */}
+              {os.desktop.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {os.desktop.map((a) => (
+                    <a
+                      key={a.href}
+                      href={a.href}
+                      className={cn(buttonVariants({ size: "sm" }), "w-full justify-center")}
+                    >
+                      <Download className="h-4 w-4" /> {a.label}
+                      {a.kind && <span className="opacity-70">· {a.kind}</span>}
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {/* Package managers */}
               <div className="mt-5">

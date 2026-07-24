@@ -1,9 +1,9 @@
 import { site } from "./site";
 
-// Real release artifacts produced by Part 08 (.goreleaser.yaml + release.yml).
-// Archive names follow goreleaser's `trqsh_<version>_<os>_<arch>` template (zip on
-// Windows); GUI bundle names come from release.yml's signing/upload steps
-// (Trqsh.app.zip on macOS, trqsh-gui.exe on Windows). Version is deploy-time env.
+// Release artifacts published to the public trqsh-uz/downloads repo by
+// .goreleaser.yaml. Archive names follow `trqsh_<version>_<os>_<arch>` (zip on
+// Windows). The desktop GUI isn't part of this release, so the page is CLI-first:
+// an install script, the npm/pip wrappers, distro packages, and static binaries.
 
 const v = site.version;
 const base = `${site.githubUrl}/releases/download/v${v}`;
@@ -33,27 +33,25 @@ export interface OSDownload {
   name: string;
   /** One-liner shown under the OS name on the download page. */
   tagline: string;
-  /** Signed desktop app bundles (arch-specific where it matters). */
+  /** Signed desktop app bundles — empty until the GUI ships. */
   desktop: Asset[];
-  /** Package-manager one-liners for the CLI. */
+  /** Package-manager / script one-liners for the CLI. */
   cli: InstallSnippet[];
-  /** Direct CLI archive downloads. */
+  /** Direct binary + distro-package downloads. */
   archives: Asset[];
 }
+
+const npmSnippet: InstallSnippet = { label: "npm", command: "npm install -g @trqsh-uz/trqsh" };
+const pipSnippet: InstallSnippet = { label: "pipx", command: "pipx install trqsh" };
+const scriptSnippet: InstallSnippet = { label: "Install script", command: installShCommand, recommended: true };
 
 export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   macos: {
     id: "macos",
     name: "macOS",
-    tagline: "Signed & notarized · Apple Silicon and Intel",
-    desktop: [
-      { label: "trqsh for macOS", href: `${base}/Trqsh.app.zip`, arch: "universal", kind: ".app" },
-    ],
-    cli: [
-      { label: "Homebrew", command: "brew install trqsh/tap/trqsh", recommended: true },
-      { label: "Shell script", command: installShCommand },
-      { label: "MacPorts", command: "sudo port install trqsh" },
-    ],
+    tagline: "Apple Silicon and Intel · static binary",
+    desktop: [],
+    cli: [scriptSnippet, npmSnippet, pipSnippet],
     archives: [
       { label: "Apple Silicon", href: `${base}/trqsh_${v}_darwin_arm64.tar.gz`, arch: "arm64", kind: "tar.gz" },
       { label: "Intel", href: `${base}/trqsh_${v}_darwin_amd64.tar.gz`, arch: "amd64", kind: "tar.gz" },
@@ -62,15 +60,9 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   windows: {
     id: "windows",
     name: "Windows",
-    tagline: "Authenticode-signed installer · x64 and ARM64",
-    desktop: [
-      { label: "trqsh for Windows", href: `${base}/trqsh-gui.exe`, arch: "amd64", kind: ".exe" },
-    ],
-    cli: [
-      { label: "winget", command: "winget install trqsh.trqsh", recommended: true },
-      { label: "Scoop", command: "scoop install trqsh" },
-      { label: "Chocolatey", command: "choco install trqsh" },
-    ],
+    tagline: "x64 and ARM64 · static binary",
+    desktop: [],
+    cli: [{ ...npmSnippet, recommended: true }, pipSnippet],
     archives: [
       { label: "Windows x64", href: `${base}/trqsh_${v}_windows_amd64.zip`, arch: "amd64", kind: "zip" },
       { label: "Windows ARM64", href: `${base}/trqsh_${v}_windows_arm64.zip`, arch: "arm64", kind: "zip" },
@@ -79,19 +71,14 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   linux: {
     id: "linux",
     name: "Linux",
-    tagline: "AppImage, .deb / .rpm, or a static binary",
-    desktop: [
-      { label: "trqsh AppImage (x86_64)", href: `${base}/trqsh_${v}_linux_amd64.AppImage`, arch: "amd64", kind: "AppImage" },
-    ],
-    cli: [
-      { label: "Shell script", command: installShCommand, recommended: true },
-      { label: "Debian / Ubuntu", command: `sudo apt install ./trqsh_${v}_linux_amd64.deb` },
-      { label: "Fedora / RHEL", command: `sudo dnf install ./trqsh_${v}_linux_amd64.rpm` },
-      { label: "Arch (AUR)", command: "yay -S trqsh-bin" },
-    ],
+    tagline: "Static binary, .deb / .rpm, or install script",
+    desktop: [],
+    cli: [scriptSnippet, npmSnippet, pipSnippet],
     archives: [
       { label: "Linux x64", href: `${base}/trqsh_${v}_linux_amd64.tar.gz`, arch: "amd64", kind: "tar.gz" },
       { label: "Linux ARM64", href: `${base}/trqsh_${v}_linux_arm64.tar.gz`, arch: "arm64", kind: "tar.gz" },
+      { label: "Debian x64", href: `${base}/trqsh_${v}_linux_amd64.deb`, arch: "amd64", kind: "deb" },
+      { label: "RPM x64", href: `${base}/trqsh_${v}_linux_amd64.rpm`, arch: "amd64", kind: "rpm" },
     ],
   },
 };
@@ -109,11 +96,11 @@ export const ARCH_LABEL: Record<Arch, string> = {
   amd64: "Intel / x64",
 };
 
-/** Best desktop asset for a detected arch, falling back to the first listed. */
-export function desktopFor(os: OSId, arch: Arch | null): Asset {
-  const list = OS_DOWNLOADS[os].desktop;
+/** The direct binary archive matching a detected arch (falls back to the first). */
+export function archiveFor(os: OSId, arch: Arch | null): Asset {
+  const list = OS_DOWNLOADS[os].archives;
   if (arch) {
-    const match = list.find((a) => a.arch === arch || a.arch === "universal");
+    const match = list.find((a) => a.arch === arch);
     if (match) return match;
   }
   return list[0];
