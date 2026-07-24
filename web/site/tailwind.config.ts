@@ -57,9 +57,8 @@ const config: Config = {
         sm: "0.3rem",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "-apple-system", '"Segoe UI"', "Roboto", "sans-serif"],
-        display: ["var(--font-display)", "var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", '"SFMono-Regular"', "Consolas", '"Liberation Mono"', "Menlo", "monospace"],
+        sans: ["system-ui", "-apple-system", '"Segoe UI"', "Roboto", "sans-serif"],
+        mono: ['"SFMono-Regular"', "Consolas", '"Liberation Mono"', "Menlo", "monospace"],
       },
       maxWidth: {
         content: "72rem",

@@ -62,7 +62,7 @@
   body {
     background-color: rgb(var(--page));
     color: rgb(var(--foreground));
-    font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     /* Fixed ambient wash so the near-black page reads as depth, not flat. */
     background-image:
@@ -70,16 +70,6 @@
       radial-gradient(60% 45% at 12% -4%, rgb(var(--brand) / 0.12), transparent 60%);
     background-attachment: fixed;
     background-repeat: no-repeat;
-  }
-  /* Instrument Serif (display) carries only the large statement headings; smaller
-     functional headings (h3–h6) stay in the grotesk body face (Onest) for clarity.
-     A full weight range is declared on the single-master serif in app/fonts.ts, so
-     `font-semibold` here renders the true serif rather than a faux-bold. */
-  h1,
-  h2 {
-    font-family: var(--font-display), Georgia, "Times New Roman", serif;
-    font-weight: 400;
-    letter-spacing: -0.01em;
   }
   ::selection {
     background: rgb(var(--brand) / 0.28);
@@ -487,6 +477,27 @@
     background: rgb(var(--brand));
     animation: caret-blink 1.1s steps(1) infinite;
   }
+
+  /* Blinking cursor in the wordmark (components/logo.tsx). */
+  .wordmark-caret {
+    animation: caret-blink 1.3s steps(1) infinite;
+  }
+
+  /* Static tunnel glow — the hero's reduced-motion / phone / pre-load stand-in for
+     the WebGL scene (components/tunnel-3d.tsx). Pure CSS, no request. */
+  .tunnel-fallback {
+    background:
+      radial-gradient(circle at 60% 42%, rgb(var(--glow) / 0.2), transparent 46%),
+      radial-gradient(circle at 60% 42%, rgb(var(--brand-2) / 0.12), transparent 62%),
+      repeating-radial-gradient(circle at 60% 42%, rgb(var(--brand) / 0.1) 0 1px, transparent 1px 30px);
+    -webkit-mask-image: radial-gradient(circle at 60% 42%, #000 28%, transparent 78%);
+    mask-image: radial-gradient(circle at 60% 42%, #000 28%, transparent 78%);
+  }
+
+  /* Soft brand bloom behind the closing CTA. */
+  .hero-glow {
+    background: radial-gradient(60% 60% at 50% 28%, rgb(var(--brand) / 0.1), transparent 70%);
+  }
 }
 
 /* Keyframes for the raw-CSS brand utilities above (Tailwind owns the rest). */
@@ -515,6 +526,20 @@
 @keyframes caret-blink {
   0%, 50% { opacity: 1; }
   50.01%, 100% { opacity: 0; }
+}
+
+/* Phones: drop the heaviest ambient effects (big blurs + animated perspective
+   grids). They cost the most on mobile GPUs and add little at small sizes — this
+   is the "turn off unnecessary phone animations" pass, and it speeds up loads. */
+@media (max-width: 767px) {
+  .aurora,
+  .tunnel-grid {
+    display: none !important;
+  }
+  .marquee-track,
+  .gradient-text {
+    animation: none !important;
+  }
 }
 
 /* Respect users who prefer less motion: disable transforms/animations. */
