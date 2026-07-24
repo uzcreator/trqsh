@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -73,6 +74,14 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		host := hostOnly(req.Host)
 		bt := s.hub.LookupHost(host)
 		if bt == nil {
+			// Apex + www serve the marketing site when configured; every other
+			// unrouted host gets the branded "tunnel offline" page.
+			if s.cfg.SiteUpstream != "" && s.isSiteHost(host) {
+				if s.proxyToSite(conn, req, scheme) {
+					continue
+				}
+				return
+			}
 			s.metrics.Errors.WithLabelValues("no_route").Inc()
 			writeHTTPResponse(conn, http.StatusNotFound, "Not Found", "text/html; charset=utf-8", branded404(host))
 			return
@@ -154,6 +163,50 @@ func hostOnly(hostport string) string {
 		}
 	}
 	return h
+}
+
+// isSiteHost reports whether host is the marketing-site apex or its www alias.
+func (s *Server) isSiteHost(host string) bool {
+	base := strings.ToLower(s.cfg.BaseDomain)
+	return host == base || host == "www."+base
+}
+
+// proxyToSite reverse-proxies one request to the marketing-site upstream and
+// writes the response back to conn. It returns true if the client connection may
+// be reused (HTTP keep-alive). A fresh upstream connection is used per request.
+func (s *Server) proxyToSite(conn net.Conn, req *http.Request, scheme string) bool {
+	u, err := url.Parse(s.cfg.SiteUpstream)
+	if err != nil || u.Host == "" {
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site misconfigured\n")
+		return false
+	}
+	up, err := net.DialTimeout("tcp", u.Host, 10*time.Second)
+	if err != nil {
+		s.metrics.Errors.WithLabelValues("site_unreachable").Inc()
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site unreachable\n")
+		return false
+	}
+	defer up.Close()
+
+	req.Header.Set("X-Forwarded-Proto", scheme)
+	req.Header.Set("X-Forwarded-Host", req.Host)
+	_ = up.SetDeadline(time.Now().Add(httpIdleTimeout))
+	if err := req.Write(up); err != nil {
+		return false
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(up), req)
+	if err != nil {
+		s.metrics.Errors.WithLabelValues("site_bad_response").Inc()
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site bad response\n")
+		return false
+	}
+	defer resp.Body.Close()
+	keepAlive := !req.Close && !resp.Close
+	if err := resp.Write(conn); err != nil {
+		return false
+	}
+	s.metrics.Requests.WithLabelValues(scheme).Inc()
+	return keepAlive
 }
 
 func isUpgrade(req *http.Request) bool {

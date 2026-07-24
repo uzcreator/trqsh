@@ -56,6 +56,10 @@ type Config struct {
 	// Ops.
 	MetricsAddr string // TRQSH_METRICS_ADDR, e.g. ":9090" (metrics + health)
 
+	// Marketing site. When set, requests to the apex (<base>) and www that match
+	// no tunnel are reverse-proxied here instead of returning the branded 404.
+	SiteUpstream string // TRQSH_SITE_UPSTREAM, e.g. "http://site:3000"
+
 	// Tuning.
 	HeartbeatInterval time.Duration
 	SessionIdle       time.Duration
@@ -106,6 +110,7 @@ func LoadConfig() (Config, error) {
 	envStr(&c.CloudflareToken, "TRQSH_CLOUDFLARE_API_TOKEN")
 	envStr(&c.TLSStorageDir, "TRQSH_TLS_STORAGE_DIR")
 	envStr(&c.MetricsAddr, "TRQSH_METRICS_ADDR")
+	envStr(&c.SiteUpstream, "TRQSH_SITE_UPSTREAM")
 	c.ACMEStaging = envBool("TRQSH_ACME_STAGING", c.ACMEStaging)
 	envInt(&c.PortMin, "TRQSH_PORT_MIN")
 	envInt(&c.PortMax, "TRQSH_PORT_MAX")

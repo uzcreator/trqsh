@@ -87,6 +87,15 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Marketing site (web/site, Next.js). Internal only — the edge reverse-proxies
+  # the apex (trqsh.uz) and www to it. next.config build-time defaults already
+  # point CTAs at the production app/api URLs.
+  site:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.site
+    restart: unless-stopped
+
   # Make the TLS cert volume writable by the edge's nonroot user (uid 65532).
   # Docker creates named volumes owned by root, which the distroless/nonroot edge
   # cannot write — so CertMagic could not persist its ACME account or certs and
@@ -124,6 +133,8 @@ services:
       TRQSH_CLOUDFLARE_API_TOKEN: ${TRQSH_CLOUDFLARE_API_TOKEN:-}
       TRQSH_TLS_STORAGE_DIR: /var/lib/trqsh/tls
       TRQSH_METRICS_ADDR: ":9090"
+      # Serve the marketing site at the apex + www (reverse-proxied internally).
+      TRQSH_SITE_UPSTREAM: "http://site:3000"
     volumes:
       - trqsh_tls:/var/lib/trqsh/tls
     ports:
@@ -138,6 +149,8 @@ services:
         condition: service_started
       edge-init:
         condition: service_completed_successfully
+      site:
+        condition: service_started
 
 volumes:
   trqsh_pg:

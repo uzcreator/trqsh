@@ -1,0 +1,34 @@
+# trqsh marketing site (web/site — Next.js 15, pnpm). Build context = repo root:
+#   docker build -f deploy/docker/Dockerfile.site -t trqsh/site .
+#
+# Produces a self-contained Next.js standalone server on a slim Node runtime.
+
+# --- deps ---
+FROM node:22-alpine AS deps
+WORKDIR /app
+RUN npm install -g pnpm@9
+COPY web/site/package.json web/site/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# --- build ---
+FROM node:22-alpine AS build
+WORKDIR /app
+RUN npm install -g pnpm@9
+COPY --from=deps /app/node_modules ./node_modules
+COPY web/site ./
+RUN pnpm build
+
+# --- runtime ---
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+RUN addgroup -S nodejs -g 1001 && adduser -S nextjs -u 1001 -G nodejs
+# Standalone bundle + static assets + public files.
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

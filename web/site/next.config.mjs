@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Self-contained server build for Docker (.next/standalone/server.js).
+  output: "standalone",
   // Public deploy-time configuration. These are inlined at build so both Server
   // and Client Components can read them. All have localhost-friendly defaults so
   // the site runs against a local stack out of the box.
