@@ -56,7 +56,7 @@ export function Logo({
     <span className={cn("group inline-flex items-center gap-2.5", className)}>
       <LogoMark />
       {withWordmark && (
-        <span className="text-[1.35rem] font-semibold lowercase leading-none tracking-tight text-foreground">
+        <span className="font-display text-[1.4rem] font-normal lowercase leading-none tracking-[-0.01em] text-foreground">
           trqsh
         </span>
       )}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { fontDisplay, fontSans, fontMono } from "./fonts";
 import { site } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 
@@ -47,7 +48,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // trqsh renders as a committed dark experience (black + dark-green + dark-blue),
   // so the theme is fixed at the root — no toggle, no flash, fully static.
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen antialiased">
         <SiteHeader />
         {children}

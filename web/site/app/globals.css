@@ -62,7 +62,7 @@
   body {
     background-color: rgb(var(--page));
     color: rgb(var(--foreground));
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     /* Fixed ambient wash so the near-black page reads as depth, not flat. */
     background-image:
@@ -70,6 +70,16 @@
       radial-gradient(60% 45% at 12% -4%, rgb(var(--brand) / 0.12), transparent 60%);
     background-attachment: fixed;
     background-repeat: no-repeat;
+  }
+  /* Instrument Serif (display) carries only the large statement headings; smaller
+     functional headings (h3–h6) stay in the grotesk body face (Onest) for clarity.
+     A full weight range is declared on the single-master serif in app/fonts.ts, so
+     `font-semibold` here renders the true serif rather than a faux-bold. */
+  h1,
+  h2 {
+    font-family: var(--font-display), Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
   ::selection {
     background: rgb(var(--brand) / 0.28);

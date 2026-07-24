@@ -134,12 +134,12 @@ export default function LandingPage() {
               <Badge variant="default" className="mb-5 border border-brand/20">
                 <Signal className="h-3.5 w-3.5" /> Now running on QUIC / HTTP-3
               </Badge>
-              <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl xl:text-6xl">
+              <h1 className="text-[2.75rem] font-normal leading-[1.04] tracking-[-0.01em] text-foreground sm:text-[3.5rem] xl:text-[4.25rem]">
                 Your localhost,
                 <br />
                 <span className="gradient-text">live on the internet.</span>
               </h1>
-              <p className="mt-5 max-w-xl text-lg text-secondary">
+              <p className="mt-5 max-w-xl text-lg leading-relaxed text-secondary">
                 trqsh exposes a local port to a public HTTPS URL in seconds — over QUIC for lower
                 latency, with UDP support, a desktop app, and a free tier that stays out of your way.
               </p>
