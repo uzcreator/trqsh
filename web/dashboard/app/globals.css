@@ -3,68 +3,44 @@
 @tailwind utilities;
 
 /*
- * Design tokens — dataviz reference palette (light + dark, both selected).
- * Stored as space-separated RGB channels so Tailwind opacity modifiers work
- * (e.g. bg-good/10). Shared with Parts 04 (GUI) and 09 (site).
+ * trqsh brand tokens — the SAME dark theme as the marketing site (web/site), so
+ * the dashboard reads as one product: near-black page, dark-green primary, dark-
+ * blue accent. Space-separated RGB channels for Tailwind opacity modifiers. The
+ * dashboard renders dark-only (layout forces `.dark`); :root and .dark match.
  */
-:root {
-  --page: 249 249 247;
-  --surface: 252 252 251;
-  --foreground: 11 11 11;
-  --secondary-ink: 82 81 78;
-  --muted-ink: 137 135 129;
-  --border: 225 224 217;
-  --border-strong: 195 194 183;
-  --primary: 42 120 214;
-  --primary-foreground: 255 255 255;
-  --accent: 238 244 252;
-  --ring: 42 120 214;
-
-  --good: 12 163 12;
-  --warning: 250 178 25;
-  --serious: 236 131 90;
-  --critical: 208 59 59;
-
-  /* Categorical slots 1..5 (light) */
-  --series-1: 42 120 214;
-  --series-2: 27 175 122;
-  --series-3: 237 161 0;
-  --series-4: 0 131 0;
-  --series-5: 74 58 167;
-
-  --grid: 225 224 217;
-  --baseline: 195 194 183;
-
-  color-scheme: light;
-}
-
+:root,
 .dark {
-  --page: 13 13 13;
-  --surface: 26 26 25;
-  --foreground: 255 255 255;
-  --secondary-ink: 195 194 183;
-  --muted-ink: 137 135 129;
-  --border: 44 44 42;
-  --border-strong: 56 56 53;
-  --primary: 57 135 229;
-  --primary-foreground: 255 255 255;
-  --accent: 19 35 58;
-  --ring: 57 135 229;
+  --page: 6 9 8;
+  --surface: 12 18 15;
+  --surface-2: 17 25 21;
+  --foreground: 233 241 237;
+  --secondary-ink: 156 176 167;
+  --muted-ink: 106 124 116;
+  --border: 26 38 32;
+  --border-strong: 40 58 49;
+  --primary: 15 172 108;
+  --primary-foreground: 3 14 9;
+  --accent: 15 40 30;
+  --ring: 15 172 108;
 
-  --good: 12 163 12;
-  --warning: 250 178 25;
+  --good: 24 190 128;
+  --warning: 234 179 8;
   --serious: 236 131 90;
-  --critical: 208 59 59;
+  --critical: 226 74 74;
 
-  /* Categorical slots 1..5 (dark steps) */
-  --series-1: 57 135 229;
-  --series-2: 25 158 112;
-  --series-3: 201 133 0;
-  --series-4: 0 131 0;
-  --series-5: 144 133 233;
+  --brand: 15 172 108;
+  --brand-2: 37 78 190;
+  --brand-3: 20 184 166;
+  --glow: 24 210 140;
 
-  --grid: 44 44 42;
-  --baseline: 56 56 53;
+  --series-1: 24 200 132;
+  --series-2: 52 110 228;
+  --series-3: 214 160 46;
+  --series-4: 20 184 166;
+  --series-5: 70 100 230;
+
+  --grid: 26 38 32;
+  --baseline: 40 58 49;
 
   color-scheme: dark;
 }
@@ -75,32 +51,127 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
   body {
     background-color: rgb(var(--page));
     color: rgb(var(--foreground));
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(70% 40% at 78% -6%, rgb(var(--brand-2) / 0.1), transparent 60%),
+      radial-gradient(60% 45% at 12% -4%, rgb(var(--brand) / 0.12), transparent 60%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
-  /* Vertical alignment for tabular data / axis ticks (dataviz spec). */
+  ::selection {
+    background: rgb(var(--brand) / 0.28);
+    color: rgb(var(--foreground));
+  }
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-strong));
+    border-radius: 999px;
+    border: 3px solid rgb(var(--page));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--brand) / 0.6);
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
-  /* Subtle lift + primary edge on hover — for cards and KPI tiles. */
+  /* Lift + primary glow on hover — interactive cards / KPI tiles. */
   .card-hover {
     transition:
-      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
+      transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
   }
   .card-hover:hover {
-    transform: translateY(-2px);
-    border-color: rgb(var(--primary) / 0.4);
-    box-shadow: 0 8px 24px -14px rgb(var(--primary) / 0.3);
+    transform: translateY(-4px);
+    border-color: rgb(var(--primary) / 0.45);
+    box-shadow:
+      0 10px 30px -12px rgb(var(--primary) / 0.28),
+      0 4px 10px -6px rgb(0 0 0 / 0.12);
   }
+
+  /* Frosted glass panel. */
+  .glass {
+    background: linear-gradient(160deg, rgb(var(--surface-2) / 0.85), rgb(var(--surface) / 0.7));
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid rgb(255 255 255 / 0.06);
+    box-shadow:
+      0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+      0 30px 60px -30px rgb(0 0 0 / 0.7);
+  }
+
+  /* Gradient wordmark accent — green → teal → dark blue. */
+  .gradient-text {
+    background: linear-gradient(110deg, rgb(var(--brand)), rgb(var(--brand-3)) 45%, rgb(var(--brand-2)));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-pan 8s ease-in-out infinite;
+  }
+
+  /* Gradient hairline border on hover (cards). */
+  .border-gradient {
+    position: relative;
+  }
+  .border-gradient::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgb(var(--brand) / 0.6), transparent 45%, rgb(var(--brand-2) / 0.5));
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .border-gradient:hover::before {
+    opacity: 1;
+  }
+
+  /* Soft green glow behind primary CTAs. */
+  .glow-brand {
+    box-shadow:
+      0 0 0 1px rgb(var(--brand) / 0.35),
+      0 10px 40px -8px rgb(var(--brand) / 0.45);
+  }
+
+  /* Sheen swept across a button on hover. */
+  .btn-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.25), transparent);
+  }
+  .btn-shine:hover::after {
+    animation: shimmer 0.9s ease;
+  }
+}
+
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

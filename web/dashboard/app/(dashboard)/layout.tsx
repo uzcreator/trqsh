@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar org={org} email={account.user.email} />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
