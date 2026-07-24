@@ -18,6 +18,10 @@ RUN npm install -g pnpm@9
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY web/dashboard/ ./
+# Drop the pnpm-workspace.yaml artifact (pnpm 10 wrote it to record sharp as an
+# ignored build). With pnpm 9 it makes pnpm treat this as a workspace and fail
+# with "packages field missing"; pnpm 9 builds sharp normally without it.
+RUN rm -f pnpm-workspace.yaml
 # Inlined at build (next.config env): the API base the browser hits for OAuth,
 # and the public base domain shown in the UI.
 ARG TRQSH_API_URL=http://localhost:8080
