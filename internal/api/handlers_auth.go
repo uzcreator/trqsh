@@ -147,7 +147,25 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, authResponse{User: u, Org: org, Tokens: tokens})
+	// Browser flow: set the session as cookies shared across *.<base> and send the
+	// user to the dashboard. (Programmatic clients use the JSON login endpoints.)
+	s.setSessionCookies(w, tokens)
+	http.Redirect(w, r, "https://app."+s.cfg.BaseDomain+"/", http.StatusFound)
+}
+
+// setSessionCookies writes the access + refresh JWTs as cookies scoped to the
+// whole base domain, so the dashboard (app.<base>) shares the API's session.
+func (s *Server) setSessionCookies(w http.ResponseWriter, t auth.Tokens) {
+	domain := "." + s.cfg.BaseDomain
+	secure := s.cfg.IsProduction()
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_access", Value: t.Access, Path: "/", Domain: domain,
+		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: t.ExpiresIn,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_refresh", Value: t.Refresh, Path: "/", Domain: domain,
+		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: 30 * 24 * 60 * 60,
+	})
 }
 
 // --- Device flow (CLI/GUI login) ---
