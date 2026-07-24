@@ -29,6 +29,9 @@ type OAuthProvider struct {
 	TokenURL     string
 	UserURL      string
 	Scopes       []string
+	// AuthParams are extra query params added to the authorization redirect
+	// (e.g. Google's prompt=select_account so a fresh account can be chosen).
+	AuthParams map[string]string
 }
 
 // GitHubProvider builds a GitHub OAuth provider from credentials.
@@ -46,10 +49,11 @@ func GitHubProvider(clientID, clientSecret, redirectURL string) OAuthProvider {
 func GoogleProvider(clientID, clientSecret, redirectURL string) OAuthProvider {
 	return OAuthProvider{
 		Name: "google", ClientID: clientID, ClientSecret: clientSecret, RedirectURL: redirectURL,
-		AuthURL:  "https://accounts.google.com/o/oauth2/v2/auth",
-		TokenURL: "https://oauth2.googleapis.com/token",
-		UserURL:  "https://www.googleapis.com/oauth2/v2/userinfo",
-		Scopes:   []string{"openid", "email", "profile"},
+		AuthURL:    "https://accounts.google.com/o/oauth2/v2/auth",
+		TokenURL:   "https://oauth2.googleapis.com/token",
+		UserURL:    "https://www.googleapis.com/oauth2/v2/userinfo",
+		Scopes:     []string{"openid", "email", "profile"},
+		AuthParams: map[string]string{"prompt": "select_account"},
 	}
 }
 
@@ -66,6 +70,9 @@ func (p OAuthProvider) AuthCodeURL(state string) string {
 	q.Set("response_type", "code")
 	q.Set("scope", strings.Join(p.Scopes, " "))
 	q.Set("state", state)
+	for k, v := range p.AuthParams {
+		q.Set(k, v)
+	}
 	return p.AuthURL + "?" + q.Encode()
 }
 

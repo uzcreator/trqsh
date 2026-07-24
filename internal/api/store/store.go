@@ -119,6 +119,7 @@ type Store interface {
 	CreateUser(ctx context.Context, u User) (User, error)
 	GetUser(ctx context.Context, id string) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	UpdateUserProfile(ctx context.Context, id, name, avatarURL string) error
 
 	// Orgs & membership.
 	CreateOrg(ctx context.Context, o Org) (Org, error)

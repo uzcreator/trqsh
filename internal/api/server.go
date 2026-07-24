@@ -125,6 +125,7 @@ func (s *Server) Router() http.Handler {
 			r.Post("/auth/refresh", s.handleRefresh)
 			r.Get("/auth/oauth/{provider}", s.handleOAuthStart)
 			r.Get("/auth/oauth/{provider}/callback", s.handleOAuthCallback)
+			r.Post("/auth/logout", s.handleLogout)
 			r.Post("/auth/device/code", s.handleDeviceCode)
 			r.Post("/auth/device/token", s.handleDeviceToken)
 		})

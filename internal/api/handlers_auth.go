@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"net/http"
@@ -42,7 +43,7 @@ func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "user already exists")
 		return
 	}
-	u, org, err := s.provisionUser(r.Context(), req.Email, req.Name, "email")
+	u, org, err := s.provisionUser(r.Context(), req.Email, req.Name, "", "email")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -118,7 +119,15 @@ func (s *Server) handleOAuthStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := s.newState()
+	s.setStateCookie(w, state)
 	http.Redirect(w, r, p.AuthCodeURL(state), http.StatusFound)
+}
+
+// handleLogout clears the shared session cookies so a different account can sign
+// in. JWTs are short-lived; the refresh cookie is removed here and by the client.
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	s.clearSessionCookies(w)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +137,12 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "provider not configured")
 		return
 	}
-	if !s.checkState(r.URL.Query().Get("state")) {
+	// CSRF: the returned state must match BOTH the server-issued single-use state
+	// and the state cookie set on this browser when the flow started (double-submit).
+	qstate := r.URL.Query().Get("state")
+	sc, _ := r.Cookie("trqsh_oauth_state")
+	s.clearStateCookie(w)
+	if sc == nil || subtle.ConstantTimeCompare([]byte(sc.Value), []byte(qstate)) != 1 || !s.checkState(qstate) {
 		writeError(w, http.StatusBadRequest, "invalid state")
 		return
 	}
@@ -137,7 +151,7 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	u, org, err := s.provisionUser(r.Context(), prof.Email, prof.Name, prof.Provider)
+	u, org, err := s.provisionUser(r.Context(), prof.Email, prof.Name, prof.AvatarURL, prof.Provider)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -165,6 +179,34 @@ func (s *Server) setSessionCookies(w http.ResponseWriter, t auth.Tokens) {
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_refresh", Value: t.Refresh, Path: "/", Domain: domain,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: 30 * 24 * 60 * 60,
+	})
+}
+
+// clearSessionCookies expires the shared session cookies (logout).
+func (s *Server) clearSessionCookies(w http.ResponseWriter) {
+	domain := "." + s.cfg.BaseDomain
+	secure := s.cfg.IsProduction()
+	for _, name := range []string{"trqsh_access", "trqsh_refresh"} {
+		http.SetCookie(w, &http.Cookie{
+			Name: name, Value: "", Path: "/", Domain: domain,
+			HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
+		})
+	}
+}
+
+// setStateCookie binds the OAuth state to this browser (host-only on the API),
+// so a stolen or guessed state alone can't complete the flow.
+func (s *Server) setStateCookie(w http.ResponseWriter, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_oauth_state", Value: state, Path: "/v1/auth/oauth",
+		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: 600,
+	})
+}
+
+func (s *Server) clearStateCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_oauth_state", Value: "", Path: "/v1/auth/oauth",
+		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
 }
 
@@ -227,13 +269,13 @@ func (s *Server) handleDeviceToken(w http.ResponseWriter, r *http.Request) {
 
 // --- helpers ---
 
-func (s *Server) provisionUser(ctx context.Context, email, name, provider string) (store.User, store.Org, error) {
+func (s *Server) provisionUser(ctx context.Context, email, name, avatar, provider string) (store.User, store.Org, error) {
 	u, err := s.store.GetUserByEmail(ctx, email)
 	if errors.Is(err, store.ErrNotFound) {
 		if name == "" {
 			name = strings.Split(email, "@")[0]
 		}
-		u, err = s.store.CreateUser(ctx, store.User{Email: email, Name: name, OAuthProvider: provider})
+		u, err = s.store.CreateUser(ctx, store.User{Email: email, Name: name, AvatarURL: avatar, OAuthProvider: provider})
 		if err != nil {
 			return store.User{}, store.Org{}, err
 		}
@@ -248,6 +290,18 @@ func (s *Server) provisionUser(ctx context.Context, email, name, provider string
 	}
 	if err != nil {
 		return store.User{}, store.Org{}, err
+	}
+	// Refresh the profile (name/avatar) on each sign-in — keeps the picture current
+	// and back-fills accounts created before avatars were stored.
+	if (avatar != "" && avatar != u.AvatarURL) || (name != "" && name != u.Name) {
+		if uerr := s.store.UpdateUserProfile(ctx, u.ID, name, avatar); uerr == nil {
+			if name != "" {
+				u.Name = name
+			}
+			if avatar != "" {
+				u.AvatarURL = avatar
+			}
+		}
 	}
 	org, err := s.firstOrg(ctx, u.ID)
 	return u, org, err

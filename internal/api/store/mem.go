@@ -66,6 +66,23 @@ func (m *MemStore) CreateUser(_ context.Context, u User) (User, error) {
 	return u, nil
 }
 
+func (m *MemStore) UpdateUserProfile(_ context.Context, id, name, avatarURL string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.users[id]
+	if !ok {
+		return ErrNotFound
+	}
+	if name != "" {
+		u.Name = name
+	}
+	if avatarURL != "" {
+		u.AvatarURL = avatarURL
+	}
+	m.users[id] = u
+	return nil
+}
+
 func (m *MemStore) GetUser(_ context.Context, id string) (User, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

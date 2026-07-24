@@ -120,6 +120,12 @@ func (p *PostgresStore) UpdateOrgPlan(ctx context.Context, orgID, plan string) e
 	return execOne(p.db.ExecContext(ctx, `UPDATE orgs SET plan=$2 WHERE id=$1`, orgID, plan))
 }
 
+func (p *PostgresStore) UpdateUserProfile(ctx context.Context, id, name, avatarURL string) error {
+	return execOne(p.db.ExecContext(ctx,
+		`UPDATE users SET name = COALESCE(NULLIF($2,''), name), avatar_url = COALESCE(NULLIF($3,''), avatar_url) WHERE id = $1`,
+		id, name, avatarURL))
+}
+
 func (p *PostgresStore) SetOrgStripeCustomer(ctx context.Context, orgID, customerID string) error {
 	return execOne(p.db.ExecContext(ctx, `UPDATE orgs SET stripe_customer_id=$2 WHERE id=$1`, orgID, customerID))
 }
