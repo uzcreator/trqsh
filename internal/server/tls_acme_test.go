@@ -43,8 +43,11 @@ func TestACMECertManagerBuilds(t *testing.T) {
 	if tc.MinVersion < tls.VersionTLS12 {
 		t.Errorf("MinVersion = %x, want >= TLS 1.2", tc.MinVersion)
 	}
-	want := map[string]bool{"h2": false, "http/1.1": false, "acme-tls/1": false}
+	want := map[string]bool{"http/1.1": false, "acme-tls/1": false}
 	for _, p := range tc.NextProtos {
+		if p == "h2" {
+			t.Errorf("ingress must not advertise h2 — the edge speaks HTTP/1.1 only")
+		}
 		if _, ok := want[p]; ok {
 			want[p] = true
 		}

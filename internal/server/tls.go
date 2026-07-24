@@ -90,7 +90,7 @@ func (d *devCertManager) certFor(name string) (*tls.Certificate, error) {
 func (d *devCertManager) TLSConfig() *tls.Config {
 	return &tls.Config{
 		GetCertificate: d.GetCertificate,
-		NextProtos:     []string{"h2", "http/1.1"},
+		NextProtos:     []string{"http/1.1"},
 		MinVersion:     tls.VersionTLS12,
 	}
 }

@@ -83,11 +83,13 @@ func (p *prodCertManager) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certi
 }
 
 // TLSConfig is the public HTTPS ingress config: CertMagic supplies certs per SNI
-// and answers TLS-ALPN-01 challenges, while we advertise HTTP/2 + HTTP/1.1.
+// and answers TLS-ALPN-01 challenges. The ingress speaks HTTP/1.1 only (the proxy
+// is a manual HTTP/1.x reader/writer), so we must NOT advertise "h2" — otherwise
+// browsers negotiate HTTP/2 over ALPN and the connection breaks.
 func (p *prodCertManager) TLSConfig() *tls.Config {
 	return &tls.Config{
 		GetCertificate: p.magic.GetCertificate,
-		NextProtos:     []string{"h2", "http/1.1", acmeTLSALPNProto},
+		NextProtos:     []string{"http/1.1", acmeTLSALPNProto},
 		MinVersion:     tls.VersionTLS12,
 	}
 }
