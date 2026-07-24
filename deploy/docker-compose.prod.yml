@@ -87,6 +87,17 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Make the TLS cert volume writable by the edge's nonroot user (uid 65532).
+  # Docker creates named volumes owned by root, which the distroless/nonroot edge
+  # cannot write — so CertMagic could not persist its ACME account or certs and
+  # every issuance silently stalled. Runs once before the edge starts.
+  edge-init:
+    image: alpine:3.20
+    command: ["sh", "-c", "mkdir -p /data && chown -R 65532:65532 /data && chmod 700 /data"]
+    volumes:
+      - trqsh_tls:/data
+    restart: "no"
+
   # Edge data plane: public ingress (:80/:443) + agent sessions (:4443 tcp+udp).
   edge:
     build:
@@ -125,6 +136,8 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+      edge-init:
+        condition: service_completed_successfully
 
 volumes:
   trqsh_pg:
