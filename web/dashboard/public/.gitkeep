@@ -1,0 +1,2 @@
+# Keeps web/dashboard/public/ present so the Docker build can COPY it.
+# Drop static assets (favicons, images) served at the app root here.
