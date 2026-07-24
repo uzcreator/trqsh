@@ -82,52 +82,63 @@ const TRUST = [
 export default function LandingPage() {
   return (
     <>
-      {/* Hero — immersive 3D tunnel */}
-      <section className="relative isolate overflow-hidden">
-        <Tunnel3D className="pointer-events-none absolute inset-0 -z-10" />
-        {/* Legibility scrims over the moving scene */}
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-page via-page/80 to-page/30 sm:to-transparent" aria-hidden />
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-page to-transparent" aria-hidden />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-page to-transparent" aria-hidden />
+      {/* Hero — immersive 3D tunnel. Background sits at z-0, content at z-10 —
+          positive layering (never negative z-index) so WebKit/iOS can't mis-stack
+          the scrim over the text. */}
+      <section className="relative isolate flex min-h-[78vh] flex-col justify-center overflow-hidden sm:min-h-[88vh]">
+        <div className="absolute inset-0 z-0" aria-hidden>
+          <Tunnel3D className="pointer-events-none absolute inset-0" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-page/70 via-page/40 to-page sm:bg-gradient-to-r sm:from-page sm:via-page/65 sm:to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-page to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-page to-transparent" />
+        </div>
 
-        <div className="mx-auto flex min-h-[86vh] max-w-content flex-col justify-center px-4 py-20 sm:px-6">
-          <div className="max-w-2xl animate-fade-up">
-            <Badge variant="default" className="mb-5 border border-brand/20">
-              <Signal className="h-3.5 w-3.5" /> Now running on QUIC / HTTP-3
-            </Badge>
-            <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl xl:text-6xl">
+        <div className="relative z-10 mx-auto w-full max-w-content px-4 py-16 sm:px-6 sm:py-20">
+          <div className="max-w-2xl">
+            <div className="animate-fade-up">
+              <Badge variant="default" className="mb-5 border border-brand/20">
+                <Signal className="h-3.5 w-3.5" /> Now running on QUIC / HTTP-3
+              </Badge>
+            </div>
+            <h1
+              className="animate-fade-up text-[2.15rem] font-semibold leading-[1.06] tracking-tight text-foreground sm:text-5xl xl:text-6xl"
+              style={{ animationDelay: "90ms" }}
+            >
               Your localhost,
               <br />
               <span className="gradient-text">live on the internet.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-secondary">
+            <p
+              className="animate-fade-up mt-5 max-w-xl text-base leading-relaxed text-secondary sm:text-lg"
+              style={{ animationDelay: "180ms" }}
+            >
               trqsh exposes a local port to a public HTTPS URL in seconds — over QUIC for lower
               latency, with UDP support, a desktop app, and a free tier that stays out of your way.
             </p>
 
-            <div className="mt-8">
+            <div className="animate-fade-up mt-8" style={{ animationDelay: "270ms" }}>
               <SmartDownload variant="hero" />
             </div>
 
-            <div className="mt-8 max-w-md">
+            <div className="animate-fade-up mt-8 max-w-md" style={{ animationDelay: "360ms" }}>
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Or install the CLI</p>
               <InstallTabs />
             </div>
           </div>
         </div>
-
-        {/* Trust row — static, no animation */}
-        <div className="relative border-y border-border bg-surface/40 backdrop-blur-sm">
-          <div className="mx-auto flex max-w-content flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-4 text-sm text-muted sm:px-6">
-            {TRUST.map((t, i) => (
-              <span key={t} className="flex items-center gap-6 whitespace-nowrap">
-                {t}
-                {i < TRUST.length - 1 && <span className="hidden text-brand/40 sm:inline">◆</span>}
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
+
+      {/* Trust row — static */}
+      <div className="border-y border-border bg-surface/40">
+        <div className="mx-auto flex max-w-content flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-4 text-sm text-muted sm:gap-x-6 sm:px-6">
+          {TRUST.map((t, i) => (
+            <span key={t} className="flex items-center gap-5 whitespace-nowrap sm:gap-6">
+              {t}
+              {i < TRUST.length - 1 && <span className="hidden text-brand/40 sm:inline">◆</span>}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {/* How it works — compact, no stacking */}
       <Section
