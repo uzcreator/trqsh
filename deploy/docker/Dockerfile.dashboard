@@ -17,7 +17,13 @@ RUN corepack enable
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY web/dashboard/ ./
-ENV NEXT_TELEMETRY_DISABLED=1
+# Inlined at build (next.config env): the API base the browser hits for OAuth,
+# and the public base domain shown in the UI.
+ARG TRQSH_API_URL=http://localhost:8080
+ARG NEXT_PUBLIC_TRQSH_BASE_DOMAIN=lvh.me
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    TRQSH_API_URL=$TRQSH_API_URL \
+    NEXT_PUBLIC_TRQSH_BASE_DOMAIN=$NEXT_PUBLIC_TRQSH_BASE_DOMAIN
 RUN pnpm build
 
 # --- runtime ---

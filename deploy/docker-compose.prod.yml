@@ -96,6 +96,20 @@ services:
       dockerfile: deploy/docker/Dockerfile.site
     restart: unless-stopped
 
+  # Web dashboard (web/dashboard, Next.js) at app.<base>. TRQSH_API_URL is the
+  # PUBLIC api URL, baked at build so the browser's OAuth links resolve.
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.dashboard
+      args:
+        TRQSH_API_URL: https://api.${TRQSH_BASE_DOMAIN:-trqsh.uz}
+        NEXT_PUBLIC_TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+
   # Make the TLS cert volume writable by the edge's nonroot user (uid 65532).
   # Docker creates named volumes owned by root, which the distroless/nonroot edge
   # cannot write — so CertMagic could not persist its ACME account or certs and
@@ -133,8 +147,11 @@ services:
       TRQSH_CLOUDFLARE_API_TOKEN: ${TRQSH_CLOUDFLARE_API_TOKEN:-}
       TRQSH_TLS_STORAGE_DIR: /var/lib/trqsh/tls
       TRQSH_METRICS_ADDR: ":9090"
-      # Serve the marketing site at the apex + www (reverse-proxied internally).
+      # Reverse-proxy reserved hosts to internal services (apex/www → site,
+      # app → dashboard, api → control API).
       TRQSH_SITE_UPSTREAM: "http://site:3000"
+      TRQSH_APP_UPSTREAM: "http://dashboard:3000"
+      TRQSH_API_UPSTREAM: "http://api:8080"
     volumes:
       - trqsh_tls:/var/lib/trqsh/tls
     ports:
@@ -150,6 +167,8 @@ services:
       edge-init:
         condition: service_completed_successfully
       site:
+        condition: service_started
+      dashboard:
         condition: service_started
 
 volumes:

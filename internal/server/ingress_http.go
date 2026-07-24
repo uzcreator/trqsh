@@ -74,10 +74,10 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		host := hostOnly(req.Host)
 		bt := s.hub.LookupHost(host)
 		if bt == nil {
-			// Apex + www serve the marketing site when configured; every other
-			// unrouted host gets the branded "tunnel offline" page.
-			if s.cfg.SiteUpstream != "" && s.isSiteHost(host) {
-				if s.proxyToSite(conn, req, scheme) {
+			// Reserved control-plane hosts (apex/www → site, app → dashboard,
+			// api → API) are reverse-proxied; anything else gets the branded 404.
+			if up := s.reservedUpstream(host); up != "" {
+				if s.proxyToUpstream(conn, req, scheme, up) {
 					continue
 				}
 				return
@@ -165,25 +165,35 @@ func hostOnly(hostport string) string {
 	return h
 }
 
-// isSiteHost reports whether host is the marketing-site apex or its www alias.
-func (s *Server) isSiteHost(host string) bool {
+// reservedUpstream returns the internal upstream for a reserved control-plane
+// host (apex/www → site, app → dashboard, api → API), or "" if the host is not
+// reserved or its upstream isn't configured.
+func (s *Server) reservedUpstream(host string) string {
 	base := strings.ToLower(s.cfg.BaseDomain)
-	return host == base || host == "www."+base
+	switch host {
+	case base, "www." + base:
+		return s.cfg.SiteUpstream
+	case "app." + base:
+		return s.cfg.AppUpstream
+	case "api." + base:
+		return s.cfg.APIUpstream
+	}
+	return ""
 }
 
-// proxyToSite reverse-proxies one request to the marketing-site upstream and
-// writes the response back to conn. It returns true if the client connection may
-// be reused (HTTP keep-alive). A fresh upstream connection is used per request.
-func (s *Server) proxyToSite(conn net.Conn, req *http.Request, scheme string) bool {
-	u, err := url.Parse(s.cfg.SiteUpstream)
+// proxyToUpstream reverse-proxies one request to an internal upstream and writes
+// the response back to conn. It returns true if the client connection may be
+// reused (HTTP keep-alive). A fresh upstream connection is used per request.
+func (s *Server) proxyToUpstream(conn net.Conn, req *http.Request, scheme, upstream string) bool {
+	u, err := url.Parse(upstream)
 	if err != nil || u.Host == "" {
-		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site misconfigured\n")
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream misconfigured\n")
 		return false
 	}
 	up, err := net.DialTimeout("tcp", u.Host, 10*time.Second)
 	if err != nil {
-		s.metrics.Errors.WithLabelValues("site_unreachable").Inc()
-		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site unreachable\n")
+		s.metrics.Errors.WithLabelValues("upstream_unreachable").Inc()
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream unreachable\n")
 		return false
 	}
 	defer up.Close()
@@ -196,8 +206,8 @@ func (s *Server) proxyToSite(conn net.Conn, req *http.Request, scheme string) bo
 	}
 	resp, err := http.ReadResponse(bufio.NewReader(up), req)
 	if err != nil {
-		s.metrics.Errors.WithLabelValues("site_bad_response").Inc()
-		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 site bad response\n")
+		s.metrics.Errors.WithLabelValues("upstream_bad_response").Inc()
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream bad response\n")
 		return false
 	}
 	defer resp.Body.Close()

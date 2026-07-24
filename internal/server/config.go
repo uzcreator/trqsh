@@ -56,9 +56,13 @@ type Config struct {
 	// Ops.
 	MetricsAddr string // TRQSH_METRICS_ADDR, e.g. ":9090" (metrics + health)
 
-	// Marketing site. When set, requests to the apex (<base>) and www that match
-	// no tunnel are reverse-proxied here instead of returning the branded 404.
+	// Reserved control-plane hosts. When set, requests to these hostnames that
+	// match no tunnel are reverse-proxied to the internal service instead of the
+	// branded 404: apex (<base>) + www → SiteUpstream, app.<base> → AppUpstream,
+	// api.<base> → APIUpstream.
 	SiteUpstream string // TRQSH_SITE_UPSTREAM, e.g. "http://site:3000"
+	AppUpstream  string // TRQSH_APP_UPSTREAM, e.g. "http://dashboard:3000"
+	APIUpstream  string // TRQSH_API_UPSTREAM, e.g. "http://api:8080"
 
 	// Tuning.
 	HeartbeatInterval time.Duration
@@ -111,6 +115,8 @@ func LoadConfig() (Config, error) {
 	envStr(&c.TLSStorageDir, "TRQSH_TLS_STORAGE_DIR")
 	envStr(&c.MetricsAddr, "TRQSH_METRICS_ADDR")
 	envStr(&c.SiteUpstream, "TRQSH_SITE_UPSTREAM")
+	envStr(&c.AppUpstream, "TRQSH_APP_UPSTREAM")
+	envStr(&c.APIUpstream, "TRQSH_API_UPSTREAM")
 	c.ACMEStaging = envBool("TRQSH_ACME_STAGING", c.ACMEStaging)
 	envInt(&c.PortMin, "TRQSH_PORT_MIN")
 	envInt(&c.PortMax, "TRQSH_PORT_MAX")
