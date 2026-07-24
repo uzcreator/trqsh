@@ -145,10 +145,59 @@ func (p OAuthProvider) fetchUser(ctx context.Context, accessToken string) (OAuth
 	if avatar == "" {
 		avatar = raw.Picture
 	}
+	if raw.Email == "" && p.Name == "github" {
+		// GitHub's /user omits private emails; the user:email scope lets us read
+		// the account's primary verified address from /user/emails.
+		raw.Email, err = p.fetchGitHubEmail(ctx, accessToken)
+		if err != nil {
+			return OAuthUser{}, err
+		}
+	}
 	if raw.Email == "" {
 		return OAuthUser{}, fmt.Errorf("oauth userinfo: no email (make it public or add email scope)")
 	}
 	return OAuthUser{Email: raw.Email, Name: name, AvatarURL: avatar, Provider: p.Name}, nil
+}
+
+// fetchGitHubEmail returns the account's primary verified email via the
+// user:email scope, used when the public profile hides the address.
+func (p OAuthProvider) fetchGitHubEmail(ctx context.Context, accessToken string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := httpClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("oauth userinfo: emails status %d", resp.StatusCode)
+	}
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+		return "", err
+	}
+	var fallback string
+	for _, e := range emails {
+		if e.Verified && e.Primary {
+			return e.Email, nil
+		}
+		if e.Verified && fallback == "" {
+			fallback = e.Email
+		}
+	}
+	if fallback != "" {
+		return fallback, nil
+	}
+	return "", fmt.Errorf("oauth userinfo: no verified email")
 }
 
 func httpClient() *http.Client { return &http.Client{Timeout: 15 * time.Second} }
