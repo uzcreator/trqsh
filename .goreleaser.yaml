@@ -27,12 +27,17 @@ builds:
     goarch: [amd64, arm64]
 
 archives:
-  - id: default
-    builds: [trqsh, trqshd]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  # CLI (trqsh) — what users download. Built for every platform.
+  - id: cli
+    builds: [trqsh]
+    name_template: "trqsh_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         format: zip
+  # Edge server (trqshd) — Linux/macOS only; for self-hosting.
+  - id: edge
+    builds: [trqshd]
+    name_template: "trqshd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: "checksums.txt"

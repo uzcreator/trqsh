@@ -17,7 +17,7 @@ const nextConfig = {
     TRQSH_SITE_URL: process.env.TRQSH_SITE_URL || "https://trqsh.uz",
     // Latest published version — drives download filenames (matches goreleaser
     // `trqsh_<version>_<os>_<arch>` and the GUI installer names).
-    TRQSH_LATEST_VERSION: process.env.TRQSH_LATEST_VERSION || "0.1.0",
+    TRQSH_LATEST_VERSION: process.env.TRQSH_LATEST_VERSION || "0.1.1",
   },
 };
 
