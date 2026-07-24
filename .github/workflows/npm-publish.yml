@@ -1,0 +1,29 @@
+# Publish the npm wrapper (@trqsh-uz/trqsh) on its own. The wrapper only fetches
+# the prebuilt binary from the downloads release at install time, so it can ship
+# independently of the full goreleaser release (Actions → npm-publish → Run).
+name: npm-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (must match a downloads release, e.g. 0.1.1)"
+        required: true
+        default: "0.1.1"
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Publish to npm
+        working-directory: packaging/npm
+        run: |
+          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
