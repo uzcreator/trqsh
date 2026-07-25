@@ -6,12 +6,12 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_amd64.zip",
-      "hash": "REPLACE_WITH_SHA256_FROM_checksums.txt",
+      "hash": "21fd2717fbd9556a85c3537193ec43d8c71e10d1b789747897589cb1831e6a6b",
       "bin": "trqsh.exe"
     },
     "arm64": {
       "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_arm64.zip",
-      "hash": "REPLACE_WITH_SHA256_FROM_checksums.txt",
+      "hash": "ec6accc468511a97729867d8fdb18520fbce257fed8bc417d529851c12172500",
       "bin": "trqsh.exe"
     }
   },
