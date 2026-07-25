@@ -5,12 +5,12 @@
   "license": "Apache-2.0",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_amd64.zip",
+      "url": "https://github.com/trqsh-uz/cli/releases/download/v0.1.2/trqsh_0.1.2_windows_amd64.zip",
       "hash": "21fd2717fbd9556a85c3537193ec43d8c71e10d1b789747897589cb1831e6a6b",
       "bin": "trqsh.exe"
     },
     "arm64": {
-      "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_arm64.zip",
+      "url": "https://github.com/trqsh-uz/cli/releases/download/v0.1.2/trqsh_0.1.2_windows_arm64.zip",
       "hash": "ec6accc468511a97729867d8fdb18520fbce257fed8bc417d529851c12172500",
       "bin": "trqsh.exe"
     }
@@ -19,14 +19,14 @@
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/trqsh_$version_windows_amd64.zip"
+        "url": "https://github.com/trqsh-uz/cli/releases/download/v$version/trqsh_$version_windows_amd64.zip"
       },
       "arm64": {
-        "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/trqsh_$version_windows_arm64.zip"
+        "url": "https://github.com/trqsh-uz/cli/releases/download/v$version/trqsh_$version_windows_arm64.zip"
       }
     },
     "hash": {
-      "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/checksums.txt"
+      "url": "https://github.com/trqsh-uz/cli/releases/download/v$version/checksums.txt"
     }
   }
 }

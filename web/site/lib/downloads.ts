@@ -1,12 +1,12 @@
 import { site } from "./site";
 
-// Release artifacts published to the public trqsh-uz/downloads repo by
-// .goreleaser.yaml. Archive names follow `trqsh_<version>_<os>_<arch>` (zip on
-// Windows). The desktop GUI isn't part of this release, so the page is CLI-first:
-// an install script, the npm/pip wrappers, distro packages, and static binaries.
+// CLI archives are published to the public trqsh-uz/cli repo by .goreleaser.yaml
+// (`trqsh_<version>_<os>_<arch>`, zip on Windows). The desktop GUI ships from its
+// own repo, trqsh-uz/gui, and is the headline download wherever it's available.
 
 const v = site.version;
 const base = `${site.githubUrl}/releases/download/v${v}`;
+const guiBase = `https://github.com/trqsh-uz/gui/releases/download/v${v}`;
 
 export const releasesUrl = `${site.githubUrl}/releases/latest`;
 export const checksumsUrl = `${base}/checksums.txt`;
@@ -43,6 +43,7 @@ export interface OSDownload {
 
 const npmSnippet: InstallSnippet = { label: "npm", command: "npm install -g @trqsh-uz/trqsh" };
 const pipSnippet: InstallSnippet = { label: "pipx", command: "pipx install trqsh" };
+const scoopSnippet: InstallSnippet = { label: "Scoop", command: "scoop bucket add trqsh https://github.com/trqsh-uz/scoop-bucket; scoop install trqsh" };
 const scriptSnippet: InstallSnippet = { label: "Install script", command: installShCommand, recommended: true };
 
 export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
@@ -60,9 +61,11 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   windows: {
     id: "windows",
     name: "Windows",
-    tagline: "x64 and ARM64 · static binary",
-    desktop: [],
-    cli: [{ ...npmSnippet, recommended: true }, pipSnippet],
+    tagline: "Desktop app · or CLI via npm / Scoop",
+    desktop: [
+      { label: "Download the app", href: `${guiBase}/trqsh-gui_${v}_windows_amd64.exe`, arch: "amd64", kind: "exe" },
+    ],
+    cli: [{ ...npmSnippet, recommended: true }, scoopSnippet, pipSnippet],
     archives: [
       { label: "Windows x64", href: `${base}/trqsh_${v}_windows_amd64.zip`, arch: "amd64", kind: "zip" },
       { label: "Windows ARM64", href: `${base}/trqsh_${v}_windows_arm64.zip`, arch: "arm64", kind: "zip" },
@@ -104,6 +107,13 @@ export function archiveFor(os: OSId, arch: Arch | null): Asset {
     if (match) return match;
   }
   return list[0];
+}
+
+/** The headline download for an OS: the desktop app if it ships there, else the CLI archive. */
+export function primaryDownload(os: OSId, arch: Arch | null): Asset {
+  const desk = OS_DOWNLOADS[os].desktop;
+  if (desk.length > 0) return desk[0];
+  return archiveFor(os, arch);
 }
 
 /** The recommended CLI one-liner for an OS (first `recommended`, else first). */

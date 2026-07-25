@@ -79,9 +79,9 @@ nfpms:
 release:
   # Binaries are published to the PUBLIC releases repo (source stays private in
   # trqsh-uz/trqsh). Requires RELEASE_REPO_TOKEN (a PAT with contents:write on
-  # trqsh-uz/downloads) as GITHUB_TOKEN in release.yml.
+  # trqsh-uz/cli) as GITHUB_TOKEN in release.yml.
   github:
     owner: trqsh-uz
-    name: downloads
+    name: cli
   draft: false
   prerelease: auto

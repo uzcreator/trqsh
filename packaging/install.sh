@@ -7,7 +7,7 @@
 # Overrides: TRQSH_VERSION, TRQSH_REPO, TRQSH_BINDIR.
 set -eu
 
-REPO="${TRQSH_REPO:-trqsh-uz/downloads}"
+REPO="${TRQSH_REPO:-trqsh-uz/cli}"
 VERSION="${TRQSH_VERSION:-0.1.2}"
 BINDIR="${TRQSH_BINDIR:-}"
 

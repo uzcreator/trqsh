@@ -62,19 +62,21 @@ export function DownloadSection() {
                 </div>
               </div>
 
-              {/* Desktop app (empty until the GUI ships) */}
+              {/* Desktop app — the headline download where it ships */}
               {os.desktop.length > 0 && (
-                <div className="flex flex-col gap-2">
+                <div className="mb-4 flex flex-col gap-2">
                   {os.desktop.map((a) => (
                     <a
                       key={a.href}
                       href={a.href}
-                      className={cn(buttonVariants({ size: "sm" }), "w-full justify-center")}
+                      className={cn(buttonVariants({ size: "lg" }), "btn-shine glow-brand w-full justify-center")}
                     >
                       <Download className="h-4 w-4" /> {a.label}
-                      {a.kind && <span className="opacity-70">· {a.kind}</span>}
                     </a>
                   ))}
+                  <span className="text-[0.7rem] leading-snug text-muted">
+                    v{site.version} · unsigned preview — Windows may warn &ldquo;unknown publisher&rdquo;.
+                  </span>
                 </div>
               )}
 
@@ -125,7 +127,7 @@ export function DownloadSection() {
           <a href={checksumsUrl} className="text-brand hover:underline">
             checksums.txt
           </a>{" "}
-          · every build is signed
+          · CLI builds are checksummed
         </p>
         <a href={releasesUrl} className="text-brand hover:underline">
           Browse all releases →

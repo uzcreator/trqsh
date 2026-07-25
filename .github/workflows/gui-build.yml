@@ -44,7 +44,7 @@ jobs:
       - name: Build GUI (unsigned)
         shell: bash
         working-directory: gui
-        run: wails3 build -clean -tags production
+        run: wails3 build -tags production
 
       - name: List output
         if: always()
@@ -60,7 +60,7 @@ jobs:
           path: gui/bin/*
           if-no-files-found: warn
 
-      - name: Attach .exe to the downloads release
+      - name: Publish .exe to the gui release
         if: success()
         shell: bash
         env:
@@ -69,4 +69,8 @@ jobs:
           exe=$(ls gui/bin/*.exe | head -1)
           out="trqsh-gui_${{ inputs.version }}_windows_amd64.exe"
           cp "$exe" "$out"
-          gh release upload "v${{ inputs.version }}" "$out" --repo trqsh-uz/downloads --clobber
+          gh release create "v${{ inputs.version }}" --repo trqsh-uz/gui \
+            --title "trqsh desktop v${{ inputs.version }}" \
+            --notes "Unsigned preview build. Windows SmartScreen may warn 'unknown publisher' — click More info → Run anyway." \
+            2>/dev/null || true
+          gh release upload "v${{ inputs.version }}" "$out" --repo trqsh-uz/gui --clobber

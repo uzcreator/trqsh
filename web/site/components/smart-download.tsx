@@ -5,10 +5,11 @@ import { Apple, ArrowRight, Cpu, Download, Monitor, Terminal as TerminalIcon } f
 import Link from "next/link";
 import {
   ARCH_LABEL,
+  OS_DOWNLOADS,
   OS_LABEL,
   OS_ORDER,
-  archiveFor,
   primaryCli,
+  primaryDownload,
   type Arch,
   type OSId,
 } from "@/lib/downloads";
@@ -49,7 +50,8 @@ export function SmartDownload({
     };
   }, []);
 
-  const primary = archiveFor(os, arch);
+  const primary = primaryDownload(os, arch);
+  const isApp = OS_DOWNLOADS[os].desktop.length > 0;
   const cli = primaryCli(os);
   const Icon = OS_ICON[os];
 
@@ -134,7 +136,7 @@ export function SmartDownload({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col">
           <span className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-            Direct download · recommended
+            {isApp ? "Desktop app · recommended" : "Direct download · recommended"}
           </span>
           <a
             href={primary.href}
@@ -144,7 +146,9 @@ export function SmartDownload({
             Download for {OS_LABEL[os]}
           </a>
           <span className="mt-2 text-xs text-muted">
-            {primary.kind ? `${primary.kind} · ` : ""}v{site.version} · checksummed
+            {isApp
+              ? `Desktop app · v${site.version} · unsigned preview`
+              : `${primary.kind ? `${primary.kind} · ` : ""}v${site.version} · checksummed`}
           </span>
         </div>
 
