@@ -199,6 +199,57 @@ func TestEdgeUnknownHost404(t *testing.T) {
 	}
 }
 
+// A reserved control-plane host (apex/www/app/api) served over plain HTTP must
+// 301 to HTTPS so browsers never stay on an insecure connection.
+func TestReservedHostHTTPSRedirect(t *testing.T) {
+	cfg := server.DefaultConfig()
+	cfg.BaseDomain = "lvh.me"
+	cfg.SiteUpstream = "http://127.0.0.1:1" // marks apex reserved; never dialed (redirect wins)
+	cfg.QUICAddr = "127.0.0.1:0"
+	cfg.TCPAddr = "127.0.0.1:0"
+	cfg.HTTPAddr = "127.0.0.1:0"
+	cfg.HTTPSAddr = "127.0.0.1:0"
+	cfg.MetricsAddr = "127.0.0.1:0"
+	cfg.HeartbeatInterval = 0
+
+	srv, err := server.New(cfg, testLogger())
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go func() { _ = srv.Run(ctx) }()
+	select {
+	case <-srv.Ready():
+	case <-time.After(5 * time.Second):
+		t.Fatal("edge did not become ready")
+	}
+
+	req, _ := http.NewRequest("GET", "http://"+srv.HTTPAddr().String()+"/pricing?x=1", nil)
+	req.Host = "lvh.me"
+	client := &http.Client{
+		Timeout:       5 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	var r *http.Response
+	for i := 0; i < 20; i++ {
+		if r, err = client.Do(req); err == nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusMovedPermanently {
+		t.Fatalf("status = %d, want 301", r.StatusCode)
+	}
+	if loc := r.Header.Get("Location"); loc != "https://lvh.me/pricing?x=1" {
+		t.Fatalf("Location = %q, want https://lvh.me/pricing?x=1", loc)
+	}
+}
+
 func TestEdgeTCPWeld(t *testing.T) {
 	port := freePort(t)
 	srv := startEdge(t, port, port)

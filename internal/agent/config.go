@@ -48,7 +48,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Version:     1,
-		Server:      "localhost:4443",
+		Server:      DefaultServer,
 		Region:      "auto",
 		Transport:   "auto",
 		Tunnels:     map[string]TunnelConfig{},

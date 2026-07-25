@@ -72,6 +72,16 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		_ = conn.SetReadDeadline(time.Time{})
 
 		host := hostOnly(req.Host)
+
+		// Force HTTPS for our own control-plane hosts (marketing site, dashboard,
+		// API) so a fresh device that typed "trqsh.uz" never stays on an insecure
+		// http:// connection. Tunnels keep serving both schemes as before. Certs
+		// use ACME DNS-01, so nothing needs answering over plain HTTP.
+		if scheme == "http" && s.reservedUpstream(host) != "" {
+			redirectToHTTPS(conn, host, req)
+			return
+		}
+
 		bt := s.hub.LookupHost(host)
 		if bt == nil {
 			// Reserved control-plane hosts (apex/www → site, app → dashboard,
@@ -155,6 +165,17 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 	}
 }
 
+// redirectToHTTPS writes a 301 pointing at the same host+path over HTTPS.
+func redirectToHTTPS(conn net.Conn, host string, req *http.Request) {
+	target := "https://" + host + req.URL.RequestURI()
+	body := "Redirecting to " + target + "\n"
+	fmt.Fprintf(conn, "HTTP/1.1 301 Moved Permanently\r\n"+
+		"Location: %s\r\n"+
+		"Content-Type: text/plain; charset=utf-8\r\n"+
+		"Content-Length: %d\r\n"+
+		"Connection: close\r\n\r\n%s", target, len(body), body)
+}
+
 func hostOnly(hostport string) string {
 	h := strings.ToLower(strings.TrimSpace(hostport))
 	if strings.Contains(h, ":") {
@@ -211,6 +232,11 @@ func (s *Server) proxyToUpstream(conn net.Conn, req *http.Request, scheme, upstr
 		return false
 	}
 	defer resp.Body.Close()
+	if scheme == "https" {
+		// Reserved control-plane hosts (site/dashboard/api) are always served
+		// over TLS; tell browsers to remember that for a year.
+		resp.Header.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+	}
 	keepAlive := !req.Close && !resp.Close
 	if err := resp.Write(conn); err != nil {
 		return false
