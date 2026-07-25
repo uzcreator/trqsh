@@ -1,0 +1,72 @@
+name: gui-build
+
+# Build the desktop GUI (Wails v3) and attach it to a downloads release.
+# Manual for now (unsigned "unknown publisher" builds) — run from the Actions
+# tab. Windows first; macOS/Linux legs can be added once signing is sorted.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Downloads release tag to attach to (e.g. 0.1.2)"
+        required: true
+        default: "0.1.2"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.26" }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+
+      - name: Install Wails v3 CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.11
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: wails3 doctor
+        shell: bash
+        working-directory: gui
+        run: wails3 doctor || true
+
+      - name: Build frontend
+        shell: bash
+        working-directory: gui/frontend
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm build
+
+      - name: Build GUI (unsigned)
+        shell: bash
+        working-directory: gui
+        run: wails3 build -clean -tags production
+
+      - name: List output
+        if: always()
+        shell: bash
+        working-directory: gui
+        run: ls -la bin || true
+
+      - name: Upload build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trqsh-gui-windows
+          path: gui/bin/*
+          if-no-files-found: warn
+
+      - name: Attach .exe to the downloads release
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
+        run: |
+          exe=$(ls gui/bin/*.exe | head -1)
+          out="trqsh-gui_${{ inputs.version }}_windows_amd64.exe"
+          cp "$exe" "$out"
+          gh release upload "v${{ inputs.version }}" "$out" --repo trqsh-uz/downloads --clobber
