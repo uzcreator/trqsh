@@ -1,6 +1,6 @@
 {
   "name": "@trqsh-uz/trqsh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Expose localhost to the internet — fast QUIC tunnels with a desktop app. This package installs the trqsh CLI binary for your platform.",
   "keywords": [
     "trqsh",

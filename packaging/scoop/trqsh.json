@@ -1,16 +1,16 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Expose localhost to the internet — fast QUIC tunnels with a desktop app.",
   "homepage": "https://trqsh.uz",
   "license": "Apache-2.0",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/trqsh/trqsh/releases/download/v0.1.0/trqsh_0.1.0_windows_amd64.zip",
+      "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_amd64.zip",
       "hash": "REPLACE_WITH_SHA256_FROM_checksums.txt",
       "bin": "trqsh.exe"
     },
     "arm64": {
-      "url": "https://github.com/trqsh/trqsh/releases/download/v0.1.0/trqsh_0.1.0_windows_arm64.zip",
+      "url": "https://github.com/trqsh-uz/downloads/releases/download/v0.1.2/trqsh_0.1.2_windows_arm64.zip",
       "hash": "REPLACE_WITH_SHA256_FROM_checksums.txt",
       "bin": "trqsh.exe"
     }
@@ -19,14 +19,14 @@
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/trqsh/trqsh/releases/download/v$version/trqsh_$version_windows_amd64.zip"
+        "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/trqsh_$version_windows_amd64.zip"
       },
       "arm64": {
-        "url": "https://github.com/trqsh/trqsh/releases/download/v$version/trqsh_$version_windows_arm64.zip"
+        "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/trqsh_$version_windows_arm64.zip"
       }
     },
     "hash": {
-      "url": "https://github.com/trqsh/trqsh/releases/download/v$version/checksums.txt"
+      "url": "https://github.com/trqsh-uz/downloads/releases/download/v$version/checksums.txt"
     }
   }
 }

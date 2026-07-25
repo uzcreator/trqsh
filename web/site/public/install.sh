@@ -8,7 +8,7 @@
 set -eu
 
 REPO="${TRQSH_REPO:-trqsh-uz/downloads}"
-VERSION="${TRQSH_VERSION:-0.1.1}"
+VERSION="${TRQSH_VERSION:-0.1.2}"
 BINDIR="${TRQSH_BINDIR:-}"
 
 say() { printf 'trqsh: %s\n' "$1" >&2; }
