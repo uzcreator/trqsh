@@ -50,7 +50,7 @@ func main() {
 		},
 	})
 
-	win := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "trqsh",
 		Width:     980,
 		Height:    680,

@@ -135,7 +135,7 @@ func (s *AgentService) emit(ev agent.Event) {
 	app := s.app
 	s.mu.Unlock()
 	if app != nil {
-		app.EmitEvent("agent:event", ev)
+		app.Event.Emit("agent:event", ev)
 	}
 }
 

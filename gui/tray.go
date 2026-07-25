@@ -22,7 +22,7 @@ type Tray struct {
 // supplied per-platform by the Part 08 packaging step; Wails falls back to a
 // default when none is set.
 func setupTray(app *application.App, win *application.WebviewWindow, svc *AgentService) *Tray {
-	t := &Tray{app: app, win: win, svc: svc, tray: app.NewSystemTray()}
+	t := &Tray{app: app, win: win, svc: svc, tray: app.SystemTray.New()}
 
 	// Left-clicking the tray icon toggles window visibility.
 	t.tray.OnClick(func() {
@@ -63,7 +63,7 @@ func (t *Tray) refresh() {
 	menu.Add("New tunnel…").OnClick(func(_ *application.Context) {
 		t.win.Show()
 		t.win.Focus()
-		t.app.EmitEvent("ui:new-tunnel")
+		t.app.Event.Emit("ui:new-tunnel")
 	})
 
 	if len(web) > 0 {

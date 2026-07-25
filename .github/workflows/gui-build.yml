@@ -39,7 +39,9 @@ jobs:
         shell: bash
         working-directory: gui
         env:
-          CGO_ENABLED: "1"
+          # Wails v3 on Windows loads WebView2 via pure-Go go-winloader — no cgo,
+          # no C toolchain. Verified building a working .exe with CGO off.
+          CGO_ENABLED: "0"
           GOWORK: "off" # gui is its own module, excluded from the root go.work
         run: |
           mkdir -p bin
