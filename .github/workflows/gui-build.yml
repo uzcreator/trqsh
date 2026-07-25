@@ -1,13 +1,18 @@
 name: gui-build
 
-# Build the desktop GUI (Wails v3) and attach it to a downloads release.
+# Build the desktop GUI (Wails v3) and publish it to the trqsh-uz/gui repo.
 # Manual for now (unsigned "unknown publisher" builds) — run from the Actions
 # tab. Windows first; macOS/Linux legs can be added once signing is sorted.
+#
+# We build the Go binary directly (go build) instead of `wails3 build`: the
+# alpha CLI's build is a Taskfile alias this project never scaffolded, and the
+# React frontend is embedded via //go:embed all:frontend/dist, so a plain
+# `go build -H windowsgui` produces a working, self-contained app.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Downloads release tag to attach to (e.g. 0.1.2)"
+        description: "gui release tag to publish (e.g. 0.1.2)"
         required: true
         default: "0.1.2"
 
@@ -23,18 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
 
-      - name: Install Wails v3 CLI
-        shell: bash
-        run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.11
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
-      - name: wails3 doctor
-        shell: bash
-        working-directory: gui
-        run: wails3 doctor || true
-
-      - name: Build frontend
+      - name: Build frontend (embedded by the Go binary)
         shell: bash
         working-directory: gui/frontend
         run: |
@@ -44,11 +38,13 @@ jobs:
       - name: Build GUI (unsigned)
         shell: bash
         working-directory: gui
+        env:
+          CGO_ENABLED: "1"
         run: |
-          echo "--- wails3 build flags (for reference) ---"
-          wails3 build --help || true
-          echo "--- building ---"
-          wails3 build
+          mkdir -p bin
+          go build -tags production \
+            -ldflags "-H windowsgui -s -w -X main.version=${{ inputs.version }}" \
+            -o bin/trqsh-gui.exe .
 
       - name: List output
         if: always()
@@ -70,11 +66,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
         run: |
-          exe=$(ls gui/bin/*.exe | head -1)
           out="trqsh-gui_${{ inputs.version }}_windows_amd64.exe"
-          cp "$exe" "$out"
+          cp gui/bin/trqsh-gui.exe "$out"
           gh release create "v${{ inputs.version }}" --repo trqsh-uz/gui \
             --title "trqsh desktop v${{ inputs.version }}" \
-            --notes "Unsigned preview build. Windows SmartScreen may warn 'unknown publisher' — click More info → Run anyway." \
+            --notes "Unsigned preview build. Windows SmartScreen may warn 'unknown publisher' — click More info then Run anyway." \
             2>/dev/null || true
           gh release upload "v${{ inputs.version }}" "$out" --repo trqsh-uz/gui --clobber
