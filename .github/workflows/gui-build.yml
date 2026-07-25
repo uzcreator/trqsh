@@ -44,7 +44,11 @@ jobs:
       - name: Build GUI (unsigned)
         shell: bash
         working-directory: gui
-        run: wails3 build -tags production
+        run: |
+          echo "--- wails3 build flags (for reference) ---"
+          wails3 build --help || true
+          echo "--- building ---"
+          wails3 build
 
       - name: List output
         if: always()
