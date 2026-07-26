@@ -118,16 +118,26 @@ async function api<T>(
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(base + path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(await errorMessage(res));
-  if (res.status === 204) return undefined as T;
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("application/json")) return undefined as T;
-  return (await res.json()) as T;
+  // Bound every call so a dead or slow control endpoint (e.g. the agent still
+  // starting) fails fast and the UI retries, instead of hanging. 15s comfortably
+  // covers the slowest call (opening a tunnel connects to the edge, ~10s).
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(base + path, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    if (res.status === 204) return undefined as T;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return undefined as T;
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Extract a useful message from a non-2xx control-API response. The Go side

@@ -1,26 +1,32 @@
 // trqsh desktop shell.
 //
 // This is a thin native client over the Go agent. The Go agent ships as a
-// bundled sidecar binary (bundle.externalBin = "binaries/trqsh"); on startup we
-// spawn `trqsh daemon`, which serves the loopback control API on 127.0.0.1:4041
-// and writes a bearer token to ~/.trqsh/control.token. The WebView UI reads the
+// bundled binary (bundle.externalBin = "binaries/trqsh") that Tauri installs
+// next to the app executable as `trqsh` (triple stripped). On startup we spawn
+// `trqsh daemon`, which serves the loopback control API on 127.0.0.1:4041 and
+// writes a bearer token to ~/.trqsh/control.token. The WebView UI reads the
 // endpoint via get_agent_endpoint() and drives the agent over plain HTTP + SSE.
 //
 // The UI is never in the tunnel data path (internet → edge → agent → localhost),
 // so the shell has zero effect on tunnel throughput or server scale — those live
 // entirely in the Go engine.
+//
+// We spawn the agent with std::process directly against the resolved path next
+// to the app executable, rather than Tauri's sidecar resolver, so there is no
+// ambiguity about the bundled path — and we log the outcome to ~/.trqsh so
+// startup problems are diagnosable in a windowed (no-console) build.
 
 // No console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::io::Write;
 use std::path::PathBuf;
+use std::process::{Child, Command};
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{Manager, State};
+use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
-use tauri_plugin_shell::process::CommandChild;
-use tauri_plugin_shell::ShellExt;
 
 // The daemon's fixed loopback control address (mirrors the Go default).
 const CONTROL_BASE: &str = "http://127.0.0.1:4041";
@@ -42,20 +48,44 @@ struct HostInfo {
     docs_url: String,
 }
 
-/// Handle to the running Go agent sidecar so we can stop it on exit.
+/// Handle to the running Go agent so we can stop it on exit.
 #[derive(Default)]
-struct Sidecar(Mutex<Option<CommandChild>>);
+struct Sidecar(Mutex<Option<Child>>);
+
+fn trqsh_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.path().home_dir().ok().map(|h| h.join(".trqsh"))
+}
 
 fn control_token_path(app: &tauri::AppHandle) -> Option<PathBuf> {
-    app.path()
-        .home_dir()
-        .ok()
-        .map(|h| h.join(".trqsh").join("control.token"))
+    trqsh_dir(app).map(|d| d.join("control.token"))
+}
+
+/// Appends a line to ~/.trqsh/desktop.log. Startup runs in a windowed process
+/// with no console, so this file is how we surface agent-spawn problems.
+fn log_line(app: &tauri::AppHandle, msg: &str) {
+    if let Some(dir) = trqsh_dir(app) {
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join("desktop.log"))
+        {
+            let _ = writeln!(f, "{msg}");
+        }
+    }
+}
+
+/// Resolves the bundled agent binary next to the app executable.
+fn agent_binary() -> Option<PathBuf> {
+    let name = if cfg!(windows) { "trqsh.exe" } else { "trqsh" };
+    let exe = std::env::current_exe().ok()?;
+    let candidate = exe.parent()?.join(name);
+    candidate.exists().then_some(candidate)
 }
 
 /// Returns the loopback control API base URL and the bearer token the daemon
 /// wrote. The token file appears once the daemon has started; until then the
-/// token is empty and the first calls 401 (the UI retries as the agent comes up).
+/// token is empty and the UI retries as the agent comes up.
 #[tauri::command]
 fn get_agent_endpoint(app: tauri::AppHandle) -> Endpoint {
     let token = control_token_path(&app)
@@ -95,19 +125,29 @@ fn quit(app: tauri::AppHandle) {
 }
 
 /// Spawns the bundled Go agent as a background daemon.
-fn spawn_agent(app: &tauri::AppHandle) -> Result<CommandChild, String> {
-    let cmd = app
-        .shell()
-        .sidecar("binaries/trqsh")
-        .map_err(|e| e.to_string())?;
-    let (_rx, child) = cmd.args(["daemon"]).spawn().map_err(|e| e.to_string())?;
-    Ok(child)
+fn spawn_agent(app: &tauri::AppHandle) -> std::io::Result<Child> {
+    let bin = agent_binary().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "agent binary (trqsh) not found next to the app executable",
+        )
+    })?;
+    log_line(app, &format!("spawning agent: {}", bin.display()));
+    let mut cmd = Command::new(&bin);
+    cmd.arg("daemon");
+    // Don't pop a console window on Windows (CREATE_NO_WINDOW).
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    cmd.spawn()
 }
 
 fn stop_agent(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<Sidecar>() {
         if let Ok(mut guard) = state.0.lock() {
-            if let Some(child) = guard.take() {
+            if let Some(mut child) = guard.take() {
                 let _ = child.kill();
             }
         }
@@ -116,7 +156,6 @@ fn stop_agent(app: &tauri::AppHandle) {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Sidecar::default())
         .invoke_handler(tauri::generate_handler![
@@ -129,17 +168,17 @@ fn main() {
             let handle = app.handle().clone();
             match spawn_agent(&handle) {
                 Ok(child) => {
-                    let state: State<Sidecar> = app.state();
-                    *state.0.lock().unwrap() = Some(child);
+                    log_line(&handle, &format!("agent started, pid={}", child.id()));
+                    *handle.state::<Sidecar>().0.lock().unwrap() = Some(child);
                 }
-                Err(e) => eprintln!("trqsh: failed to start agent sidecar: {e}"),
+                Err(e) => log_line(&handle, &format!("agent spawn FAILED: {e}")),
             }
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building trqsh desktop")
-        // Reap the agent sidecar whenever the app is exiting, so quitting (tray,
-        // window close, or the quit command) never leaves an orphan daemon.
+        // Reap the agent whenever the app exits, so quitting never leaves an
+        // orphan daemon holding the control port.
         .run(|app_handle, event| {
             if matches!(
                 event,
