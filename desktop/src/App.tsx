@@ -13,12 +13,14 @@ import {
   Settings as SettingsIcon,
   Sun,
   User,
+  X,
 } from "lucide-react";
-import { agent, host, waitForSession, type HostInfo } from "@/lib/agent";
+import { agent, host, waitForSession, type HostInfo, type UpdateInfo } from "@/lib/agent";
 import type { AgentEvent, CapturedRequest, Status, Tunnel } from "@/lib/types";
 import { applyTheme, storedTheme, type Theme } from "@/lib/theme";
 import { useHotkeys, useWindowWidth, type Hotkey } from "@/lib/hooks";
 import { ToastProvider, useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { Titlebar } from "@/components/titlebar";
 import { Sidebar, type Screen } from "@/components/sidebar";
 import { CommandPalette, type Command } from "@/components/command-palette";
@@ -66,6 +68,7 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [manualCollapse, setManualCollapse] = useState<boolean | null>(null);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   const collapsed = manualCollapse ?? width < 940;
 
@@ -146,6 +149,22 @@ function Shell() {
   // Tray "New tunnel…" opens the start dialog.
   useEffect(() => host.onUI("ui:new-tunnel", () => setNewOpen(true)), []);
 
+  // On launch, check for a newer desktop release and surface a dismissible
+  // banner + a one-time toast so users know to update. Silent on any failure.
+  useEffect(() => {
+    agent
+      .checkUpdate()
+      .then((u) => {
+        if (u.available) {
+          setUpdate(u);
+          toast.info("Update available", {
+            description: `Version ${u.version} is ready to download.`,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [toast]);
+
   // Live refresh while signed in. The agent emits per-request events (which feed
   // the inspector) but not tunnel metric snapshots, so we poll the list to keep
   // traffic counters current, and prune inspector captures for any tunnel that
@@ -205,6 +224,7 @@ function Shell() {
     try {
       const u = await agent.checkUpdate();
       if (u.available) {
+        setUpdate(u);
         toast.info("Update available", { description: `Version ${u.version} is ready to download.` });
       } else {
         toast.success("You're on the latest version");
@@ -286,11 +306,31 @@ function Shell() {
   const palette = (
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
   );
+  const updateBanner = update?.available ? (
+    <div className="flex items-center gap-3 border-b border-primary/30 bg-primary/10 px-4 py-2 text-sm">
+      <DownloadCloud className="size-4 shrink-0 text-primary" />
+      <span className="flex-1">
+        A new version is available — <span className="font-semibold">v{update.version}</span>
+      </span>
+      <Button size="sm" onClick={() => agent.openURL(update.url)}>
+        <DownloadCloud className="size-3.5" />
+        Download
+      </Button>
+      <button
+        onClick={() => setUpdate(null)}
+        aria-label="Dismiss"
+        className="text-muted transition-colors hover:text-foreground"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+  ) : null;
 
   if (!authed) {
     return (
       <div className="flex h-full flex-col">
         {bar}
+        {updateBanner}
         <Login
           onConnected={() => {
             setAuthed(true);
@@ -306,6 +346,7 @@ function Shell() {
   return (
     <div className="flex h-full flex-col">
       {bar}
+      {updateBanner}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           active={screen}

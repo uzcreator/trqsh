@@ -203,6 +203,20 @@ function loadSettings(): AppSettings {
   return { ...defaultSettings };
 }
 
+/** True if dotted version `a` is strictly newer than `b` (e.g. "0.2.4" > "0.2.3").
+ *  Non-numeric parts (e.g. a "dev" build) count as 0, so any real release is
+ *  newer than a dev build. */
+export function isVersionNewer(a: string, b: string): boolean {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 export const agent: AgentAPI = {
   session: () => api<Session>("GET", "/session"),
   login: (token) => api<Session>("POST", "/login", { token }),
@@ -240,10 +254,26 @@ export const agent: AgentAPI = {
     }
   },
 
-  // Self-update runs through the installer / CI release feed, not the control
-  // API. Report "up to date" until the updater lands.
+  // Ask the agent for the latest published desktop release (it queries the
+  // public GitHub releases from Go, so there's no WebView CORS/CSP issue), then
+  // compare it against this build's version. Any failure is treated as "no
+  // update" so a flaky network never blocks or nags the user.
   async checkUpdate() {
-    return { available: false, version: "", notes: "", url: "" };
+    try {
+      const latest = await api<{ version: string; notes: string; url: string }>(
+        "GET",
+        "/update",
+      );
+      const current = (await host.env()).version;
+      return {
+        available: !!latest.version && isVersionNewer(latest.version, current),
+        version: latest.version,
+        notes: latest.notes || "",
+        url: latest.url || "",
+      };
+    } catch {
+      return { available: false, version: "", notes: "", url: "" };
+    }
   },
 
   async openURL(url) {

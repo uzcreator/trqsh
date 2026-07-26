@@ -144,6 +144,14 @@ func (l *LocalAPI) Handler() http.Handler {
 		l.core.Inspector().Clear()
 		w.WriteHeader(http.StatusNoContent)
 	})
+	mux.HandleFunc("GET /update", func(w http.ResponseWriter, r *http.Request) {
+		info, err := latestRelease(r.Context())
+		if err != nil {
+			apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		apiWriteJSON(w, http.StatusOK, info)
+	})
 	mux.HandleFunc("GET /events", l.events)
 	return mux
 }

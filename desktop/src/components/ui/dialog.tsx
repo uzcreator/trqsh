@@ -26,6 +26,13 @@ export function Dialog({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  // Keep the latest onClose in a ref so the focus-management effect can depend
+  // ONLY on `open`. Depending on `onClose` re-ran this whole effect on every
+  // parent render (callers pass inline arrows), and the cleanup + re-focus stole
+  // focus back to the autoFocus field mid-typing — so characters typed in Name /
+  // subdomain / basic-auth landed in the Local address field instead.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +47,7 @@ export function Dialog({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !panel) return;
@@ -64,7 +71,7 @@ export function Dialog({
       window.removeEventListener("keydown", onKey);
       restoreRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
