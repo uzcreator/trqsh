@@ -1,0 +1,12 @@
+# Frontend
+node_modules/
+dist/
+*.local
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+
+# Bundled sidecar binaries are produced by CI (Go build), not committed.
+src-tauri/binaries/*
+!src-tauri/binaries/README.md

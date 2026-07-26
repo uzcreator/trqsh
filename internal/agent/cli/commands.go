@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trqsh-uz/trqsh/internal/agent"
 	"github.com/spf13/cobra"
+	"github.com/trqsh-uz/trqsh/internal/agent"
 )
 
 func newHTTPCmd(g *globalFlags) *cobra.Command {
@@ -230,8 +230,14 @@ func newUpdateCmd() *cobra.Command {
 // --- local control API client helpers ---
 
 func controlGET(addr, path string, out any) error {
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("http://" + addr + path)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+addr+path, nil)
+	if err != nil {
+		return err
+	}
+	if tok := agent.LoadControlToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
 	if err != nil {
 		return err
 	}
@@ -246,6 +252,9 @@ func controlDelete(addr, path string) error {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, "http://"+addr+path, nil)
 	if err != nil {
 		return err
+	}
+	if tok := agent.LoadControlToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
 	if err != nil {

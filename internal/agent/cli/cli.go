@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
 	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
-	"github.com/spf13/cobra"
 )
 
 // Execute runs the root command.
@@ -61,6 +61,7 @@ func newRootCmd() *cobra.Command {
 		newStartCmd(g),
 		newStatusCmd(g),
 		newStopCmd(g),
+		newDaemonCmd(g),
 		newLoginCmd(g),
 		newConfigCmd(g),
 		newVersionCmd(),

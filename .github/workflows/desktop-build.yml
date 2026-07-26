@@ -1,0 +1,152 @@
+name: desktop-build
+
+# Builds the trqsh desktop app (Tauri v2) for Windows, macOS, and Linux and
+# uploads the installers as artifacts. Optionally publishes them to the public
+# trqsh-uz/gui releases repo (opt-in, so unsigned preview builds don't ship by
+# accident).
+#
+# The app is a thin native client: the Go agent is bundled as a sidecar binary
+# (src-tauri/binaries/trqsh-<target-triple>). We build that Go binary natively on
+# each runner (no cross-compilation) and name it with the Rust host triple that
+# Tauri resolves at bundle time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g. 0.2.0), used when publishing"
+        required: true
+        default: "0.2.0"
+      publish:
+        description: "Publish installers to trqsh-uz/gui"
+        type: boolean
+        default: false
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: darwin
+          - os: ubuntu-22.04
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.26" }
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      # WebKitGTK + packaging tools for the Linux bundle (AppImage/deb/rpm).
+      - name: Install Linux deps
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev patchelf \
+            libayatana-appindicator3-dev rpm
+
+      # Build the Go agent and drop it in as the Tauri sidecar for this runner's
+      # host triple (e.g. trqsh-x86_64-pc-windows-msvc.exe).
+      - name: Build Go agent sidecar
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          triple="$(rustc -vV | sed -n 's/^host: //p')"
+          ext=""
+          [ "${{ matrix.platform }}" = "windows" ] && ext=".exe"
+          mkdir -p desktop/src-tauri/binaries
+          go build -trimpath -ldflags "-s -w" \
+            -o "desktop/src-tauri/binaries/trqsh-${triple}${ext}" ./cmd/trqsh
+          ls -la desktop/src-tauri/binaries
+
+      - name: Install frontend deps
+        working-directory: desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri app
+        working-directory: desktop
+        run: pnpm tauri build
+
+      # Gather every installer this platform produced into one folder.
+      - name: Collect bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          base=desktop/src-tauri/target/release/bundle
+          find "$base" -type f \( \
+              -name "*.exe" -o -name "*.msi" -o \
+              -name "*.dmg" -o -name "*.app.tar.gz" -o \
+              -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \
+            \) -exec cp {} out/ \; 2>/dev/null || true
+          echo "Collected:"; ls -la out
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: trqsh-desktop-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: warn
+
+  # Publish all installers to the public trqsh-uz/gui release. Opt-in via the
+  # workflow_dispatch `publish` input, or automatic on a desktop-v* tag.
+  publish:
+    needs: build
+    if: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            v="${GITHUB_REF_NAME#desktop-v}"
+          else
+            v="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish to trqsh-uz/gui
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          v="${{ steps.v.outputs.version }}"
+          find dist -type f | sort
+          gh release create "v$v" --repo trqsh-uz/gui \
+            --title "trqsh desktop v$v" \
+            --notes "Unsigned preview build. Windows SmartScreen may warn 'unknown publisher' — click More info then Run anyway. macOS: right-click → Open the first time." \
+            2>/dev/null || true
+          find dist -type f -exec gh release upload "v$v" {} --repo trqsh-uz/gui --clobber \;

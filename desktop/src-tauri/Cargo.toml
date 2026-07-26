@@ -1,0 +1,25 @@
+[package]
+name = "trqsh-desktop"
+version = "0.2.0"
+description = "trqsh — expose your localhost to the internet, fast."
+authors = ["trqsh"]
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Smaller, faster release binary (the installer ships this).
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
