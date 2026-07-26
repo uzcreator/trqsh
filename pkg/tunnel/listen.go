@@ -34,11 +34,7 @@ func Listen(quicAddr, tcpAddr string, tlsConf *tls.Config) (Listener, error) {
 	}
 
 	if quicAddr != "" {
-		ql, err := quic.ListenAddr(quicAddr, conf, &quic.Config{
-			KeepAlivePeriod: defaultKeepAlive,
-			MaxIdleTimeout:  defaultMaxIdle,
-			EnableDatagrams: true,
-		})
+		ql, err := quic.ListenAddr(quicAddr, conf, quicConfig(defaultKeepAlive))
 		if err != nil {
 			cancel()
 			return nil, err

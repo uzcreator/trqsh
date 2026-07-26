@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"log/slog"
+	"net"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -123,6 +125,9 @@ type Agent struct {
 	dialer *tunnel.Dialer
 	insp   *inspect.Recorder
 
+	localRT   http.RoundTripper // pooled keep-alive transport to local services
+	localOnce sync.Once
+
 	mu        sync.Mutex
 	sess      tunnel.Session
 	control   tunnel.Stream
@@ -178,6 +183,29 @@ func New(cfg Config, log *slog.Logger) *Agent {
 
 // Inspector exposes the recorder so the CLI/GUI can serve the inspector UI.
 func (a *Agent) Inspector() *inspect.Recorder { return a.insp }
+
+// localTransport returns the pooled HTTP transport used to forward requests to
+// local services. Connections are kept alive and reused across requests instead
+// of dialing localhost afresh for every request — the main win for pages that
+// fire dozens of resource requests, and it avoids churning ephemeral sockets on
+// Windows. Built lazily so an agent that only serves TCP/UDP never allocates it.
+func (a *Agent) localTransport() http.RoundTripper {
+	a.localOnce.Do(func() {
+		a.localRT = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   localDialTimeout,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     false, // speak HTTP/1.1 to local services
+			MaxIdleConns:          512,
+			MaxIdleConnsPerHost:   128,
+			IdleConnTimeout:       90 * time.Second,
+			DisableCompression:    true, // pass the upstream's encoding through untouched
+			ExpectContinueTimeout: time.Second,
+		}
+	})
+	return a.localRT
+}
 
 func (a *Agent) clientTLS() *tls.Config {
 	return &tls.Config{

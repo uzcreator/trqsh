@@ -25,6 +25,20 @@ const (
 	defaultMaxIdle     = 30 * time.Second
 )
 
+// QUIC flow-control and stream tuning, shared by the dialer and the listener.
+// quic-go's zero-value defaults are deliberately conservative (512 KB initial
+// receive windows, 100 concurrent streams). Because the edge opens one data
+// stream per public request, a single busy page can need far more than 100
+// concurrent streams, and the small windows throttle the throughput ramp on a
+// real edge↔agent internet link. Raising them keeps one session fast under load.
+const (
+	quicInitialStreamWindow = 4 << 20   // 4 MB
+	quicMaxStreamWindow     = 16 << 20  // 16 MB
+	quicInitialConnWindow   = 8 << 20   // 8 MB
+	quicMaxConnWindow       = 64 << 20  // 64 MB
+	quicMaxIncomingStreams  = 4096      // concurrent data streams per session
+)
+
 // Stream is one multiplexed, bidirectional channel within a Session. It behaves
 // as a net.Conn so callers can io.Copy raw bytes across it.
 type Stream interface {

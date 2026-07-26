@@ -3,9 +3,31 @@ package tunnel
 import (
 	"context"
 	"net"
+	"time"
 
 	quic "github.com/quic-go/quic-go"
 )
+
+// quicConfig builds the QUIC configuration shared by both ends of a session.
+// Flow-control windows and the concurrent-stream limit are raised well above
+// quic-go's conservative defaults so one agent session can carry a busy site's
+// worth of simultaneous request streams at full link speed. keepAlive<=0 uses
+// the package default.
+func quicConfig(keepAlive time.Duration) *quic.Config {
+	if keepAlive <= 0 {
+		keepAlive = defaultKeepAlive
+	}
+	return &quic.Config{
+		KeepAlivePeriod:                keepAlive,
+		MaxIdleTimeout:                 defaultMaxIdle,
+		EnableDatagrams:                true,
+		InitialStreamReceiveWindow:     quicInitialStreamWindow,
+		MaxStreamReceiveWindow:         quicMaxStreamWindow,
+		InitialConnectionReceiveWindow: quicInitialConnWindow,
+		MaxConnectionReceiveWindow:     quicMaxConnWindow,
+		MaxIncomingStreams:             quicMaxIncomingStreams,
+	}
+}
 
 // quicSession adapts a *quic.Conn to the Session interface.
 type quicSession struct {

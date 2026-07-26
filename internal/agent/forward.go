@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -18,6 +17,21 @@ import (
 )
 
 const localDialTimeout = 10 * time.Second
+
+// hopHeaders are per-connection headers that must not be forwarded across a
+// proxy hop (RFC 7230 §6.1). They are stripped from the request handed to the
+// pooled transport, which manages connection reuse itself.
+var hopHeaders = []string{
+	"Connection",
+	"Proxy-Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Te",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+}
 
 // handleDataStream services one edge-initiated data stream: read its StreamInit,
 // find the tunnel, and forward to the local service (teeing HTTP to the inspector).
@@ -49,63 +63,74 @@ func (a *Agent) forwardRaw(st tunnel.Stream, at *activeTunnel) {
 		a.emit(Event{Type: "error", Err: "dial local " + at.spec.Addr + ": " + err.Error()})
 		return
 	}
-	fromPub, toPub := joinStreams(local, st)
+	fromPub, toPub := weld(local, st, st)
 	at.metrics.bytesIn.Add(fromPub)
 	at.metrics.bytesOut.Add(toPub)
 }
 
+// forwardHTTP forwards one HTTP exchange to the local service over a pooled,
+// keep-alive connection and streams the response straight back to the edge,
+// teeing a bounded copy of each body to the request inspector as it flows (so
+// large or streaming responses are never buffered before delivery).
 func (a *Agent) forwardHTTP(st tunnel.Stream, at *activeTunnel, si *proto.StreamInit) {
-	req, err := http.ReadRequest(bufio.NewReader(st))
+	br := bufio.NewReader(st)
+	req, err := http.ReadRequest(br)
 	if err != nil {
 		return
 	}
 	start := time.Now()
 
-	local, err := net.DialTimeout("tcp", normalizeLocalAddr(at.spec.Addr), localDialTimeout)
+	// Websocket/other Upgrade requests can't use the pooled client; weld raw
+	// bytes over a dedicated local connection instead.
+	if isUpgradeReq(req) {
+		a.forwardUpgrade(st, br, at, req)
+		return
+	}
+
+	reqMethod, reqHost := req.Method, req.Host
+	reqPath := req.URL.RequestURI()
+	reqHeaders := hdrMap(req.Header)
+
+	// Tee the request body (bounded) as the transport reads it, then reshape the
+	// server-parsed request into a client request aimed at the local service.
+	reqCap := &capWriter{max: inspect.MaxBodyCapture}
+	if req.Body != nil {
+		req.Body = &teeReadCloser{r: io.TeeReader(req.Body, reqCap), c: req.Body}
+	}
+	localAddr := normalizeLocalAddr(at.spec.Addr)
+	outURL := *req.URL
+	outURL.Scheme = "http"
+	outURL.Host = localAddr
+	req.URL = &outURL
+	req.RequestURI = "" // must be empty for client requests sent via RoundTrip
+	req.Close = false
+	for _, h := range hopHeaders {
+		req.Header.Del(h)
+	}
+
+	resp, err := a.localTransport().RoundTrip(req.WithContext(a.ctx))
 	if err != nil {
 		writeHTTPError(st, http.StatusBadGateway, "local service unreachable")
-		a.emit(Event{Type: "error", Err: "dial local " + at.spec.Addr + ": " + err.Error()})
-		return
-	}
-	defer local.Close()
-
-	if isUpgradeReq(req) {
-		if err := req.Write(local); err != nil {
-			return
-		}
-		fromPub, toPub := joinStreams(local, st)
-		at.metrics.bytesIn.Add(fromPub)
-		at.metrics.bytesOut.Add(toPub)
+		a.emit(Event{Type: "error", Err: "forward to " + at.spec.Addr + ": " + err.Error()})
 		return
 	}
 
-	reqBody, reqRest := capAndRest(req.Body)
-	req.Body = io.NopCloser(io.MultiReader(bytes.NewReader(reqBody), reqRest))
-	reqHeaders := hdrMap(req.Header)
-	reqPath := req.URL.RequestURI()
-	reqMethod, reqHost := req.Method, req.Host
-
-	if err := req.Write(local); err != nil {
-		return
-	}
-	resp, err := http.ReadResponse(bufio.NewReader(local), req)
-	if err != nil {
-		writeHTTPError(st, http.StatusBadGateway, "bad local response")
-		return
-	}
-	respBody, respRest := capAndRest(resp.Body)
-	resp.Body = io.NopCloser(io.MultiReader(bytes.NewReader(respBody), respRest))
+	// Stream the response to the edge, teeing a bounded copy for the inspector.
+	respCap := &capWriter{max: inspect.MaxBodyCapture}
+	body := resp.Body
+	resp.Body = &teeReadCloser{r: io.TeeReader(body, respCap), c: body}
 	status := resp.StatusCode
 	respHeaders := hdrMap(resp.Header)
-	if err := resp.Write(st); err != nil {
-		resp.Body.Close()
+
+	writeErr := resp.Write(st)
+	resp.Body.Close()
+	if writeErr != nil {
 		return
 	}
-	resp.Body.Close()
 
 	at.metrics.requests.Add(1)
-	at.metrics.bytesIn.Add(int64(len(reqBody)))
-	at.metrics.bytesOut.Add(int64(len(respBody)))
+	at.metrics.bytesIn.Add(reqCap.total)
+	at.metrics.bytesOut.Add(respCap.total)
 
 	captured := a.insp.Add(inspect.CapturedRequest{
 		TunnelID:    at.clientTunnelID,
@@ -118,11 +143,32 @@ func (a *Agent) forwardHTTP(st tunnel.Stream, at *activeTunnel, si *proto.Stream
 		DurationMs:  time.Since(start).Milliseconds(),
 		ReqHeaders:  reqHeaders,
 		RespHeaders: respHeaders,
-		ReqBody:     reqBody,
-		RespBody:    respBody,
-		LocalAddr:   normalizeLocalAddr(at.spec.Addr),
+		ReqBody:     reqCap.buf,
+		RespBody:    respCap.buf,
+		BytesIn:     reqCap.total,
+		BytesOut:    respCap.total,
+		LocalAddr:   localAddr,
 	})
 	a.emit(Event{Type: "request", Request: &captured})
+}
+
+// forwardUpgrade handles websocket/other Upgrade requests by dialing a dedicated
+// local connection and welding raw bytes both ways, including any bytes already
+// buffered off the edge stream while reading the request head.
+func (a *Agent) forwardUpgrade(st tunnel.Stream, clientRead io.Reader, at *activeTunnel, req *http.Request) {
+	local, err := net.DialTimeout("tcp", normalizeLocalAddr(at.spec.Addr), localDialTimeout)
+	if err != nil {
+		writeHTTPError(st, http.StatusBadGateway, "local service unreachable")
+		a.emit(Event{Type: "error", Err: "dial local " + at.spec.Addr + ": " + err.Error()})
+		return
+	}
+	if err := req.Write(local); err != nil {
+		local.Close()
+		return
+	}
+	fromPub, toPub := weld(local, st, clientRead)
+	at.metrics.bytesIn.Add(fromPub)
+	at.metrics.bytesOut.Add(toPub)
 }
 
 // forwardUDP translates the uint16-length-framed datagram stream (matching the
@@ -175,14 +221,17 @@ func (a *Agent) forwardUDP(st tunnel.Stream, at *activeTunnel) {
 	}
 }
 
-// joinStreams welds a local conn to an edge stream, returning bytes from the
-// public side (into local) and to the public side (out of local).
-func joinStreams(local net.Conn, st tunnel.Stream) (fromPublic, toPublic int64) {
+// weld copies bytes both ways between a local conn and an edge stream until
+// either side closes. fromEdge is the reader for the edge side (the stream
+// itself, or a *bufio.Reader when bytes were already buffered off it). It
+// returns bytes read from the public side (into local) and sent to the public
+// side (out of local).
+func weld(local net.Conn, st tunnel.Stream, fromEdge io.Reader) (fromPublic, toPublic int64) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		fromPublic, _ = io.Copy(local, st)
+		fromPublic, _ = io.Copy(local, fromEdge)
 		local.Close()
 		st.Close()
 	}()
@@ -196,16 +245,35 @@ func joinStreams(local net.Conn, st tunnel.Stream) (fromPublic, toPublic int64) 
 	return fromPublic, toPublic
 }
 
-// capAndRest reads up to MaxBodyCapture bytes for the inspector and returns a
-// reader for whatever remains, so the full body can still be forwarded.
-func capAndRest(r io.Reader) ([]byte, io.Reader) {
-	if r == nil {
-		return nil, bytes.NewReader(nil)
-	}
-	buf := make([]byte, inspect.MaxBodyCapture)
-	n, _ := io.ReadFull(r, buf)
-	return buf[:n], r
+// capWriter counts every byte written and retains only the first max of them for
+// the inspector, discarding the rest. Used as the sink of an io.TeeReader so a
+// bounded copy is captured while the body streams through untouched.
+type capWriter struct {
+	max   int
+	buf   []byte
+	total int64
 }
+
+func (w *capWriter) Write(p []byte) (int, error) {
+	w.total += int64(len(p))
+	if room := w.max - len(w.buf); room > 0 {
+		if room > len(p) {
+			room = len(p)
+		}
+		w.buf = append(w.buf, p[:room]...)
+	}
+	return len(p), nil
+}
+
+// teeReadCloser reads through r (typically an io.TeeReader) while closing c (the
+// original body), so a body can be captured as it streams without buffering.
+type teeReadCloser struct {
+	r io.Reader
+	c io.Closer
+}
+
+func (t *teeReadCloser) Read(p []byte) (int, error) { return t.r.Read(p) }
+func (t *teeReadCloser) Close() error               { return t.c.Close() }
 
 func writeHTTPError(w io.Writer, status int, msg string) {
 	fmt.Fprintf(w, "HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",

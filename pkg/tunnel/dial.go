@@ -104,12 +104,7 @@ func (d *Dialer) tlsClone() *tls.Config {
 func (d *Dialer) dialQUIC(ctx context.Context, addr string) (Session, error) {
 	dctx, cancel := context.WithTimeout(ctx, d.dialTimeout())
 	defer cancel()
-	conf := &quic.Config{
-		KeepAlivePeriod: d.keepAlive(),
-		MaxIdleTimeout:  defaultMaxIdle,
-		EnableDatagrams: true,
-	}
-	conn, err := quic.DialAddr(dctx, addr, d.tlsClone(), conf)
+	conn, err := quic.DialAddr(dctx, addr, d.tlsClone(), quicConfig(d.keepAlive()))
 	if err != nil {
 		return nil, err
 	}
