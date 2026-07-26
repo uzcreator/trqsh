@@ -6,7 +6,11 @@ import { site } from "./site";
 
 const v = site.version;
 const base = `${site.githubUrl}/releases/download/v${v}`;
-const guiBase = `https://github.com/trqsh-uz/gui/releases/download/v${v}`;
+
+// The desktop app (Tauri) versions independently of the CLI and ships from
+// trqsh-uz/gui. Asset names follow Tauri's bundler convention.
+const dv = process.env.TRQSH_DESKTOP_VERSION || "0.2.0";
+const guiBase = `https://github.com/trqsh-uz/gui/releases/download/v${dv}`;
 
 export const releasesUrl = `${site.githubUrl}/releases/latest`;
 export const checksumsUrl = `${base}/checksums.txt`;
@@ -50,8 +54,10 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   macos: {
     id: "macos",
     name: "macOS",
-    tagline: "Apple Silicon and Intel · static binary",
-    desktop: [],
+    tagline: "Native desktop app · or CLI",
+    desktop: [
+      { label: "Apple Silicon", href: `${guiBase}/trqsh_${dv}_aarch64.dmg`, arch: "arm64", kind: "dmg" },
+    ],
     cli: [scriptSnippet, npmSnippet, pipSnippet],
     archives: [
       { label: "Apple Silicon", href: `${base}/trqsh_${v}_darwin_arm64.tar.gz`, arch: "arm64", kind: "tar.gz" },
@@ -63,7 +69,8 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
     name: "Windows",
     tagline: "Desktop app · or CLI via npm / Scoop",
     desktop: [
-      { label: "Download the app", href: `${guiBase}/trqsh-gui_${v}_windows_amd64.exe`, arch: "amd64", kind: "exe" },
+      { label: "Windows installer", href: `${guiBase}/trqsh_${dv}_x64-setup.exe`, arch: "amd64", kind: "exe" },
+      { label: "MSI package", href: `${guiBase}/trqsh_${dv}_x64_en-US.msi`, arch: "amd64", kind: "msi" },
     ],
     cli: [{ ...npmSnippet, recommended: true }, scoopSnippet, pipSnippet],
     archives: [
@@ -74,8 +81,12 @@ export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
   linux: {
     id: "linux",
     name: "Linux",
-    tagline: "Static binary, .deb / .rpm, or install script",
-    desktop: [],
+    tagline: "Desktop app (AppImage / deb / rpm) · or CLI",
+    desktop: [
+      { label: "AppImage", href: `${guiBase}/trqsh_${dv}_amd64.AppImage`, arch: "amd64", kind: "AppImage" },
+      { label: "Debian / Ubuntu", href: `${guiBase}/trqsh_${dv}_amd64.deb`, arch: "amd64", kind: "deb" },
+      { label: "Fedora / RHEL", href: `${guiBase}/trqsh-${dv}-1.x86_64.rpm`, arch: "amd64", kind: "rpm" },
+    ],
     cli: [scriptSnippet, npmSnippet, pipSnippet],
     archives: [
       { label: "Linux x64", href: `${base}/trqsh_${v}_linux_amd64.tar.gz`, arch: "amd64", kind: "tar.gz" },
