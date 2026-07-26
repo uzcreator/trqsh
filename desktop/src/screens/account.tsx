@@ -34,7 +34,7 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
   useEffect(() => {
     host.env().then(setEnv).catch(() => {});
   }, []);
-  const billing = env?.billing_url ?? "https://dashboard.trqsh.uz/billing";
+  const billing = env?.billing_url ?? "https://app.trqsh.uz/billing";
 
   const totals = tunnels.reduce(
     (acc, t) => ({

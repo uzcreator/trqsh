@@ -146,6 +146,38 @@ function Shell() {
   // Tray "New tunnel…" opens the start dialog.
   useEffect(() => host.onUI("ui:new-tunnel", () => setNewOpen(true)), []);
 
+  // Live refresh while signed in. The agent emits per-request events (which feed
+  // the inspector) but not tunnel metric snapshots, so we poll the list to keep
+  // traffic counters current, and prune inspector captures for any tunnel that
+  // has stopped — so stopping a tunnel also stops its traffic in the inspector.
+  useEffect(() => {
+    if (!authed) return;
+    const known = new Set<string>();
+    let alive = true;
+    const tick = () => {
+      agent
+        .list()
+        .then((next) => {
+          if (!alive) return;
+          const nextIds = new Set(next.map((t) => t.id));
+          setCaptures((caps) =>
+            caps.filter((c) => !(known.has(c.tunnel_id) && !nextIds.has(c.tunnel_id))),
+          );
+          known.clear();
+          nextIds.forEach((id) => known.add(id));
+          setTunnels(next);
+        })
+        .catch(() => {});
+      agent.status().then((s) => alive && setStatus(s)).catch(() => {});
+    };
+    tick();
+    const iv = setInterval(tick, 2000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [authed]);
+
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     applyTheme(t);

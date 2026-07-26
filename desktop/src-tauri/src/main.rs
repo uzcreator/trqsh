@@ -104,9 +104,9 @@ fn get_host_info() -> HostInfo {
         os: std::env::consts::OS.to_string(),
         arch: std::env::consts::ARCH.to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        dashboard_url: "https://dashboard.trqsh.uz".into(),
-        keys_url: "https://dashboard.trqsh.uz/keys".into(),
-        billing_url: "https://dashboard.trqsh.uz/billing".into(),
+        dashboard_url: "https://app.trqsh.uz".into(),
+        keys_url: "https://app.trqsh.uz/keys".into(),
+        billing_url: "https://app.trqsh.uz/billing".into(),
         docs_url: "https://trqsh.uz/docs".into(),
     }
 }

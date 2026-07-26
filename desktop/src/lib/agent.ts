@@ -371,9 +371,9 @@ function browserHost(): HostAPI {
         os: guessOS(),
         arch: "amd64",
         version: "dev",
-        dashboard_url: "https://dashboard.trqsh.uz",
-        keys_url: "https://dashboard.trqsh.uz/keys",
-        billing_url: "https://dashboard.trqsh.uz/billing",
+        dashboard_url: "https://app.trqsh.uz",
+        keys_url: "https://app.trqsh.uz/keys",
+        billing_url: "https://app.trqsh.uz/billing",
         docs_url: "https://trqsh.uz/docs",
       };
     },

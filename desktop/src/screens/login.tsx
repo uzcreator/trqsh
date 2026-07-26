@@ -20,7 +20,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
   useEffect(() => {
     host.env().then(setEnv).catch(() => {});
   }, []);
-  const keysURL = env?.keys_url ?? "https://dashboard.trqsh.uz/keys";
+  const keysURL = env?.keys_url ?? "https://app.trqsh.uz/keys";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
