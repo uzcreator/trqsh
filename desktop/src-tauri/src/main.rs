@@ -25,7 +25,9 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::Manager;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
 
 // The daemon's fixed loopback control address (mirrors the Go default).
@@ -154,6 +156,58 @@ fn stop_agent(app: &tauri::AppHandle) {
     }
 }
 
+/// Brings the main window back to the foreground (from the tray or after a
+/// hide-to-tray close). Safe to call when the window is already visible.
+fn show_main(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+/// Builds the system-tray icon with a small menu. Left-click reopens the window;
+/// the menu offers Open / New tunnel / Quit. Quitting here (app.exit) is the only
+/// path that actually stops the agent — closing the window just hides it.
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    let open_i = MenuItem::with_id(app, "open", "Open trqsh", true, None::<&str>)?;
+    let new_i = MenuItem::with_id(app, "new", "New tunnel", true, None::<&str>)?;
+    let quit_i = MenuItem::with_id(app, "quit", "Quit trqsh", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&open_i, &new_i, &sep, &quit_i])?;
+
+    let mut builder = TrayIconBuilder::with_id("main")
+        .tooltip("trqsh")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_main(app),
+            "new" => {
+                show_main(app);
+                let _ = app.emit("ui:new-tunnel", ());
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main(tray.app_handle());
+            }
+        });
+    // The bundle icon is the tray icon; if it's somehow absent, still build a
+    // (blank) tray rather than panicking on unwrap at startup.
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -164,6 +218,15 @@ fn main() {
             open_url,
             quit
         ])
+        // Closing the window hides it to the tray instead of quitting, so the Go
+        // agent keeps the tunnels alive in the background. The app only really
+        // exits via the tray's "Quit" (or the in-app Quit command).
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .setup(|app| {
             let handle = app.handle().clone();
             match spawn_agent(&handle) {
@@ -172,6 +235,9 @@ fn main() {
                     *handle.state::<Sidecar>().0.lock().unwrap() = Some(child);
                 }
                 Err(e) => log_line(&handle, &format!("agent spawn FAILED: {e}")),
+            }
+            if let Err(e) = setup_tray(app) {
+                log_line(&handle, &format!("tray setup FAILED: {e}"));
             }
             Ok(())
         })

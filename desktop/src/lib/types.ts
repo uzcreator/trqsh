@@ -40,6 +40,9 @@ export interface Tunnel {
   public_url: string;
   status: string;
   metrics: TunnelMetrics;
+  /** RFC3339 time the tunnel came online. Server-side truth so uptime survives
+   *  a window reload (it used to reset to 0 because it was timed client-side). */
+  created_at: string;
 }
 
 /** One captured HTTP exchange from the local inspector. Body fields are base64

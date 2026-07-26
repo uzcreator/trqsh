@@ -175,6 +175,7 @@ func (a *Agent) bind(ctx context.Context, spec TunnelSpec) (Tunnel, error) {
 			assignedHost:   br.AssignedHost,
 			assignedPort:   int(br.AssignedPort),
 			status:         "online",
+			createdAt:      time.Now(),
 		}
 		a.mu.Lock()
 		a.tunnels[clientTunnelID] = at

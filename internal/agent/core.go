@@ -56,6 +56,7 @@ type Tunnel struct {
 	PublicURL string        `json:"public_url"`
 	Status    string        `json:"status"` // connecting|online|error
 	Metrics   TunnelMetrics `json:"metrics"`
+	CreatedAt time.Time     `json:"created_at"` // when the tunnel came online (server-side truth for uptime)
 }
 
 // Event is a state change, captured request, or error emitted on Events().
@@ -103,6 +104,7 @@ type activeTunnel struct {
 	assignedHost   string
 	assignedPort   int
 	status         string
+	createdAt      time.Time
 	metrics        tunnelMetrics
 }
 
@@ -115,6 +117,7 @@ func (t *activeTunnel) view() Tunnel {
 		PublicURL: t.publicURL,
 		Status:    t.status,
 		Metrics:   t.metrics.snapshot(),
+		CreatedAt: t.createdAt,
 	}
 }
 

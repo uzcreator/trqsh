@@ -93,6 +93,16 @@ func (r *Recorder) List() []CapturedRequest {
 	return out
 }
 
+// Clear drops all retained captures. Live subscribers keep receiving new
+// captures; only the history buffer is emptied. The desktop app calls this so
+// its "Clear" button truly resets the inspector — not just the on-screen list,
+// which used to reappear on the next reload because the buffer still held them.
+func (r *Recorder) Clear() {
+	r.mu.Lock()
+	r.buf = r.buf[:0]
+	r.mu.Unlock()
+}
+
 // Get returns a capture by ID.
 func (r *Recorder) Get(id string) (CapturedRequest, bool) {
 	r.mu.Lock()

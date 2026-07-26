@@ -23,7 +23,7 @@ import { Titlebar } from "@/components/titlebar";
 import { Sidebar, type Screen } from "@/components/sidebar";
 import { CommandPalette, type Command } from "@/components/command-palette";
 import { StartTunnelDialog } from "@/components/start-tunnel-dialog";
-import { Spinner } from "@/components/ui/spinner";
+import { Splash } from "@/components/splash";
 import { Login } from "@/screens/login";
 import { Tunnels } from "@/screens/tunnels";
 import { Inspector } from "@/screens/inspector";
@@ -270,11 +270,7 @@ function Shell() {
   }, [authed, tunnels, env, theme, disconnect, toggleTheme, checkUpdate]);
 
   if (!booted) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner className="size-5 text-muted" />
-      </div>
-    );
+    return <Splash />;
   }
 
   const bar = (
@@ -323,7 +319,17 @@ function Shell() {
             {screen === "tunnels" && (
               <Tunnels tunnels={tunnels} onNew={() => setNewOpen(true)} onChanged={refreshTunnels} />
             )}
-            {screen === "inspector" && <Inspector captures={captures} onClear={() => setCaptures([])} />}
+            {screen === "inspector" && (
+              <Inspector
+                captures={captures}
+                onClear={() => {
+                  setCaptures([]);
+                  // Also wipe the agent's history so cleared requests don't
+                  // reappear on the next reload/poll.
+                  agent.clearRequests().catch(() => {});
+                }}
+              />
+            )}
             {screen === "account" && <Account status={status} tunnels={tunnels} />}
             {screen === "settings" && <Settings onDisconnect={disconnect} />}
           </div>

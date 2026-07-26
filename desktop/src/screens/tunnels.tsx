@@ -41,6 +41,10 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
   const lastReq = useRef(t.metrics.requests);
   const lastSec = useRef(Math.floor(now / 1000));
   const web = isWebProto(t.proto);
+  // Uptime from the server-side created_at so it survives a window reload; the
+  // client-timed fallback (firstSeen) is only used if the agent sent no stamp.
+  const created = Date.parse(t.created_at);
+  const createdMs = Number.isFinite(created) && created > 0 ? created : firstSeen;
 
   // Sample request rate once per wall-clock second into a 30-point buffer.
   useEffect(() => {
@@ -76,7 +80,7 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
               {t.proto}
             </Badge>
             <span className="tabular text-xs text-muted">
-              {t.status === "online" ? fmtUptime(now - firstSeen) : t.status}
+              {t.status === "online" ? fmtUptime(now - createdMs) : t.status}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

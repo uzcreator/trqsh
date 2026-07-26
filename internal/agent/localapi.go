@@ -140,6 +140,10 @@ func (l *LocalAPI) Handler() http.Handler {
 	mux.HandleFunc("GET /requests", func(w http.ResponseWriter, _ *http.Request) {
 		apiWriteJSON(w, http.StatusOK, l.core.Inspector().List())
 	})
+	mux.HandleFunc("DELETE /requests", func(w http.ResponseWriter, _ *http.Request) {
+		l.core.Inspector().Clear()
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("GET /events", l.events)
 	return mux
 }

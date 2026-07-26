@@ -1,6 +1,6 @@
 [package]
 name = "trqsh-desktop"
-version = "0.2.0"
+version = "0.2.1"
 description = "trqsh — expose your localhost to the internet, fast."
 authors = ["trqsh"]
 edition = "2021"
@@ -10,7 +10,9 @@ rust-version = "1.77"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# tray-icon: background/menu-bar operation so closing the window keeps the agent
+# running and the app reachable from the system tray.
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

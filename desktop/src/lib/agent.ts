@@ -171,6 +171,8 @@ export interface AgentAPI {
   stopTunnel(id: string): Promise<void>;
   list(): Promise<Tunnel[]>;
   recent(): Promise<CapturedRequest[]>;
+  /** Clear the agent's captured-request history (not just the on-screen list). */
+  clearRequests(): Promise<void>;
   replay(id: string): Promise<void>;
   settings(): Promise<AppSettings>;
   saveSettings(s: AppSettings): Promise<void>;
@@ -210,6 +212,7 @@ export const agent: AgentAPI = {
   stopTunnel: (id) => api<void>("DELETE", `/tunnels/${encodeURIComponent(id)}`),
   list: () => api<Tunnel[]>("GET", "/tunnels"),
   recent: () => api<CapturedRequest[]>("GET", "/requests"),
+  clearRequests: () => api<void>("DELETE", "/requests"),
 
   // Replaying a captured request isn't wired on the control API yet; surface a
   // clear message instead of silently doing nothing.
