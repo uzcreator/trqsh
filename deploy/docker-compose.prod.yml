@@ -79,6 +79,9 @@ services:
       TRQSH_GITHUB_CLIENT_SECRET: ${TRQSH_GITHUB_CLIENT_SECRET:-}
       TRQSH_GOOGLE_CLIENT_ID: ${TRQSH_GOOGLE_CLIENT_ID:-}
       TRQSH_GOOGLE_CLIENT_SECRET: ${TRQSH_GOOGLE_CLIENT_SECRET:-}
+      # approve.<base> admin console (subscription grants). Empty = disabled.
+      TRQSH_ADMIN_USER: ${TRQSH_ADMIN_USER:-}
+      TRQSH_ADMIN_PASSWORD: ${TRQSH_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
