@@ -25,6 +25,8 @@ type Config struct {
 	RedisURL    string // TRQSH_REDIS_URL (for live tunnels list; optional)
 	BaseDomain  string // TRQSH_BASE_DOMAIN
 	PublicURL   string // TRQSH_API_PUBLIC_URL (for OAuth redirects), e.g. https://api.example.com
+	AppURL      string // TRQSH_APP_URL — public dashboard origin, e.g. https://app.example.com
+	// (device-flow verification page + post-OAuth redirect). Defaults to https://app.<BaseDomain>.
 
 	JWTSecret     string // TRQSH_JWT_SECRET
 	InternalToken string // TRQSH_INTERNAL_TOKEN (edge <-> api)
@@ -33,6 +35,11 @@ type Config struct {
 	GitHubClientSecret string
 	GoogleClientID     string
 	GoogleClientSecret string
+
+	// Admin (approve.<base>): a username/password gate for manually granting
+	// subscriptions. Empty credentials disable the admin site entirely.
+	AdminUser     string // TRQSH_ADMIN_USER
+	AdminPassword string // TRQSH_ADMIN_PASSWORD
 
 	// DevAuth enables the password-less /v1/auth/signup + /v1/auth/login used in
 	// local dev and tests. Forced off (and rejected) in production.
@@ -70,12 +77,15 @@ func LoadConfig() (Config, error) {
 	env(&c.RedisURL, "TRQSH_REDIS_URL")
 	env(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
 	env(&c.PublicURL, "TRQSH_API_PUBLIC_URL")
+	env(&c.AppURL, "TRQSH_APP_URL")
 	env(&c.JWTSecret, "TRQSH_JWT_SECRET")
 	env(&c.InternalToken, "TRQSH_INTERNAL_TOKEN")
 	env(&c.GitHubClientID, "TRQSH_GITHUB_CLIENT_ID")
 	env(&c.GitHubClientSecret, "TRQSH_GITHUB_CLIENT_SECRET")
 	env(&c.GoogleClientID, "TRQSH_GOOGLE_CLIENT_ID")
 	env(&c.GoogleClientSecret, "TRQSH_GOOGLE_CLIENT_SECRET")
+	env(&c.AdminUser, "TRQSH_ADMIN_USER")
+	env(&c.AdminPassword, "TRQSH_ADMIN_PASSWORD")
 
 	// DevAuth defaults on in dev, off in production, unless explicitly set.
 	if v, ok := os.LookupEnv("TRQSH_DEV_AUTH"); ok {
@@ -85,6 +95,12 @@ func LoadConfig() (Config, error) {
 	}
 	if v, ok := os.LookupEnv("TRQSH_TRUST_PROXY"); ok {
 		c.TrustProxy = truthy(v)
+	}
+
+	// Default the dashboard origin to https://app.<base> when not set and the base
+	// domain is a real hostname (dev bases like lvh.me fall back to PublicURL).
+	if c.AppURL == "" && c.BaseDomain != "" && c.BaseDomain != "lvh.me" && c.BaseDomain != "localhost" {
+		c.AppURL = "https://app." + c.BaseDomain
 	}
 
 	return c, c.validate()

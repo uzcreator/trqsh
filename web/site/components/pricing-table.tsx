@@ -22,7 +22,7 @@ export function PricingTable() {
       <div className="mb-8 flex justify-center">
         <div className="inline-flex rounded-md border border-border-strong bg-surface p-0.5 text-sm">
           <Toggle active={cadence === "monthly"} onClick={() => setCadence("monthly")} label="Monthly" />
-          <Toggle active={cadence === "annual"} onClick={() => setCadence("annual")} label="Annual" note="2 months free" />
+          <Toggle active={cadence === "annual"} onClick={() => setCadence("annual")} label="Annual" note="Save more" />
         </div>
       </div>
 
@@ -70,11 +70,21 @@ function Toggle({ active, onClick, label, note }: { active: boolean; onClick: ()
 
 function PlanCard({ plan, cadence }: { plan: CatalogPlan; cadence: Cadence }) {
   const popular = plan.code === POPULAR;
-  const cents = cadence === "annual" ? plan.price_annual_cents : plan.price_monthly_cents;
-  const suffix = plan.price_monthly_cents === 0 ? "forever" : cadence === "annual" ? "/yr" : "/mo";
+  const isAnnual = cadence === "annual";
+  // Annual is shown as its effective per-month price (yearly total ÷ 12) with the
+  // billed-yearly figure underneath — matches how the plans are priced ("$2/mo
+  // billed yearly") rather than a large yearly lump sum.
+  const cents = isAnnual ? Math.round(plan.price_annual_cents / 12) : plan.price_monthly_cents;
+  const suffix = plan.price_monthly_cents === 0 ? "forever" : "/mo";
 
   const features = planHighlights(plan);
-  const cta = plan.code === "free" ? "Start free" : `Start with ${plan.name}`;
+  const cta = plan.code === "free" ? "Start free" : `Get ${plan.name}`;
+  // Free signs up in the dashboard; paid plans go to the manual (Telegram) upgrade
+  // flow since there's no self-serve checkout.
+  const href =
+    plan.code === "free"
+      ? `${signupUrl}?plan=${plan.code}`
+      : `/upgrade?plan=${plan.code}&cadence=${cadence}`;
 
   return (
     <Card className={cn("card-hover relative flex flex-col p-6", popular && "border-primary ring-1 ring-primary")}>
@@ -88,10 +98,13 @@ function PlanCard({ plan, cadence }: { plan: CatalogPlan; cadence: Cadence }) {
         <span className="text-3xl font-semibold tracking-tight text-foreground tabular">{formatPrice(cents)}</span>
         <span className="text-sm text-muted">{suffix}</span>
       </div>
+      {isAnnual && plan.price_annual_cents > 0 && (
+        <p className="mt-0.5 text-xs text-muted tabular">billed {formatPrice(plan.price_annual_cents)}/yr</p>
+      )}
       <p className="mt-1 text-sm text-secondary">{planTagline(plan)}</p>
 
       <a
-        href={`${signupUrl}?plan=${plan.code}`}
+        href={href}
         className={cn(buttonVariants({ variant: popular ? "default" : "outline" }), "mt-5 w-full")}
       >
         {cta}

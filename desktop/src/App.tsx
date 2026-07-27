@@ -5,9 +5,11 @@ import {
   DownloadCloud,
   ExternalLink,
   Globe,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Moon,
+  Network,
   Plus,
   Power,
   Settings as SettingsIcon,
@@ -31,6 +33,8 @@ import { Tunnels } from "@/screens/tunnels";
 import { Inspector } from "@/screens/inspector";
 import { Settings } from "@/screens/settings";
 import { Account } from "@/screens/account";
+import { Keys } from "@/screens/keys";
+import { Domains } from "@/screens/domains";
 
 const MAX_CAPTURES = 200;
 
@@ -244,8 +248,10 @@ function Shell() {
         { combo: "mod+n", handler: () => setNewOpen(true) },
         { combo: "mod+1", handler: () => setScreen("tunnels") },
         { combo: "mod+2", handler: () => setScreen("inspector") },
-        { combo: "mod+3", handler: () => setScreen("account") },
-        { combo: "mod+4", handler: () => setScreen("settings") },
+        { combo: "mod+3", handler: () => setScreen("domains") },
+        { combo: "mod+4", handler: () => setScreen("keys") },
+        { combo: "mod+5", handler: () => setScreen("account") },
+        { combo: "mod+6", handler: () => setScreen("settings") },
       );
     }
     return list;
@@ -260,6 +266,8 @@ function Shell() {
         { id: "new", label: "New tunnel", group: "Tunnel", icon: Plus, keywords: "start expose port", run: () => setNewOpen(true) },
         { id: "go-tunnels", label: "Go to Tunnels", group: "Navigate", icon: Globe, run: () => setScreen("tunnels") },
         { id: "go-inspector", label: "Go to Inspector", group: "Navigate", icon: Activity, run: () => setScreen("inspector") },
+        { id: "go-domains", label: "Go to Domains", group: "Navigate", icon: Network, run: () => setScreen("domains") },
+        { id: "go-keys", label: "Go to API keys", group: "Navigate", icon: KeyRound, run: () => setScreen("keys") },
         { id: "go-account", label: "Go to Account", group: "Navigate", icon: User, run: () => setScreen("account") },
         { id: "go-settings", label: "Go to Settings", group: "Navigate", icon: SettingsIcon, run: () => setScreen("settings") },
       );
@@ -371,6 +379,8 @@ function Shell() {
                 }}
               />
             )}
+            {screen === "domains" && <Domains />}
+            {screen === "keys" && <Keys />}
             {screen === "account" && <Account status={status} tunnels={tunnels} />}
             {screen === "settings" && <Settings onDisconnect={disconnect} />}
           </div>

@@ -14,3 +14,8 @@ var (
 // build time with -ldflags "-X .../internal/agent.DefaultServer=host:port" for
 // self-hosted or local-dev builds.
 var DefaultServer = "trqsh.uz:4443"
+
+// DefaultAPIBase is the control-plane API the desktop app reaches (through the
+// agent) for account/plan/usage/keys/domains and OAuth device login. Overridable
+// via TRQSH_API_URL or -ldflags "-X .../internal/agent.DefaultAPIBase=https://…".
+var DefaultAPIBase = "https://api.trqsh.uz"

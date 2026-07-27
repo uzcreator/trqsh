@@ -118,6 +118,11 @@ func (s *Server) handleOAuthStart(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "provider not configured")
 		return
 	}
+	// Preserve a safe post-login destination (e.g. /device?code=… for desktop
+	// sign-in) so the callback can return the user where they started.
+	if next := safeNextPath(r.URL.Query().Get("next")); next != "" {
+		s.setNextCookie(w, next)
+	}
 	state := s.newState()
 	s.setStateCookie(w, state)
 	http.Redirect(w, r, p.AuthCodeURL(state), http.StatusFound)
@@ -162,9 +167,48 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Browser flow: set the session as cookies shared across *.<base> and send the
-	// user to the dashboard. (Programmatic clients use the JSON login endpoints.)
+	// user to the dashboard — or back to a preserved destination such as the
+	// device-approval page. (Programmatic clients use the JSON login endpoints.)
+	dest := s.appBase() + "/"
+	if nc, _ := r.Cookie("trqsh_oauth_next"); nc != nil {
+		if n := safeNextPath(nc.Value); n != "" {
+			dest = s.appBase() + n
+		}
+	}
+	s.clearNextCookie(w)
 	s.setSessionCookies(w, tokens)
-	http.Redirect(w, r, "https://app."+s.cfg.BaseDomain+"/", http.StatusFound)
+	http.Redirect(w, r, dest, http.StatusFound)
+}
+
+// appBase returns the public dashboard origin (no trailing slash).
+func (s *Server) appBase() string {
+	if s.cfg.AppURL != "" {
+		return strings.TrimRight(s.cfg.AppURL, "/")
+	}
+	return "https://app." + s.cfg.BaseDomain
+}
+
+// safeNextPath accepts only same-site absolute paths (e.g. "/device?code=…"),
+// rejecting anything that could redirect off-site.
+func safeNextPath(p string) string {
+	if p == "" || !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.HasPrefix(p, "/\\") {
+		return ""
+	}
+	return p
+}
+
+func (s *Server) setNextCookie(w http.ResponseWriter, next string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_oauth_next", Value: next, Path: "/v1/auth/oauth",
+		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: 600,
+	})
+}
+
+func (s *Server) clearNextCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "trqsh_oauth_next", Value: "", Path: "/v1/auth/oauth",
+		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: -1,
+	})
 }
 
 // setSessionCookies writes the access + refresh JWTs as cookies scoped to the
@@ -214,11 +258,18 @@ func (s *Server) clearStateCookie(w http.ResponseWriter) {
 
 func (s *Server) handleDeviceCode(w http.ResponseWriter, r *http.Request) {
 	req := s.auth.Devices().Create()
+	// The approval page lives on the dashboard (app.<base>/device) where the user
+	// already has (or can start) an OAuth session. Fall back to the API's own
+	// PublicURL in dev when no dashboard origin is configured.
+	verifyBase := s.cfg.AppURL
+	if verifyBase == "" {
+		verifyBase = s.cfg.PublicURL
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"device_code":               req.DeviceCode,
 		"user_code":                 req.UserCode,
-		"verification_uri":          s.cfg.PublicURL + "/device",
-		"verification_uri_complete": s.cfg.PublicURL + "/device?code=" + req.UserCode,
+		"verification_uri":          verifyBase + "/device",
+		"verification_uri_complete": verifyBase + "/device?code=" + req.UserCode,
 		"interval":                  2,
 		"expires_in":                600,
 	})

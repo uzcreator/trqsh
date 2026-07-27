@@ -91,16 +91,18 @@ func (p *PostgresStore) CreateOrg(ctx context.Context, o Org) (Org, error) {
 func (p *PostgresStore) GetOrg(ctx context.Context, id string) (Org, error) {
 	var o Org
 	var cust sql.NullString
+	var exp sql.NullTime
 	err := p.db.QueryRowContext(ctx,
-		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at FROM orgs WHERE id=$1`, id).
-		Scan(&o.ID, &o.Name, &o.Plan, &cust, &o.CreatedAt)
+		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at,plan_expires_at FROM orgs WHERE id=$1`, id).
+		Scan(&o.ID, &o.Name, &o.Plan, &cust, &o.CreatedAt, &exp)
 	o.StripeCustomerID = cust.String
+	o.PlanExpiresAt = nullTimePtr(exp)
 	return o, mapErr(err)
 }
 
 func (p *PostgresStore) OrgsByPlan(ctx context.Context, plan string) ([]Org, error) {
 	rows, err := p.db.QueryContext(ctx,
-		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at FROM orgs WHERE plan=$1`, plan)
+		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at,plan_expires_at FROM orgs WHERE plan=$1`, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -108,16 +110,29 @@ func (p *PostgresStore) OrgsByPlan(ctx context.Context, plan string) ([]Org, err
 	var out []Org
 	for rows.Next() {
 		var o Org
-		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &o.StripeCustomerID, &o.CreatedAt); err != nil {
+		var exp sql.NullTime
+		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &o.StripeCustomerID, &o.CreatedAt, &exp); err != nil {
 			return nil, err
 		}
+		o.PlanExpiresAt = nullTimePtr(exp)
 		out = append(out, o)
 	}
 	return out, rows.Err()
 }
 
 func (p *PostgresStore) UpdateOrgPlan(ctx context.Context, orgID, plan string) error {
-	return execOne(p.db.ExecContext(ctx, `UPDATE orgs SET plan=$2 WHERE id=$1`, orgID, plan))
+	// The Stripe/webhook path: a subscription-backed plan never time-expires, so
+	// clear any manual expiry that was set previously.
+	return execOne(p.db.ExecContext(ctx, `UPDATE orgs SET plan=$2, plan_expires_at=NULL WHERE id=$1`, orgID, plan))
+}
+
+func (p *PostgresStore) SetOrgPlan(ctx context.Context, orgID, plan string, expiresAt *time.Time) error {
+	var exp any
+	if expiresAt != nil {
+		exp = nullTime(*expiresAt)
+	}
+	return execOne(p.db.ExecContext(ctx,
+		`UPDATE orgs SET plan=$2, plan_expires_at=$3 WHERE id=$1`, orgID, plan, exp))
 }
 
 func (p *PostgresStore) UpdateUserProfile(ctx context.Context, id, name, avatarURL string) error {
@@ -155,7 +170,7 @@ func (p *PostgresStore) ListOrgMembers(ctx context.Context, orgID string) ([]Org
 
 func (p *PostgresStore) OrgsForUser(ctx context.Context, userID string) ([]Org, error) {
 	rows, err := p.db.QueryContext(ctx,
-		`SELECT o.id,o.name,o.plan,COALESCE(o.stripe_customer_id,''),o.created_at
+		`SELECT o.id,o.name,o.plan,COALESCE(o.stripe_customer_id,''),o.created_at,o.plan_expires_at
 		 FROM orgs o JOIN org_members m ON m.org_id=o.id WHERE m.user_id=$1`, userID)
 	if err != nil {
 		return nil, err
@@ -164,9 +179,11 @@ func (p *PostgresStore) OrgsForUser(ctx context.Context, userID string) ([]Org, 
 	var out []Org
 	for rows.Next() {
 		var o Org
-		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &o.StripeCustomerID, &o.CreatedAt); err != nil {
+		var exp sql.NullTime
+		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &o.StripeCustomerID, &o.CreatedAt, &exp); err != nil {
 			return nil, err
 		}
+		o.PlanExpiresAt = nullTimePtr(exp)
 		out = append(out, o)
 	}
 	return out, rows.Err()
@@ -426,11 +443,13 @@ func (p *PostgresStore) GetOrgByStripeCustomer(ctx context.Context, customerID s
 	}
 	var o Org
 	var cust sql.NullString
+	var exp sql.NullTime
 	err := p.db.QueryRowContext(ctx,
-		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at
+		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at,plan_expires_at
 		 FROM orgs WHERE stripe_customer_id=$1`, customerID).
-		Scan(&o.ID, &o.Name, &o.Plan, &cust, &o.CreatedAt)
+		Scan(&o.ID, &o.Name, &o.Plan, &cust, &o.CreatedAt, &exp)
 	o.StripeCustomerID = cust.String
+	o.PlanExpiresAt = nullTimePtr(exp)
 	return o, mapErr(err)
 }
 

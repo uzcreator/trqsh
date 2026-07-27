@@ -8,6 +8,13 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isPublic = pathname === "/login" || pathname.startsWith("/login/");
 
+  // The desktop device-approval page must be reachable in both states: signed-in
+  // users approve immediately; signed-out users see a sign-in prompt that returns
+  // here (never redirect it away, or the ?code= is lost).
+  if (pathname === "/device" || pathname.startsWith("/device/")) {
+    return NextResponse.next();
+  }
+
   if (!hasSession && !isPublic) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";

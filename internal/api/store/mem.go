@@ -149,6 +149,20 @@ func (m *MemStore) UpdateOrgPlan(_ context.Context, orgID, plan string) error {
 		return ErrNotFound
 	}
 	o.Plan = plan
+	o.PlanExpiresAt = nil // Stripe-backed plans don't time-expire.
+	m.orgs[orgID] = o
+	return nil
+}
+
+func (m *MemStore) SetOrgPlan(_ context.Context, orgID, plan string, expiresAt *time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	o, ok := m.orgs[orgID]
+	if !ok {
+		return ErrNotFound
+	}
+	o.Plan = plan
+	o.PlanExpiresAt = expiresAt
 	m.orgs[orgID] = o
 	return nil
 }

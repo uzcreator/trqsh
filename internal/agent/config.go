@@ -41,6 +41,7 @@ type Config struct {
 
 	// Operational, not part of the frozen schema.
 	ControlAddr string `yaml:"control_addr,omitempty"` // local control API (GUI)
+	APIBase     string `yaml:"api_base,omitempty"`     // control-plane API base (desktop cloud calls)
 	Insecure    bool   `yaml:"insecure,omitempty"`     // skip TLS verify (dev)
 }
 
@@ -55,6 +56,7 @@ func DefaultConfig() Config {
 		Inspector:   InspectorConfig{Enabled: true, Addr: "127.0.0.1:4040"},
 		LogLevel:    "info",
 		ControlAddr: "127.0.0.1:4041",
+		APIBase:     DefaultAPIBase,
 	}
 }
 
@@ -99,6 +101,7 @@ func (c *Config) applyEnv() {
 	envStr(&c.LogLevel, "TRQSH_LOG_LEVEL")
 	envStr(&c.Inspector.Addr, "TRQSH_INSPECTOR_ADDR")
 	envStr(&c.ControlAddr, "TRQSH_CONTROL_ADDR")
+	envStr(&c.APIBase, "TRQSH_API_URL")
 	if v, ok := os.LookupEnv("TRQSH_INSECURE"); ok {
 		c.Insecure = truthy(v)
 	}

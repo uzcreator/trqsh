@@ -76,3 +76,115 @@ export interface AgentEvent {
 }
 
 export type TunnelProto = "http" | "tcp" | "udp" | "tls";
+
+// ---------------------------------------------------------------------------
+// Cloud control-plane types. These arrive via the Go agent's /cloud/* proxy,
+// which forwards to api.trqsh.uz with the stored API key (see cloudapi.go). Keys
+// mirror the control API's json tags.
+// ---------------------------------------------------------------------------
+
+export interface CloudUser {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url?: string;
+  oauth_provider?: string;
+  created_at?: string;
+}
+
+export interface CloudOrg {
+  id: string;
+  name: string;
+  plan: string;
+  created_at?: string;
+  plan_expires_at?: string | null;
+}
+
+export interface UsageRecord {
+  bytes_in: number;
+  bytes_out: number;
+  requests: number;
+  window_start?: string;
+  window_end?: string;
+}
+
+/** GET /cloud/me — the single call the Account panel reads. */
+export interface Me {
+  user: CloudUser;
+  org: CloudOrg;
+  plan: string;
+  plan_expires_at?: string | null;
+  via_api_key?: boolean;
+  usage: UsageRecord;
+  limits: {
+    bandwidth_bytes_mo: number;
+    requests_mo: number;
+    max_concurrent_tunnels: number;
+    max_reserved_subdomains: number;
+    max_custom_domains: number;
+  };
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  last_used_at?: string | null;
+  revoked_at?: string | null;
+  created_at: string;
+}
+
+/** Returned once, on creation, with the plaintext key. */
+export interface CreatedApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  api_key: string;
+  created_at: string;
+}
+
+export interface ReservedSubdomain {
+  id: string;
+  org_id: string;
+  subdomain: string;
+  created_at: string;
+}
+
+export interface CustomDomain {
+  id: string;
+  org_id: string;
+  domain: string;
+  verify_token: string;
+  verified_at?: string | null;
+  cert_status: string;
+  created_at: string;
+}
+
+export interface DnsInstructions {
+  txt_name: string;
+  txt_value: string;
+  cname_name: string;
+  cname_value: string;
+}
+
+export interface AddedDomain {
+  domain: CustomDomain;
+  dns_instructions: DnsInstructions;
+}
+
+/** POST /login/oauth/start — begins the browser (device) sign-in flow. */
+export interface DeviceStart {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  interval: number;
+  expires_in: number;
+}
+
+/** POST /login/oauth/poll result. */
+export interface OAuthPollResult {
+  authed?: boolean;
+  pending?: boolean;
+  error?: string;
+}

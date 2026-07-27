@@ -44,6 +44,41 @@ func TestAuthenticate(t *testing.T) {
 	}
 }
 
+// TestPlanExpiryRevertsToFree is the regression test for the "expire date doesn't
+// work" bug: a manually granted plan with a past expiry must collapse to Free at
+// the edge's enforcement point (Authenticate/CheckBind).
+func TestPlanExpiryRevertsToFree(t *testing.T) {
+	ent, st, key, orgID := setupOrgKey(t, PlanPro)
+
+	// Active grant (expiry in the future): plan is Pro, UDP allowed.
+	future := time.Now().Add(24 * time.Hour)
+	if err := st.SetOrgPlan(context.Background(), orgID, PlanPro, &future); err != nil {
+		t.Fatal(err)
+	}
+	if _, plan, _ := ent.Authenticate(context.Background(), key); plan != PlanPro {
+		t.Fatalf("active grant: plan = %s, want pro", plan)
+	}
+	if dec, _ := ent.CheckBind(context.Background(), authz.BindRequest{APIKey: key, Type: "udp"}); !dec.Allow {
+		t.Fatalf("active pro should allow UDP: %s", dec.ErrorCode)
+	}
+
+	// Expired grant (expiry in the past): collapses to Free — plan Free, UDP denied.
+	past := time.Now().Add(-time.Minute)
+	if err := st.SetOrgPlan(context.Background(), orgID, PlanPro, &past); err != nil {
+		t.Fatal(err)
+	}
+	if _, plan, _ := ent.Authenticate(context.Background(), key); plan != PlanFree {
+		t.Fatalf("expired grant: plan = %s, want free", plan)
+	}
+	dec, _ := ent.CheckBind(context.Background(), authz.BindRequest{APIKey: key, Type: "udp"})
+	if dec.Allow {
+		t.Fatal("expired pro grant should deny UDP (reverted to free)")
+	}
+	if dec.ErrorCode != proto.CodePlanForbids {
+		t.Fatalf("code = %s, want %s", dec.ErrorCode, proto.CodePlanForbids)
+	}
+}
+
 func TestCheckBindFreeDeniesUDP(t *testing.T) {
 	ent, _, key, _ := setupOrgKey(t, PlanFree)
 	dec, _ := ent.CheckBind(context.Background(), authz.BindRequest{APIKey: key, Type: "udp"})

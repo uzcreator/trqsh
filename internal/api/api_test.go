@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -146,6 +147,113 @@ func TestReservedSubdomainLimit(t *testing.T) {
 	r2 := postJSON(t, ts.URL+"/v1/subdomains", access, map[string]string{"subdomain": "second"}, nil)
 	if r2.StatusCode != http.StatusForbidden {
 		t.Fatalf("second reserve should hit plan limit (403), got %d", r2.StatusCode)
+	}
+}
+
+func TestMeWithAPIKey(t *testing.T) {
+	ts := testServer(t)
+	_, apiKey := signupAndKey(t, ts, "me@example.com")
+
+	req, _ := http.NewRequest("GET", ts.URL+"/v1/me", nil)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /v1/me: %v", err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("/v1/me status %d: %s", resp.StatusCode, b)
+	}
+	var me struct {
+		User struct {
+			Email string `json:"email"`
+		} `json:"user"`
+		Plan string `json:"plan"`
+		Org  struct {
+			ID string `json:"id"`
+		} `json:"org"`
+	}
+	_ = json.Unmarshal(b, &me)
+	// The profile for an API-key principal resolves to the org owner.
+	if me.User.Email != "me@example.com" || me.Plan != "free" || me.Org.ID == "" {
+		t.Fatalf("unexpected /v1/me for api key: %+v (%s)", me, b)
+	}
+}
+
+// TestAdminGrantAndRevoke proves the approve.<base> flow: an admin logs in, grants
+// a plan by email (with an expiry), the customer's key then authenticates as that
+// plan, and revoke returns them to Free. Also checks the endpoints require auth.
+func TestAdminGrantAndRevoke(t *testing.T) {
+	cfg := api.DefaultConfig()
+	cfg.DevAuth = true
+	cfg.AdminUser = "root"
+	cfg.AdminPassword = "s3cret-pass"
+	srv, err := api.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	ts := httptest.NewServer(srv.Router())
+	t.Cleanup(ts.Close)
+
+	_, apiKey := signupAndKey(t, ts, "cust@example.com")
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+	req := func(method, url string, body, out any) *http.Response {
+		var r io.Reader
+		if body != nil {
+			buf, _ := json.Marshal(body)
+			r = bytes.NewReader(buf)
+		}
+		rq, _ := http.NewRequest(method, url, r)
+		if body != nil {
+			rq.Header.Set("Content-Type", "application/json")
+		}
+		resp, e := client.Do(rq)
+		if e != nil {
+			t.Fatalf("%s %s: %v", method, url, e)
+		}
+		if out != nil {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			_ = json.Unmarshal(b, out)
+		}
+		return resp
+	}
+
+	// Grant without a session is rejected.
+	if r := req("POST", ts.URL+"/v1/admin/grant", map[string]any{"email": "cust@example.com", "plan": "pro", "months": 1}, nil); r.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("grant without admin session should be 401, got %d", r.StatusCode)
+	}
+
+	// Admin login sets the session cookie in the jar.
+	if r := req("POST", ts.URL+"/admin/login", map[string]string{"username": "root", "password": "s3cret-pass"}, nil); r.StatusCode != http.StatusOK {
+		t.Fatalf("admin login: %d", r.StatusCode)
+	}
+
+	// Grant Pro for a month.
+	var granted struct {
+		Plan string  `json:"plan"`
+		Exp  *string `json:"plan_expires_at"`
+	}
+	if r := req("POST", ts.URL+"/v1/admin/grant", map[string]any{"email": "cust@example.com", "plan": "pro", "months": 1}, &granted); r.StatusCode != http.StatusOK {
+		t.Fatalf("grant: %d", r.StatusCode)
+	}
+	if granted.Plan != "pro" || granted.Exp == nil {
+		t.Fatalf("grant did not apply: plan=%s exp=%v", granted.Plan, granted.Exp)
+	}
+
+	// The customer's key now authenticates as Pro (UDP allowed) over the edge RPC.
+	rpc := entitlerpc.NewClient(ts.URL, api.DefaultConfig().InternalToken)
+	if dec, _ := rpc.CheckBind(context.Background(), authz.BindRequest{APIKey: apiKey, Type: "udp"}); !dec.Allow {
+		t.Fatalf("granted pro should allow UDP: %s", dec.ErrorCode)
+	}
+
+	// Revoke → back to Free (UDP denied).
+	req("POST", ts.URL+"/v1/admin/revoke", map[string]string{"email": "cust@example.com"}, nil).Body.Close()
+	if dec, _ := rpc.CheckBind(context.Background(), authz.BindRequest{APIKey: apiKey, Type: "udp"}); dec.Allow {
+		t.Fatal("revoked plan should deny UDP")
 	}
 }
 

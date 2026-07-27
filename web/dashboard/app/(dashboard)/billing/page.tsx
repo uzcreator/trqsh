@@ -1,71 +1,65 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Send } from "lucide-react";
 import { api, safe, type Plan } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlanBadge } from "@/components/plan-badge";
-import { checkoutAction, portalAction } from "./actions";
 import { formatBytes, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const RANK: Record<string, number> = { free: 0, pro: 1, team: 2, payg: 1 };
+const SITE = process.env.TRQSH_SITE_URL || "https://trqsh.uz";
+
+function fmtDate(s?: string | null): string {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
 
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cadence?: string; error?: string }>;
+  searchParams: Promise<{ cadence?: string }>;
 }) {
   const sp = await searchParams;
   const cadence = sp.cadence === "annual" ? "annual" : "monthly";
-  const [subs, plansRaw] = await Promise.all([safe(api.subscription()), safe(api.plans())]);
+  const [me, plansRaw] = await Promise.all([safe(api.me()), safe(api.plans())]);
 
-  const currentPlan = subs?.plan ?? "free";
-  const billingEnabled = subs?.billing_enabled ?? false;
+  const currentPlan = me?.plan ?? "free";
+  const expiresAt = me?.plan_expires_at ?? null;
+  const expDate = fmtDate(expiresAt);
+  const expired = !!expiresAt && new Date(expiresAt).getTime() < Date.now();
   const plans = (plansRaw ?? [])
     .filter((p) => p.code !== "payg")
     .sort((a, b) => (RANK[a.code] ?? 9) - (RANK[b.code] ?? 9));
 
   return (
     <div>
-      <PageHeader
-        title="Billing"
-        description="Manage your subscription, plan, and invoices."
-        action={
-          subs?.subscription || currentPlan !== "free" ? (
-            <form action={portalAction}>
-              <Button variant="outline" type="submit">
-                Manage billing
-              </Button>
-            </form>
-          ) : undefined
-        }
-      />
-
-      {sp.error && (
-        <div className="mb-6 rounded-lg border border-critical/40 bg-critical/10 p-4 text-sm text-critical">
-          Could not open Stripe {sp.error === "portal" ? "Customer Portal" : "Checkout"}. Check that billing
-          is configured, then try again.
-        </div>
-      )}
+      <PageHeader title="Billing" description="Your plan and how to change it." />
 
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div className="flex items-center gap-3">
             <span className="text-sm text-secondary">Current plan</span>
             <PlanBadge plan={currentPlan} />
-            {subs?.subscription?.status && (
-              <Badge variant={subs.subscription.status === "active" ? "good" : "warning"}>
-                {subs.subscription.status}
-              </Badge>
-            )}
+            {expDate &&
+              (expired ? (
+                <Badge variant="warning">Expired {expDate}</Badge>
+              ) : (
+                <Badge variant="good">Active until {expDate}</Badge>
+              ))}
           </div>
-          {!billingEnabled && (
-            <span className="text-xs text-muted">
-              Stripe is not configured on this environment — checkout is disabled.
-            </span>
-          )}
+          <a
+            href={`${SITE}/upgrade?plan=${currentPlan === "team" ? "team" : "pro"}&cadence=${cadence}`}
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <Send className="h-4 w-4" />
+            Contact us to change
+          </a>
         </CardContent>
       </Card>
 
@@ -76,20 +70,13 @@ export default async function BillingPage({
 
       <div className="grid gap-4 md:grid-cols-3">
         {plans.map((p) => (
-          <PlanCard
-            key={p.code}
-            plan={p}
-            cadence={cadence}
-            current={p.code === currentPlan}
-            downgrade={(RANK[p.code] ?? 9) < (RANK[currentPlan] ?? 0)}
-            billingEnabled={billingEnabled}
-          />
+          <PlanCard key={p.code} plan={p} cadence={cadence} current={p.code === currentPlan} />
         ))}
       </div>
 
       <p className="mt-4 text-xs text-muted">
-        Upgrades open Stripe Checkout; “Manage billing” opens the Stripe Customer Portal to change your
-        card, download invoices, or cancel. Plan changes take effect via webhook.
+        We don&apos;t take card payments yet. To upgrade, message us on Telegram with your account email
+        and the plan you want — we activate it manually, usually within a few hours.
       </p>
     </div>
   );
@@ -109,21 +96,11 @@ function CadenceTab({ active, href, label }: { active: boolean; href: string; la
   );
 }
 
-function PlanCard({
-  plan,
-  cadence,
-  current,
-  downgrade,
-  billingEnabled,
-}: {
-  plan: Plan;
-  cadence: string;
-  current: boolean;
-  downgrade: boolean;
-  billingEnabled: boolean;
-}) {
-  const cents = cadence === "annual" ? plan.price_annual_cents : plan.price_monthly_cents;
-  const suffix = cadence === "annual" ? "/yr" : "/mo";
+function PlanCard({ plan, cadence, current }: { plan: Plan; cadence: string; current: boolean }) {
+  // Annual shows the effective per-month price (yearly total ÷ 12), matching the
+  // marketing site.
+  const monthlyCents =
+    cadence === "annual" ? Math.round(plan.price_annual_cents / 12) : plan.price_monthly_cents;
   const features = [
     `${plan.max_bandwidth_bytes_mo ? formatBytes(plan.max_bandwidth_bytes_mo) : "Metered"} bandwidth`,
     `${plan.max_concurrent_tunnels || "Metered"} concurrent tunnels`,
@@ -131,6 +108,7 @@ function PlanCard({
     plan.allow_custom_domains ? `${plan.max_custom_domains} custom domains` : "HTTP/S + TCP",
     plan.allow_udp ? "UDP + TLS tunnels" : null,
   ].filter(Boolean) as string[];
+  const paid = plan.code !== "free";
 
   return (
     <Card className={cn("flex flex-col", current && "border-primary ring-1 ring-primary")}>
@@ -140,8 +118,11 @@ function PlanCard({
           {current && <Badge variant="good">Current</Badge>}
         </div>
         <CardDescription>
-          <span className="text-2xl font-semibold text-foreground">{formatPrice(cents)}</span>
-          {cents > 0 && <span className="text-sm text-muted"> {suffix}</span>}
+          <span className="text-2xl font-semibold text-foreground">{formatPrice(monthlyCents)}</span>
+          {monthlyCents > 0 && <span className="text-sm text-muted"> /mo</span>}
+          {cadence === "annual" && plan.price_annual_cents > 0 && (
+            <span className="block text-xs text-muted">billed {formatPrice(plan.price_annual_cents)}/yr</span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
@@ -158,14 +139,17 @@ function PlanCard({
             <Button variant="outline" className="w-full" disabled>
               Current plan
             </Button>
+          ) : paid ? (
+            <a
+              href={`${SITE}/upgrade?plan=${plan.code}&cadence=${cadence}`}
+              className={cn(buttonVariants({ variant: "default" }), "w-full")}
+            >
+              Get {plan.name}
+            </a>
           ) : (
-            <form action={checkoutAction}>
-              <input type="hidden" name="plan" value={plan.code} />
-              <input type="hidden" name="cadence" value={cadence} />
-              <Button className="w-full" type="submit" disabled={!billingEnabled}>
-                {downgrade ? "Switch to " + plan.name : "Upgrade to " + plan.name}
-              </Button>
-            </form>
+            <Button variant="outline" className="w-full" disabled>
+              Free plan
+            </Button>
           )}
         </div>
       </CardContent>

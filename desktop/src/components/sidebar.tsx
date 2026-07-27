@@ -1,11 +1,13 @@
-import { Activity, Globe, PanelLeft, PanelLeftClose, Settings, User } from "lucide-react";
+import { Activity, Globe, KeyRound, Network, PanelLeft, PanelLeftClose, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Screen = "tunnels" | "inspector" | "settings" | "account";
+export type Screen = "tunnels" | "inspector" | "domains" | "keys" | "settings" | "account";
 
 const items: { id: Screen; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "tunnels", label: "Tunnels", icon: Globe },
   { id: "inspector", label: "Inspector", icon: Activity },
+  { id: "domains", label: "Domains", icon: Network },
+  { id: "keys", label: "API keys", icon: KeyRound },
   { id: "account", label: "Account", icon: User },
   { id: "settings", label: "Settings", icon: Settings },
 ];

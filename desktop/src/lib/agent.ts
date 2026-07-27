@@ -16,8 +16,16 @@
 // keys are the Go json tags (see lib/types.ts).
 
 import type {
+  AddedDomain,
   AgentEvent,
+  ApiKey,
   CapturedRequest,
+  CreatedApiKey,
+  CustomDomain,
+  DeviceStart,
+  Me,
+  OAuthPollResult,
+  ReservedSubdomain,
   Status,
   Tunnel,
   TunnelSpec,
@@ -165,6 +173,10 @@ async function errorMessage(res: Response): Promise<string> {
 export interface AgentAPI {
   session(): Promise<Session>;
   login(token: string): Promise<Session>;
+  /** Begin browser (device-flow) sign-in: returns the code + URL to open. */
+  oauthStart(): Promise<DeviceStart>;
+  /** Poll for browser-sign-in completion; on success the agent stores the key. */
+  oauthPoll(deviceCode: string): Promise<OAuthPollResult>;
   logout(): Promise<void>;
   status(): Promise<Status>;
   startTunnel(spec: TunnelSpec): Promise<Tunnel>;
@@ -220,6 +232,8 @@ export function isVersionNewer(a: string, b: string): boolean {
 export const agent: AgentAPI = {
   session: () => api<Session>("GET", "/session"),
   login: (token) => api<Session>("POST", "/login", { token }),
+  oauthStart: () => api<DeviceStart>("POST", "/login/oauth/start"),
+  oauthPoll: (deviceCode) => api<OAuthPollResult>("POST", "/login/oauth/poll", { device_code: deviceCode }),
   logout: () => api<void>("POST", "/logout"),
   status: () => api<Status>("GET", "/status"),
   startTunnel: (spec) => api<Tunnel>("POST", "/tunnels", spec),
@@ -310,6 +324,34 @@ export const agent: AgentAPI = {
       stopped = true;
       es?.close();
     };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Cloud control-plane client. Every call goes to the local agent's /cloud/*
+// proxy, which forwards to the hosted API with the stored key — so the WebView
+// never talks to api.trqsh.uz directly (no CORS) and never sees the credential.
+// ---------------------------------------------------------------------------
+
+export const cloud = {
+  /** Profile + effective plan (+ expiry) + monthly usage in one call. */
+  me: () => api<Me>("GET", "/cloud/me"),
+  keys: {
+    list: () => api<ApiKey[]>("GET", "/cloud/keys"),
+    create: (name: string) => api<CreatedApiKey>("POST", "/cloud/keys", { name }),
+    revoke: (id: string) => api<void>("DELETE", `/cloud/keys/${encodeURIComponent(id)}`),
+  },
+  subdomains: {
+    list: () => api<ReservedSubdomain[]>("GET", "/cloud/subdomains"),
+    reserve: (subdomain: string) =>
+      api<ReservedSubdomain>("POST", "/cloud/subdomains", { subdomain }),
+    release: (id: string) => api<void>("DELETE", `/cloud/subdomains/${encodeURIComponent(id)}`),
+  },
+  domains: {
+    list: () => api<CustomDomain[]>("GET", "/cloud/domains"),
+    add: (domain: string) => api<AddedDomain>("POST", "/cloud/domains", { domain }),
+    verify: (id: string) =>
+      api<CustomDomain>("POST", `/cloud/domains/${encodeURIComponent(id)}/verify`),
   },
 };
 

@@ -3,12 +3,28 @@ package api
 import (
 	"context"
 	"crypto/rand"
+	"time"
 
 	"github.com/trqsh-uz/trqsh/internal/api/auth"
 	"github.com/trqsh-uz/trqsh/internal/api/store"
 	"github.com/trqsh-uz/trqsh/pkg/authz"
 	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
+
+// effectivePlan returns the plan code actually in force for an org: its stored
+// plan, unless a manual grant's expiry has passed — then it collapses to Free.
+// This is the single source of truth consulted at bind (the edge), on the
+// dashboard/desktop, and by the resource-limit checks, so an expired
+// subscription stops granting paid limits everywhere. Unknown/empty → Free.
+func effectivePlan(o store.Org) string {
+	if o.PlanExpiresAt != nil && time.Now().After(*o.PlanExpiresAt) {
+		return PlanFree
+	}
+	if o.Plan == "" {
+		return PlanFree
+	}
+	return o.Plan
+}
 
 // QuotaChecker consults billing (Part 07) for current-period metered quota. It
 // returns a §8 error code + message when the org is over quota, or ("","") when
@@ -47,7 +63,9 @@ func (e *Entitlements) Authenticate(ctx context.Context, apiKey string) (string,
 	if err != nil {
 		return "", "", err
 	}
-	return org.ID, org.Plan, nil
+	// effectivePlan collapses an expired manual grant to Free — this is the edge's
+	// enforcement point (CheckBind authenticates through here on every bind).
+	return org.ID, effectivePlan(org), nil
 }
 
 // CheckBind authorizes a bind against the org's plan and reservations.

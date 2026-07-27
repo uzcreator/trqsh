@@ -29,11 +29,14 @@ type User struct {
 
 // Org is a billing/ownership boundary (personal or team).
 type Org struct {
-	ID               string    `json:"id"`
-	Name             string    `json:"name"`
-	Plan             string    `json:"plan"`
-	StripeCustomerID string    `json:"stripe_customer_id,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Plan             string     `json:"plan"`
+	StripeCustomerID string     `json:"stripe_customer_id,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	// PlanExpiresAt, when set, is when a manually-granted plan reverts to Free.
+	// nil means the plan never expires (the Stripe/webhook path and the default).
+	PlanExpiresAt *time.Time `json:"plan_expires_at,omitempty"`
 }
 
 // OrgMember links a user to an org with a role (owner|admin|member).
@@ -126,6 +129,9 @@ type Store interface {
 	GetOrg(ctx context.Context, id string) (Org, error)
 	OrgsByPlan(ctx context.Context, plan string) ([]Org, error)
 	UpdateOrgPlan(ctx context.Context, orgID, plan string) error
+	// SetOrgPlan sets an org's plan together with an expiry (nil = never expires).
+	// Used by the admin grant flow; UpdateOrgPlan (Stripe) leaves expiry untouched.
+	SetOrgPlan(ctx context.Context, orgID, plan string, expiresAt *time.Time) error
 	SetOrgStripeCustomer(ctx context.Context, orgID, customerID string) error
 	AddOrgMember(ctx context.Context, m OrgMember) error
 	ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error)

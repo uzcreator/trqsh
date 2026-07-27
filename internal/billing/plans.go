@@ -97,7 +97,8 @@ var Catalog = map[string]Plan{
 		MaxReservedSubdomains: 10, MaxCustomDomains: 5,
 		AllowCustomDomains: true, AllowTCP: true, AllowTLS: true, AllowUDP: true,
 		RateLimitRPS: 600, InspectorHistory: 30 * 24 * time.Hour,
-		PriceMonthlyCents: 800, PriceAnnualCents: 8000,
+		// $3/mo, or $2/mo billed annually ($24/yr). PriceAnnualCents is the yearly total.
+		PriceMonthlyCents: 300, PriceAnnualCents: 2400,
 	},
 	PlanTeam: {
 		Code: PlanTeam, Name: "Team",
@@ -105,7 +106,8 @@ var Catalog = map[string]Plan{
 		MaxReservedSubdomains: 50, MaxCustomDomains: 50,
 		AllowCustomDomains: true, AllowTCP: true, AllowTLS: true, AllowUDP: true,
 		RateLimitRPS: 2000, InspectorHistory: 30 * 24 * time.Hour,
-		PriceMonthlyCents: 2000, PriceAnnualCents: 20000,
+		// $5/mo, or $3.70/mo billed annually ($44.40/yr). PriceAnnualCents is the yearly total.
+		PriceMonthlyCents: 500, PriceAnnualCents: 4440,
 	},
 	PlanPAYG: {
 		Code: PlanPAYG, Name: "Pay-as-you-go",

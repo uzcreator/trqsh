@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,6 +153,35 @@ func (l *LocalAPI) Handler() http.Handler {
 		}
 		apiWriteJSON(w, http.StatusOK, info)
 	})
+
+	// OAuth (device-flow) login, proxied through the agent so the browser sign-in
+	// mints an API key that the agent stores — same result as pasting a key, but
+	// the user authenticates with GitHub/Google instead.
+	mux.HandleFunc("POST /login/oauth/start", l.oauthStart)
+	mux.HandleFunc("POST /login/oauth/poll", l.oauthPoll)
+
+	// Cloud control-plane proxy: the desktop's Account/Keys/Domains panels read the
+	// hosted API through here, with the stored API key as the bearer. The WebView
+	// never talks to the cloud directly (no CORS) and never sees the key.
+	mux.HandleFunc("GET /cloud/me", l.cloudGET("/v1/me"))
+	mux.HandleFunc("GET /cloud/usage", l.cloudGET("/v1/usage"))
+	mux.HandleFunc("GET /cloud/plans", l.cloudGET("/v1/plans"))
+	mux.HandleFunc("GET /cloud/keys", l.cloudGET("/v1/api-keys"))
+	mux.HandleFunc("POST /cloud/keys", func(w http.ResponseWriter, r *http.Request) { l.cloudProxy(w, r, "POST", "/v1/api-keys") })
+	mux.HandleFunc("DELETE /cloud/keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		l.cloudProxy(w, r, "DELETE", "/v1/api-keys/"+url.PathEscape(r.PathValue("id")))
+	})
+	mux.HandleFunc("GET /cloud/subdomains", l.cloudGET("/v1/subdomains"))
+	mux.HandleFunc("POST /cloud/subdomains", func(w http.ResponseWriter, r *http.Request) { l.cloudProxy(w, r, "POST", "/v1/subdomains") })
+	mux.HandleFunc("DELETE /cloud/subdomains/{id}", func(w http.ResponseWriter, r *http.Request) {
+		l.cloudProxy(w, r, "DELETE", "/v1/subdomains/"+url.PathEscape(r.PathValue("id")))
+	})
+	mux.HandleFunc("GET /cloud/domains", l.cloudGET("/v1/domains"))
+	mux.HandleFunc("POST /cloud/domains", func(w http.ResponseWriter, r *http.Request) { l.cloudProxy(w, r, "POST", "/v1/domains") })
+	mux.HandleFunc("POST /cloud/domains/{id}/verify", func(w http.ResponseWriter, r *http.Request) {
+		l.cloudProxy(w, r, "POST", "/v1/domains/"+url.PathEscape(r.PathValue("id"))+"/verify")
+	})
+
 	mux.HandleFunc("GET /events", l.events)
 	return mux
 }

@@ -113,6 +113,15 @@ func (s *Server) Router() http.Handler {
 	r.Get("/docs", s.handleDocsUI)
 	r.Get("/openapi.yaml", s.handleOpenAPISpec)
 
+	// approve.<base> admin console: the page + login are served same-origin as the
+	// /v1/admin/* API (below) so the admin session cookie flows without CORS.
+	r.Get("/admin", s.handleAdminPage)
+	r.Post("/admin/logout", s.handleAdminLogout)
+	r.Group(func(r chi.Router) {
+		r.Use(s.authLimiter.middleware) // brute-force guard on the credential check
+		r.Post("/admin/login", s.handleAdminLogin)
+	})
+
 	r.Route("/v1", func(r chi.Router) {
 		// Per-IP flood guard on the whole public API (internal RPC is exempt).
 		r.Use(s.apiLimiter.middleware)
@@ -137,6 +146,7 @@ func (s *Server) Router() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(s.auth.Middleware)
 			r.Get("/account", s.handleAccount)
+			r.Get("/me", s.handleMe)
 			r.Post("/auth/device/approve", s.handleDeviceApprove)
 
 			r.Get("/api-keys", s.handleListAPIKeys)
@@ -160,6 +170,16 @@ func (s *Server) Router() http.Handler {
 			r.Post("/billing/checkout", s.billing.HandleCheckout)
 			r.Post("/billing/portal", s.billing.HandlePortal)
 			r.Get("/billing/subscription", s.billing.HandleSubscription)
+		})
+
+		// Admin (approve.<base>): subscription grants, gated by the admin session
+		// cookie (not a user JWT). handlers refuse when admin creds are unset.
+		r.Group(func(r chi.Router) {
+			r.Use(s.requireAdmin)
+			r.Get("/admin/session", s.handleAdminSession)
+			r.Get("/admin/lookup", s.handleAdminLookup)
+			r.Post("/admin/grant", s.handleAdminGrant)
+			r.Post("/admin/revoke", s.handleAdminRevoke)
 		})
 	})
 

@@ -59,8 +59,8 @@ export const CATALOG: CatalogPlan[] = [
     "rate_limit_rps": 600,
     "inspector_history": 2592000000000000,
     "metered_seats": false,
-    "price_monthly_cents": 800,
-    "price_annual_cents": 8000
+    "price_monthly_cents": 300,
+    "price_annual_cents": 2400
   },
   {
     "code": "team",
@@ -77,8 +77,8 @@ export const CATALOG: CatalogPlan[] = [
     "rate_limit_rps": 2000,
     "inspector_history": 2592000000000000,
     "metered_seats": false,
-    "price_monthly_cents": 2000,
-    "price_annual_cents": 20000
+    "price_monthly_cents": 500,
+    "price_annual_cents": 4440
   },
   {
     "code": "payg",

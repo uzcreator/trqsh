@@ -93,7 +93,7 @@ func (s *Server) handleReserveSubdomain(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	plan := PlanFor(org.Plan)
+	plan := PlanFor(effectivePlan(org))
 	count, _ := s.store.CountSubdomains(r.Context(), org.ID)
 	if count >= plan.MaxReservedSubdomains {
 		writeError(w, http.StatusForbidden, "reserved subdomain limit reached for your plan")
@@ -147,7 +147,7 @@ func (s *Server) handleAddDomain(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	plan := PlanFor(org.Plan)
+	plan := PlanFor(effectivePlan(org))
 	if !plan.AllowCustomDomains {
 		writeError(w, http.StatusForbidden, "custom domains require a paid plan")
 		return
@@ -231,14 +231,16 @@ func (s *Server) handleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	since := time.Now().AddDate(0, 0, -30)
 	usage, _ := s.store.UsageForOrg(r.Context(), org.ID, since)
-	plan := PlanFor(org.Plan)
+	planCode := effectivePlan(org)
+	plan := PlanFor(planCode)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"usage": usage,
 		"limits": map[string]any{
 			"bandwidth_bytes_mo": plan.MaxBandwidthBytesMo,
 			"requests_mo":        plan.MaxRequestsMo,
 		},
-		"plan": org.Plan,
+		"plan":            planCode,
+		"plan_expires_at": org.PlanExpiresAt,
 	})
 }
 
@@ -266,6 +268,69 @@ func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
 	// TODO(part-06): the edge should publish an org-scoped active-tunnel index in
 	// Redis; until then, live tunnels are read directly by the dashboard/edge.
 	writeJSON(w, http.StatusOK, []any{})
+}
+
+// handleMe returns the caller's profile, effective plan (+ expiry), and current
+// usage in one call. Unlike /account it also works for an API-key principal — the
+// desktop app authenticates every cloud call with the stored agent key — in which
+// case the profile shown is the org's owner. This is the single endpoint the
+// desktop reads to render its Account panel (plan, expiry, usage).
+func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
+	p, _ := auth.PrincipalFrom(r.Context())
+	org, err := s.store.GetOrg(r.Context(), p.OrgID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Resolve the profile user: the JWT subject, or (API key) the org owner.
+	userID := p.UserID
+	if userID == "" {
+		if members, merr := s.store.ListOrgMembers(r.Context(), org.ID); merr == nil {
+			userID = ownerUserID(members)
+		}
+	}
+	var u store.User
+	if userID != "" {
+		u, _ = s.store.GetUser(r.Context(), userID)
+	}
+
+	planCode := effectivePlan(org)
+	plan := PlanFor(planCode)
+	since := time.Now().AddDate(0, 0, -30)
+	usage, _ := s.store.UsageForOrg(r.Context(), org.ID, since)
+	// Reflect the effective plan on the org we return, so a client never sees a
+	// still-"pro" org whose grant has lapsed.
+	org.Plan = planCode
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user":            u,
+		"org":             org,
+		"plan":            planCode,
+		"plan_expires_at": org.PlanExpiresAt,
+		"via_api_key":     p.ViaAPIKey,
+		"usage":           usage,
+		"limits": map[string]any{
+			"bandwidth_bytes_mo":      plan.MaxBandwidthBytesMo,
+			"requests_mo":             plan.MaxRequestsMo,
+			"max_concurrent_tunnels":  plan.MaxConcurrentTunnels,
+			"max_reserved_subdomains": plan.MaxReservedSubdomains,
+			"max_custom_domains":      plan.MaxCustomDomains,
+		},
+	})
+}
+
+// ownerUserID picks the org's owner (falling back to the first member) so an
+// API-key principal can still be shown a human profile.
+func ownerUserID(members []store.OrgMember) string {
+	for _, m := range members {
+		if m.Role == "owner" {
+			return m.UserID
+		}
+	}
+	if len(members) > 0 {
+		return members[0].UserID
+	}
+	return ""
 }
 
 func (s *Server) handleListPlans(w http.ResponseWriter, r *http.Request) {

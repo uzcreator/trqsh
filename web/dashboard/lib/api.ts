@@ -100,6 +100,21 @@ export interface Plan {
   price_monthly_cents: number;
   price_annual_cents: number;
 }
+export interface Me {
+  user: User;
+  org: Org;
+  plan: string;
+  plan_expires_at?: string | null;
+  via_api_key?: boolean;
+  usage: UsageRecord;
+  limits: {
+    bandwidth_bytes_mo: number;
+    requests_mo: number;
+    max_concurrent_tunnels: number;
+    max_reserved_subdomains: number;
+    max_custom_domains: number;
+  };
+}
 export interface Subscription {
   id: string;
   plan: string;
@@ -216,7 +231,13 @@ export async function safe<T>(p: Promise<T>): Promise<T | null> {
 
 export const api = {
   account: () => apiFetch<Account>("/account"),
+  me: () => apiFetch<Me>("/me"),
   orgs: () => apiFetch<Org[]>("/orgs"),
+  approveDevice: (user_code: string) =>
+    apiFetch<{ status: string }>("/auth/device/approve", {
+      method: "POST",
+      body: JSON.stringify({ user_code }),
+    }),
   apiKeys: () => apiFetch<ApiKey[]>("/api-keys"),
   createApiKey: (name: string) =>
     apiFetch<CreatedApiKey>("/api-keys", { method: "POST", body: JSON.stringify({ name }) }),

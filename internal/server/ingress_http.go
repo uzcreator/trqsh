@@ -187,8 +187,8 @@ func hostOnly(hostport string) string {
 }
 
 // reservedUpstream returns the internal upstream for a reserved control-plane
-// host (apex/www → site, app → dashboard, api → API), or "" if the host is not
-// reserved or its upstream isn't configured.
+// host (apex/www → site, app → dashboard, api + approve → API), or "" if the host
+// is not reserved or its upstream isn't configured.
 func (s *Server) reservedUpstream(host string) string {
 	base := strings.ToLower(s.cfg.BaseDomain)
 	switch host {
@@ -196,7 +196,9 @@ func (s *Server) reservedUpstream(host string) string {
 		return s.cfg.SiteUpstream
 	case "app." + base:
 		return s.cfg.AppUpstream
-	case "api." + base:
+	case "api." + base, "approve." + base:
+		// The admin console (approve.<base>) is served by the API itself, on the
+		// same origin as its /v1/admin/* endpoints.
 		return s.cfg.APIUpstream
 	}
 	return ""
