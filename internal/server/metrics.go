@@ -15,6 +15,7 @@ type Metrics struct {
 	BytesTotal     *prometheus.CounterVec // by dir (in/out)
 	Handshakes     *prometheus.CounterVec // by kind (quic/tcp)
 	Requests       *prometheus.CounterVec // by scheme
+	Forwards       *prometheus.CounterVec // by dir (in/out) — cross-edge hops
 	Errors         *prometheus.CounterVec // by kind
 }
 
@@ -41,13 +42,16 @@ func NewMetrics() *Metrics {
 		Requests: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "trqsh_http_requests_total", Help: "HTTP requests proxied, by scheme.",
 		}, []string{"scheme"}),
+		Forwards: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "trqsh_forwards_total", Help: "Cross-edge forwarded connections (out=handed to a peer, in=received from a peer).",
+		}, []string{"dir"}),
 		Errors: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "trqsh_errors_total", Help: "Edge errors, by kind.",
 		}, []string{"kind"}),
 	}
 	reg.MustRegister(
 		m.SessionsActive, m.TunnelsActive, m.StreamsOpened,
-		m.BytesTotal, m.Handshakes, m.Requests, m.Errors,
+		m.BytesTotal, m.Handshakes, m.Requests, m.Forwards, m.Errors,
 	)
 	return m
 }

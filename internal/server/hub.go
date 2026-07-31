@@ -158,6 +158,22 @@ func (h *Hub) Stats() (sessions, tunnels int) {
 	return len(h.sessions), len(h.byHost) + len(h.byPort)
 }
 
+// SnapshotRoutes returns the routes homed on this edge (for the registry TTL
+// refresher). Host and port tunnels are both included so their shared-registry
+// entries don't lapse while the tunnel is still live.
+func (h *Hub) SnapshotRoutes() []Route {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	out := make([]Route, 0, len(h.byHost)+len(h.byPort))
+	for host := range h.byHost {
+		out = append(out, Route{Host: host})
+	}
+	for _, bt := range h.byPort {
+		out = append(out, Route{Proto: protoForType(bt.ttype), Port: bt.port})
+	}
+	return out
+}
+
 // SnapshotSessions returns a copy of the current sessions (for drain/broadcast).
 func (h *Hub) SnapshotSessions() []*agentSession {
 	h.mu.RLock()

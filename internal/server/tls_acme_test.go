@@ -32,7 +32,7 @@ func TestTLSDecision(t *testing.T) {
 // actually serve browsers (HTTP/2 + HTTP/1.1) and answer TLS-ALPN challenges.
 func TestACMECertManagerBuilds(t *testing.T) {
 	cfg := Config{BaseDomain: "trqsh.uz", ACMEEmail: "ops@trqsh.uz", ACMEStaging: true}
-	cm, err := newACMECertManager(cfg, func(context.Context, string) error { return nil })
+	cm, err := newACMECertManager(cfg, nil, func(context.Context, string) error { return nil })
 	if err != nil {
 		t.Fatalf("newACMECertManager: %v", err)
 	}

@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"io"
+	"log/slog"
 
 	"github.com/caddyserver/certmagic"
 	"github.com/libdns/cloudflare"
@@ -24,6 +26,7 @@ type prodCertManager struct {
 	magic          *certmagic.Config
 	base           string
 	manageWildcard bool
+	storage        certmagic.Storage // non-nil when a Redis/File store was chosen
 }
 
 // certWarmer is implemented by cert managers that can pre-provision certs at
@@ -36,7 +39,10 @@ type certWarmer interface {
 // on-demand certs for custom domains can be validated without extra ports.
 const acmeTLSALPNProto = "acme-tls/1"
 
-func newACMECertManager(cfg Config, decide func(ctx context.Context, name string) error) (*prodCertManager, error) {
+func newACMECertManager(cfg Config, log *slog.Logger, decide func(ctx context.Context, name string) error) (*prodCertManager, error) {
+	if log == nil {
+		log = slog.Default()
+	}
 	// CertMagic needs the cache to hand back the Config for each cert; the config
 	// is created just after, so the callback closes over the pointer.
 	var magic *certmagic.Config
@@ -50,8 +56,12 @@ func newACMECertManager(cfg Config, decide func(ctx context.Context, name string
 		DefaultServerName: cfg.BaseDomain,
 		OnDemand:          &certmagic.OnDemandConfig{DecisionFunc: decide},
 	}
-	if cfg.TLSStorageDir != "" {
-		mcfg.Storage = &certmagic.FileStorage{Path: cfg.TLSStorageDir}
+	storage, err := buildCertStorage(cfg, log)
+	if err != nil {
+		return nil, err
+	}
+	if storage != nil {
+		mcfg.Storage = storage
 	}
 	magic = certmagic.New(cache, mcfg)
 
@@ -75,7 +85,32 @@ func newACMECertManager(cfg Config, decide func(ctx context.Context, name string
 	}
 	magic.Issuers = []certmagic.Issuer{certmagic.NewACMEIssuer(magic, issuer)}
 
-	return &prodCertManager{magic: magic, base: cfg.BaseDomain, manageWildcard: manageWildcard}, nil
+	return &prodCertManager{magic: magic, base: cfg.BaseDomain, manageWildcard: manageWildcard, storage: storage}, nil
+}
+
+// buildCertStorage chooses where issued certs/keys and issuance locks live. When a
+// Redis URL is set, all edges share one cluster store (RedisStorage) so they don't
+// each order the same names from Let's Encrypt (per-domain rate-limit lockout risk)
+// and can coordinate issuance via its distributed lock. Otherwise the unchanged
+// on-disk FileStorage is used (single-edge default), or CertMagic's default
+// location when neither is configured. Redis is never required.
+func buildCertStorage(cfg Config, log *slog.Logger) (certmagic.Storage, error) {
+	if cfg.RedisURL != "" {
+		return NewRedisStorage(cfg.RedisURL, log)
+	}
+	if cfg.TLSStorageDir != "" {
+		return &certmagic.FileStorage{Path: cfg.TLSStorageDir}, nil
+	}
+	return nil, nil
+}
+
+// Close releases storage resources (the Redis client + its lock refreshers) when
+// the backing store is a Closer. FileStorage and the default location are no-ops.
+func (p *prodCertManager) Close() error {
+	if c, ok := p.storage.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
 }
 
 func (p *prodCertManager) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {

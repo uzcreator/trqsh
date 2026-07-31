@@ -40,6 +40,17 @@ type Registry interface {
 	Refresh(ctx context.Context, r Route, ttl time.Duration) error
 	Lookup(ctx context.Context, r Route) (Binding, bool, error)
 	Unbind(ctx context.Context, r Route) error
+
+	// Edge presence: each edge advertises its own internal forwarding address under
+	// its EdgeID so a peer can turn a route's Binding.EdgeID into a dialable address
+	// (see forward.go). This mirrors the route Bind/Refresh/Unbind TTL pattern,
+	// keyed by EdgeID instead of Route: RegisterEdge sets (and, re-called on the
+	// heartbeat cadence, refreshes) the address with a TTL; UnregisterEdge removes
+	// it at drain so peers stop forwarding to a shutting-down edge.
+	RegisterEdge(ctx context.Context, edgeID, addr string, ttl time.Duration) error
+	LookupEdge(ctx context.Context, edgeID string) (addr string, ok bool, err error)
+	UnregisterEdge(ctx context.Context, edgeID string) error
+
 	Close() error
 }
 
@@ -50,16 +61,24 @@ type memEntry struct {
 	expiry time.Time
 }
 
+type edgeEntry struct {
+	addr   string
+	expiry time.Time
+}
+
 // InMemoryRegistry is a process-local Registry used when TRQSH_REDIS_URL is
-// unset and in tests. TTLs are honored lazily on Lookup.
+// unset and in tests. TTLs are honored lazily on Lookup. A single-edge process
+// never forwards (no peer bindings can exist), so the edge map is present only to
+// satisfy the interface.
 type InMemoryRegistry struct {
-	mu sync.RWMutex
-	m  map[string]memEntry
+	mu    sync.RWMutex
+	m     map[string]memEntry
+	edges map[string]edgeEntry
 }
 
 // NewInMemoryRegistry returns an empty in-memory registry.
 func NewInMemoryRegistry() *InMemoryRegistry {
-	return &InMemoryRegistry{m: make(map[string]memEntry)}
+	return &InMemoryRegistry{m: make(map[string]memEntry), edges: make(map[string]edgeEntry)}
 }
 
 func (r *InMemoryRegistry) Bind(_ context.Context, route Route, b Binding, ttl time.Duration) error {
@@ -99,6 +118,33 @@ func (r *InMemoryRegistry) Unbind(_ context.Context, route Route) error {
 	return nil
 }
 
+func (r *InMemoryRegistry) RegisterEdge(_ context.Context, edgeID, addr string, ttl time.Duration) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.edges[edgeID] = edgeEntry{addr: addr, expiry: expiryFrom(ttl)}
+	return nil
+}
+
+func (r *InMemoryRegistry) LookupEdge(_ context.Context, edgeID string) (string, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	e, ok := r.edges[edgeID]
+	if !ok {
+		return "", false, nil
+	}
+	if !e.expiry.IsZero() && time.Now().After(e.expiry) {
+		return "", false, nil
+	}
+	return e.addr, true, nil
+}
+
+func (r *InMemoryRegistry) UnregisterEdge(_ context.Context, edgeID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.edges, edgeID)
+	return nil
+}
+
 func (r *InMemoryRegistry) Close() error { return nil }
 
 // --- redis ---
@@ -106,6 +152,9 @@ func (r *InMemoryRegistry) Close() error { return nil }
 const (
 	redisRoutePrefix = "trqsh:route:"
 	redisRouteEvents = "trqsh:routes"
+	// Edge forwarding addresses live under a distinct namespace in the same Redis
+	// (TRQSH_REDIS_URL) the route registry and cert storage share.
+	redisEdgePrefix = "trqsh:edge:"
 )
 
 // RedisRegistry stores routes in Redis with a TTL and announces bind/unbind on
@@ -155,6 +204,28 @@ func (r *RedisRegistry) Unbind(ctx context.Context, route Route) error {
 	}
 	r.rdb.Publish(ctx, redisRouteEvents, "unbind "+route.Key())
 	return nil
+}
+
+// RegisterEdge SETs the edge's forwarding address with a TTL. Re-calling it (each
+// heartbeat) refreshes value + TTL atomically — more robust than an EXPIRE-only
+// refresh, which would silently no-op if the key had already lapsed.
+func (r *RedisRegistry) RegisterEdge(ctx context.Context, edgeID, addr string, ttl time.Duration) error {
+	return r.rdb.Set(ctx, redisEdgePrefix+edgeID, addr, ttl).Err()
+}
+
+func (r *RedisRegistry) LookupEdge(ctx context.Context, edgeID string) (string, bool, error) {
+	addr, err := r.rdb.Get(ctx, redisEdgePrefix+edgeID).Result()
+	if err == redis.Nil {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return addr, true, nil
+}
+
+func (r *RedisRegistry) UnregisterEdge(ctx context.Context, edgeID string) error {
+	return r.rdb.Del(ctx, redisEdgePrefix+edgeID).Err()
 }
 
 func (r *RedisRegistry) Close() error { return r.rdb.Close() }

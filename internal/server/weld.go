@@ -5,15 +5,14 @@ import (
 	"io"
 	"net"
 	"sync"
-
-	"github.com/trqsh-uz/trqsh/pkg/tunnel"
 )
 
-// rawJoin welds a public connection to an agent data stream, copying bytes in
-// both directions until either side closes. clientRead is the reader for the
-// public side (a *bufio.Reader when bytes were already buffered, else the conn).
-// It returns bytes sent to the agent (up) and received from the agent (down).
-func rawJoin(clientConn net.Conn, clientRead io.Reader, agent tunnel.Stream) (up, down int64) {
+// rawJoin welds a public connection to a downstream conn (an agent data stream, or
+// a peer edge's forwarding conn — both are net.Conn), copying bytes in both
+// directions until either side closes. clientRead is the reader for the public side
+// (a *bufio.Reader when bytes were already buffered, else the conn). It returns
+// bytes sent downstream (up) and received from downstream (down).
+func rawJoin(clientConn net.Conn, clientRead io.Reader, agent net.Conn) (up, down int64) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {

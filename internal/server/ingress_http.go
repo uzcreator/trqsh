@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -92,6 +93,17 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 				}
 				return
 			}
+			// Cross-edge fallback: the tunnel may be homed on another edge. Hand the
+			// connection to the owning edge instead of 404ing. A connection that
+			// itself arrived over the inter-edge hop is never forwarded again — the
+			// single-hop guard (a *forwardedConn) 404s locally instead of looping.
+			if s.forwardingEnabled() {
+				if _, isFwd := conn.(*forwardedConn); !isFwd {
+					if s.forwardHTTP(conn, br, req, host, scheme) {
+						return
+					}
+				}
+			}
 			s.metrics.Errors.WithLabelValues("no_route").Inc()
 			writeHTTPResponse(conn, http.StatusNotFound, "Not Found", "text/html; charset=utf-8", branded404(host))
 			return
@@ -133,7 +145,15 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 				return
 			}
 			up, down := rawJoin(conn, br, st)
-			s.metrics.countBytes(up, down)
+			// A forwardedConn's bytes were already counted once by the relaying edge
+			// as they crossed its hop (forward.go's forwardHTTP, after its own
+			// rawJoin) — don't double-count the same bytes again here. Usage/billing
+			// is unaffected: only the edge that actually owns bt (this one, on the
+			// receiving side of a hop) has an accountID to attribute it to, so
+			// usage.record is correctly called exactly once regardless.
+			if _, isFwd := conn.(*forwardedConn); !isFwd {
+				s.metrics.countBytes(up, down)
+			}
 			s.usage.record(bt.accountID, bt.clientTunnelID, up, down, 1)
 			return
 		}
@@ -204,33 +224,109 @@ func (s *Server) reservedUpstream(host string) string {
 	return ""
 }
 
+// newReverseProxyClient builds the shared client for the reserved-host reverse
+// proxy. This is 1:1 edge→internal-service traffic (site/dashboard/api), so the
+// pool raises MaxIdleConnsPerHost well above Go's default of 2 to keep upstream
+// connections warm instead of dialing fresh per request. Compression is disabled
+// so the edge forwards the client's Accept-Encoding and the upstream's
+// Content-Encoding transparently (no auto-gzip/decompress). Redirects are handled
+// by the browser, not followed here.
+func newReverseProxyClient() *http.Client {
+	t := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          256,
+		MaxIdleConnsPerHost:   64,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		DisableCompression:    true,
+	}
+	return &http.Client{
+		Transport:     t,
+		Timeout:       httpIdleTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
+
+// hopByHopHeaders are stripped from the outbound request before it is handed to
+// the pooled Transport. Leaving them in place (Connection especially) would fight
+// http.Transport's own keep-alive/pooling — e.g. a forwarded "Connection: close"
+// pins one upstream connection per request, defeating the pool.
+var hopByHopHeaders = []string{
+	"Connection",
+	"Proxy-Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Te",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+}
+
+func removeHopByHopHeaders(h http.Header) {
+	// Anything named by a Connection header is itself hop-by-hop; drop those first.
+	for _, f := range h["Connection"] {
+		for _, sf := range strings.Split(f, ",") {
+			if sf = strings.TrimSpace(sf); sf != "" {
+				h.Del(sf)
+			}
+		}
+	}
+	for _, k := range hopByHopHeaders {
+		h.Del(k)
+	}
+}
+
 // proxyToUpstream reverse-proxies one request to an internal upstream and writes
-// the response back to conn. It returns true if the client connection may be
-// reused (HTTP keep-alive). A fresh upstream connection is used per request.
+// the response back to conn. It returns true if the client (public-side)
+// connection may be reused (HTTP keep-alive) — a separate concern from the pooled
+// upstream connection, which s.proxyClient reuses across requests.
 func (s *Server) proxyToUpstream(conn net.Conn, req *http.Request, scheme, upstream string) bool {
 	u, err := url.Parse(upstream)
 	if err != nil || u.Host == "" {
 		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream misconfigured\n")
 		return false
 	}
-	up, err := net.DialTimeout("tcp", u.Host, 10*time.Second)
-	if err != nil {
-		s.metrics.Errors.WithLabelValues("upstream_unreachable").Inc()
-		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream unreachable\n")
-		return false
-	}
-	defer up.Close()
 
-	req.Header.Set("X-Forwarded-Proto", scheme)
-	req.Header.Set("X-Forwarded-Host", req.Host)
-	_ = up.SetDeadline(time.Now().Add(httpIdleTimeout))
-	if err := req.Write(up); err != nil {
-		return false
+	// Build the outbound request. The inbound req came from http.ReadRequest in
+	// origin form, so its URL carries only Path/RawQuery and RequestURI is set —
+	// both must be fixed for a client request. Cloning preserves req.Host (sent to
+	// the upstream) and the header set; hop-by-hop headers are then stripped so the
+	// pool can reuse connections.
+	outReq := req.Clone(context.Background())
+	outReq.RequestURI = ""
+	outReq.URL.Scheme = u.Scheme
+	outReq.URL.Host = u.Host
+	removeHopByHopHeaders(outReq.Header)
+
+	outReq.Header.Set("X-Forwarded-Proto", scheme)
+	outReq.Header.Set("X-Forwarded-Host", req.Host)
+	// Overwrite (not append) XFF with the true peer IP: the edge is the first
+	// public hop, so any inbound XFF is client-supplied and untrusted. Downstream
+	// clientIP() (TRQSH_TRUST_PROXY) reads the first element, so without this every
+	// client collapses to the Docker-bridge IP and shares one rate-limit bucket.
+	if ip, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
+		outReq.Header.Set("X-Forwarded-For", ip)
+	} else {
+		outReq.Header.Set("X-Forwarded-For", conn.RemoteAddr().String())
 	}
-	resp, err := http.ReadResponse(bufio.NewReader(up), req)
+
+	resp, err := s.proxyClient.Do(outReq)
 	if err != nil {
-		s.metrics.Errors.WithLabelValues("upstream_bad_response").Inc()
-		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 upstream bad response\n")
+		// A dial failure never reached the upstream; anything later (bad/truncated
+		// response, timeout after connect) is a response error. Preserve the labels
+		// the manual dial+read path used.
+		label, msg := "upstream_bad_response", "502 upstream bad response\n"
+		var netErr *net.OpError
+		if errors.As(err, &netErr) && netErr.Op == "dial" {
+			label, msg = "upstream_unreachable", "502 upstream unreachable\n"
+		}
+		s.metrics.Errors.WithLabelValues(label).Inc()
+		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", msg)
 		return false
 	}
 	defer resp.Body.Close()

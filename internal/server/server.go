@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -34,10 +35,16 @@ type Server struct {
 	fwd     Forwarder
 	ports   *portManager
 
-	agentLn tunnel.Listener
-	httpLn  net.Listener
-	httpsLn net.Listener
-	opsSrv  *http.Server
+	// proxyClient pools upstream connections for the reserved-host reverse proxy
+	// (apex/www → site, app → dashboard, api → API). Shared across all requests.
+	proxyClient *http.Client
+
+	agentLn   tunnel.Listener
+	httpLn    net.Listener
+	httpsLn   net.Listener
+	forwardLn net.Listener // internal inter-edge forwarding listener (nil in single-edge mode)
+	fwdAddr   string       // address advertised to peers for this edge
+	opsSrv    *http.Server
 
 	mu       sync.Mutex
 	draining bool
@@ -63,20 +70,21 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 	}
 	m := NewMetrics()
 	s := &Server{
-		cfg:     cfg,
-		log:     log,
-		ent:     ent,
-		hub:     NewHub(),
-		reg:     reg,
-		metrics: m,
-		usage:   newUsageAgg(ent, 30*time.Second),
-		fwd:     NewForwarder(),
-		ports:   newPortManager(cfg.PortMin, cfg.PortMax),
-		ready:   make(chan struct{}),
+		cfg:         cfg,
+		log:         log,
+		ent:         ent,
+		hub:         NewHub(),
+		reg:         reg,
+		metrics:     m,
+		usage:       newUsageAgg(ent, 30*time.Second),
+		fwd:         newForwarder(cfg, reg),
+		ports:       newPortManager(cfg.PortMin, cfg.PortMax),
+		proxyClient: newReverseProxyClient(),
+		ready:       make(chan struct{}),
 	}
 	// Cert manager depends on the server (its on-demand decision consults the hub
 	// + registry), so build it after s exists.
-	certs, err := buildCertManager(cfg, s.tlsDecision)
+	certs, err := buildCertManager(cfg, log, s.tlsDecision)
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +94,11 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 
 // buildCertManager chooses TLS: real ACME (Let's Encrypt) when an ACME email is
 // configured, otherwise a dev self-signed manager for local `curl -k` testing.
-func buildCertManager(cfg Config, decide func(ctx context.Context, name string) error) (CertManager, error) {
+func buildCertManager(cfg Config, log *slog.Logger, decide func(ctx context.Context, name string) error) (CertManager, error) {
 	if cfg.ACMEEmail == "" {
 		return NewDevCertManager(cfg.BaseDomain)
 	}
-	return newACMECertManager(cfg, decide)
+	return newACMECertManager(cfg, log, decide)
 }
 
 // tlsDecision gates on-demand certificate issuance (the CertMagic DecisionFunc):
@@ -163,6 +171,16 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 	if err := s.startHTTPS(ctx); err != nil {
 		return err
+	}
+	// Inter-edge forwarding mesh (multi-edge only). Bring up the internal listener
+	// and start advertising/refreshing this edge's presence so peers can hand it
+	// traffic for tunnels homed here.
+	if s.forwardingEnabled() {
+		if err := s.startForward(ctx); err != nil {
+			return err
+		}
+		s.wg.Add(1)
+		go func() { defer s.wg.Done(); s.runPresence(ctx) }()
 	}
 	// Pre-provision the wildcard cert (ACME/DNS-01) when a DNS token is set;
 	// on-demand issuance covers everything else, so this is best-effort.
@@ -432,6 +450,20 @@ func (s *Server) drain() error {
 	s.mu.Unlock()
 	s.log.Info("draining", "timeout", s.cfg.DrainTimeout)
 
+	// Multi-edge: stop peers routing NEW traffic to us before we notify local
+	// agents and tear down. Removing our advertised address makes a peer's
+	// LookupEdge miss (so it fails fast / reroutes instead of hanging), and closing
+	// the listener refuses in-flight dials. Forwarded welds already accepted finish
+	// under s.wg like any other in-flight connection.
+	if s.forwardingEnabled() {
+		uctx, ucancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = s.reg.UnregisterEdge(uctx, s.cfg.EdgeID)
+		ucancel()
+		if s.forwardLn != nil {
+			_ = s.forwardLn.Close()
+		}
+	}
+
 	deadline := time.Now().Add(s.cfg.DrainTimeout)
 	msg := &proto.Envelope{Msg: &proto.Envelope_Shutdown{Shutdown: &proto.ShutdownMsg{
 		Reason:              "edge draining",
@@ -460,6 +492,11 @@ func (s *Server) drain() error {
 	s.ports.closeAll()
 	s.usage.Stop()
 	_ = s.reg.Close()
+	// Release cert-storage resources (e.g. the shared Redis client + lock
+	// refreshers) when the manager backs onto a Closer store.
+	if c, ok := s.certs.(io.Closer); ok {
+		_ = c.Close()
+	}
 
 	done := make(chan struct{})
 	go func() { s.wg.Wait(); close(done) }()

@@ -138,6 +138,14 @@ func (s *Server) acceptTCPTunnel(ln net.Listener, port int) {
 		}
 		bt := s.hub.LookupPort("tcp", port)
 		if bt == nil {
+			// No cross-edge fallback here (unlike serveHTTPConn): a raw TCP
+			// connection carries no L7 routing key, and a public port is a physical
+			// resource each edge's in-memory pool binds independently — two edges can
+			// hand the SAME port to DIFFERENT tunnels, so a registry entry for
+			// "tcp:<port>" is not globally unique and can't safely identify an owner.
+			// Cross-edge port tunnels need a distributed/global port allocator first
+			// (a future stage); until then a stray connection on an unbound port is
+			// dropped, exactly as before.
 			c.Close()
 			continue
 		}

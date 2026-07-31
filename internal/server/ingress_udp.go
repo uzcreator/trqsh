@@ -76,6 +76,10 @@ func (s *Server) serveUDPTunnel(uc *net.UDPConn, port int) {
 		}
 		bt := s.hub.LookupPort("udp", port)
 		if bt == nil {
+			// No cross-edge fallback here — same reasoning as acceptTCPTunnel: a
+			// public UDP port is a per-edge physical resource with no L7 routing key,
+			// so a registry "udp:<port>" entry isn't globally unique across edges.
+			// Cross-edge port tunnels need a distributed port allocator first.
 			continue
 		}
 		key := addr.String()

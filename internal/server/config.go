@@ -30,8 +30,10 @@ type Config struct {
 	Region     string // TRQSH_REGION
 	EdgeID     string // TRQSH_EDGE_ID (defaults to hostname)
 
-	// State.
-	RedisURL string // TRQSH_REDIS_URL; empty => in-memory registry (single edge)
+	// State. When set, also selects the shared TLS cert storage (RedisStorage) so
+	// all edges share one cert cache + issuance lock instead of each hitting Let's
+	// Encrypt independently (see tls_acme.go buildCertStorage).
+	RedisURL string // TRQSH_REDIS_URL; empty => in-memory registry + on-disk cert storage (single edge)
 
 	// Entitlements.
 	EntitlementsMode string // TRQSH_ENTITLEMENTS: "stub" (default) | "api"
@@ -55,6 +57,21 @@ type Config struct {
 
 	// Ops.
 	MetricsAddr string // TRQSH_METRICS_ADDR, e.g. ":9090" (metrics + health)
+
+	// Inter-edge forwarding (multi-edge). When ForwardAddr is set AND InternalToken
+	// is configured, the edge joins the forwarding mesh: it runs an internal,
+	// token-authenticated forwarding listener and, when public traffic for a tunnel
+	// homed on ANOTHER edge lands here, hands the connection off to the owning edge
+	// instead of 404ing. Empty ForwardAddr => single-edge behavior (unchanged).
+	// This is an INTERNAL-only port (analogous to MetricsAddr) — never expose it
+	// publicly; peers authenticate with the shared InternalToken.
+	ForwardAddr string // TRQSH_FORWARD_ADDR, e.g. ":4444" (internal bind address)
+	// ForwardAdvertiseAddr is the address peers dial to reach THIS edge's forwarding
+	// listener (e.g. the droplet's private IP + port). Empty => the listener's
+	// resolved Addr() is advertised, which is correct in tests and when ForwardAddr
+	// is a concrete host:port, but NOT when it binds a wildcard like ":4444" — a
+	// multi-edge production deployment MUST set this to a routable address.
+	ForwardAdvertiseAddr string // TRQSH_FORWARD_ADVERTISE_ADDR
 
 	// Reserved control-plane hosts. When set, requests to these hostnames that
 	// match no tunnel are reverse-proxied to the internal service instead of the
@@ -114,6 +131,8 @@ func LoadConfig() (Config, error) {
 	envStr(&c.CloudflareToken, "TRQSH_CLOUDFLARE_API_TOKEN")
 	envStr(&c.TLSStorageDir, "TRQSH_TLS_STORAGE_DIR")
 	envStr(&c.MetricsAddr, "TRQSH_METRICS_ADDR")
+	envStr(&c.ForwardAddr, "TRQSH_FORWARD_ADDR")
+	envStr(&c.ForwardAdvertiseAddr, "TRQSH_FORWARD_ADVERTISE_ADDR")
 	envStr(&c.SiteUpstream, "TRQSH_SITE_UPSTREAM")
 	envStr(&c.AppUpstream, "TRQSH_APP_UPSTREAM")
 	envStr(&c.APIUpstream, "TRQSH_API_UPSTREAM")
