@@ -23,11 +23,6 @@ jobs:
           cache: true
       - name: Build
         run: go build ./...
-      - name: Check generated plan catalog is current
-        run: |
-          go run ./web/site/scripts/genplans
-          git diff --exit-code web/site/lib/catalog.generated.ts \
-            || (echo "::error::web/site/lib/catalog.generated.ts is stale — run 'make site-plans'"; exit 1)
       - name: Check embedded OpenAPI is current
         run: |
           cp docs/openapi.yaml internal/api/openapi.yaml
@@ -61,6 +56,19 @@ jobs:
       - name: Install
         working-directory: ${{ matrix.app }}
         run: pnpm install --frozen-lockfile
+      # web/site's pricing catalog and OpenAPI copy are fetched from the live
+      # control API at TRQSH_API_URL (default api.trqsh.uz) rather than built
+      # from local backend source — see lib/paths.ts and scripts/genplans.mjs.
+      # This step requires that API to be reachable; if it's down, this check
+      # (not the rest of CI) fails until it's back.
+      - name: Check generated plan catalog + OpenAPI copy are current
+        if: matrix.app == 'web/site'
+        working-directory: web/site
+        run: |
+          node scripts/genplans.mjs
+          node scripts/gen-openapi.mjs
+          git diff --exit-code lib/catalog.generated.ts lib/openapi.generated.yaml \
+            || (echo "::error::web/site's generated files are stale — run 'make site-plans site-openapi'"; exit 1)
       - name: Build
         working-directory: ${{ matrix.app }}
         run: pnpm build

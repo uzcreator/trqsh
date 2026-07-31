@@ -1,0 +1,254 @@
+openapi: 3.1.0
+info:
+  title: trqsh Control API
+  version: "1.0.0"
+  description: >
+    Control plane for trqsh: accounts, API keys, reserved subdomains, custom
+    domains, usage, and plans. Authenticated with a Bearer JWT (dashboard) or an
+    API key (programmatic). See plan/05-control-api.md.
+servers:
+  - url: https://api.trqsh.uz/v1
+  - url: http://localhost:8080/v1
+security:
+  - bearerAuth: []
+paths:
+  /auth/signup:
+    post:
+      summary: Create an account (dev/email flow)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        "200": { description: Account created, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        "409": { description: User already exists }
+  /auth/login:
+    post:
+      summary: Log in (dev/email flow)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        "200": { description: Tokens, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        "401": { description: No such user }
+  /auth/refresh:
+    post:
+      summary: Exchange a refresh token for a new token pair
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { refresh_token: { type: string } } } } }
+      responses:
+        "200": { description: Tokens, content: { application/json: { schema: { $ref: '#/components/schemas/Tokens' } } } }
+  /auth/oauth/{provider}:
+    get:
+      summary: Begin an OAuth flow (github|google)
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [github, google] } }
+      responses:
+        "302": { description: Redirect to the provider }
+  /auth/oauth/{provider}/callback:
+    get:
+      summary: OAuth callback
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string } }
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Tokens, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+  /auth/device/code:
+    post:
+      summary: Start a device-authorization flow (CLI/GUI login)
+      security: []
+      responses:
+        "200":
+          description: Device + user codes
+          content: { application/json: { schema: { $ref: '#/components/schemas/DeviceCode' } } }
+  /auth/device/approve:
+    post:
+      summary: Approve a device user code (browser, authenticated)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { user_code: { type: string } } } } }
+      responses:
+        "200": { description: Approved }
+  /auth/device/token:
+    post:
+      summary: Poll for the device API key
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { device_code: { type: string } } } } }
+      responses:
+        "200": { description: API key, content: { application/json: { schema: { type: object, properties: { api_key: { type: string } } } } } }
+        "400": { description: authorization_pending | expired_token | invalid_device_code }
+  /account:
+    get:
+      summary: The authenticated user and their orgs
+      responses:
+        "200": { description: Account }
+  /api-keys:
+    get:
+      summary: List API keys (prefixes only)
+      responses: { "200": { description: Keys } }
+    post:
+      summary: Create an API key (plaintext returned once)
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CreatedAPIKey' } } } }
+  /api-keys/{id}:
+    delete:
+      summary: Revoke an API key
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { "204": { description: Revoked } }
+  /subdomains:
+    get: { summary: List reserved subdomains, responses: { "200": { description: OK } } }
+    post:
+      summary: Reserve a subdomain (subject to plan limits)
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { subdomain: { type: string } } } } }
+      responses:
+        "201": { description: Reserved }
+        "403": { description: Plan limit reached }
+        "409": { description: Subdomain already taken }
+  /subdomains/{id}:
+    delete:
+      summary: Release a reserved subdomain
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses: { "204": { description: Released } }
+  /domains:
+    get: { summary: List custom domains, responses: { "200": { description: OK } } }
+    post:
+      summary: Add a custom domain (returns DNS verification instructions)
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { domain: { type: string } } } } }
+      responses:
+        "201": { description: Added }
+        "403": { description: Plan does not allow custom domains }
+  /domains/{id}/verify:
+    post:
+      summary: Verify a custom domain via DNS TXT
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: Verified }
+        "400": { description: DNS record not found yet }
+  /usage:
+    get: { summary: Usage for the active org (last 30 days), responses: { "200": { description: OK } } }
+  /orgs:
+    get: { summary: Orgs the caller belongs to, responses: { "200": { description: OK } } }
+  /tunnels:
+    get: { summary: Live tunnels for the org (from the edge registry), responses: { "200": { description: OK } } }
+  /plans:
+    get:
+      summary: The plan/quota catalog
+      security: []
+      responses: { "200": { description: OK } }
+  /plans/public:
+    get:
+      summary: The plan/quota catalog, unauthenticated (build-time consumption by the marketing site)
+      security: []
+      responses: { "200": { description: OK } }
+  /billing/checkout:
+    post:
+      summary: Create a Stripe Checkout Session to subscribe to / change plan (Part 07)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string, enum: [pro, team, payg] }
+                cadence: { type: string, enum: [monthly, annual, metered], default: monthly }
+      responses:
+        "200": { description: Checkout URL, content: { application/json: { schema: { type: object, properties: { url: { type: string }, session_id: { type: string } } } } } }
+        "400": { description: Unknown/non-billable plan or no price configured }
+        "503": { description: Stripe not configured }
+  /billing/portal:
+    post:
+      summary: Create a Stripe Customer-Portal session (manage/cancel/invoices)
+      responses:
+        "200": { description: Portal URL, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "400": { description: No subscription to manage yet }
+        "503": { description: Stripe not configured }
+  /billing/subscription:
+    get:
+      summary: The caller org's current plan + subscription
+      responses:
+        "200":
+          description: Subscription state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { type: string }
+                  billing_enabled: { type: boolean }
+                  subscription: { $ref: '#/components/schemas/Subscription' }
+  /billing/webhooks:
+    post:
+      summary: Stripe webhook receiver (public; Stripe-Signature verified). Source of truth for plan state.
+      security: []
+      parameters:
+        - { name: Stripe-Signature, in: header, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Processed (or duplicate ignored) }
+        "400": { description: Invalid signature or payload }
+        "503": { description: Webhook secret not configured }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT-or-APIKey }
+  schemas:
+    SignupRequest:
+      type: object
+      required: [email]
+      properties: { email: { type: string, format: email }, name: { type: string } }
+    Tokens:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_in: { type: integer }
+        token_type: { type: string }
+    AuthResponse:
+      type: object
+      properties:
+        user: { type: object }
+        org: { type: object }
+        tokens: { $ref: '#/components/schemas/Tokens' }
+    DeviceCode:
+      type: object
+      properties:
+        device_code: { type: string }
+        user_code: { type: string }
+        verification_uri: { type: string }
+        verification_uri_complete: { type: string }
+        interval: { type: integer }
+        expires_in: { type: integer }
+    CreatedAPIKey:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        api_key: { type: string, description: "Plaintext, shown once" }
+    Subscription:
+      type: object
+      properties:
+        id: { type: string }
+        org_id: { type: string }
+        stripe_subscription_id: { type: string }
+        stripe_customer_id: { type: string }
+        plan: { type: string, enum: [free, pro, team, payg] }
+        status: { type: string, enum: [active, trialing, past_due, canceled, incomplete] }
+        current_period_end: { type: string, format: date-time }
+        cancel_at_period_end: { type: boolean }

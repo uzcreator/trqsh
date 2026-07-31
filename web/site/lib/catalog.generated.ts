@@ -1,9 +1,11 @@
-// Code generated from internal/billing.Catalog by web/site/scripts/genplans.
-// DO NOT EDIT — run "make site-plans" (or "go run ./web/site/scripts/genplans")
-// after changing the plan catalog in internal/billing/plans.go.
+// Code generated from the control API (GET /v1/plans/public) by
+// web/site/scripts/genplans.mjs. DO NOT EDIT — run "make site-plans" (or
+// "node scripts/genplans.mjs") after changing the plan catalog in
+// internal/billing/plans.go.
 //
-// This is how Part 09 consumes the single source of truth for pricing without
-// hardcoding: prices/limits shown here can never drift from what the edge enforces.
+// This is how the site consumes the single source of truth for pricing
+// without hardcoding: prices/limits shown here can never drift from what the
+// edge enforces.
 
 export interface CatalogPlan {
   code: string;

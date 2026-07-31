@@ -8,7 +8,7 @@ COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 
 .PHONY: help proto build test lint tidy dev dev-deps dev-web dev-down observability \
         migrate images helm-lint helm-template tf-validate compose-config run-edge run-agent \
-        site site-build site-plans openapi-sync
+        site site-build site-plans site-openapi openapi-sync
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -74,13 +74,22 @@ run-edge: ## Run the edge server with stub entitlements (Part 02)
 run-agent: ## Run the agent, e.g. `make run-agent ARGS="http 3000"` (Part 03)
 	$(GO) run ./cmd/trqsh $(ARGS)
 
-site-plans: ## Regenerate web/site pricing catalog from internal/billing (Part 09)
-	$(GO) run ./web/site/scripts/genplans
+site-plans: ## Regenerate web/site's pricing catalog from the control API (Part 09)
+	cd web/site && node scripts/genplans.mjs
 
-site: site-plans ## Run the marketing site dev server on :3002 (Part 09)
+site-openapi: ## Regenerate web/site's local OpenAPI copy from the control API (Part 09)
+	cd web/site && node scripts/gen-openapi.mjs
+
+# site/site-build deliberately do NOT depend on site-plans/site-openapi: both
+# fetch from a live control API (TRQSH_API_URL, default api.trqsh.uz), and a
+# routine dev/build run should never require that API to be reachable — only
+# explicit regeneration (above) or CI's drift check does. The checked-in
+# lib/catalog.generated.ts and lib/openapi.generated.yaml are what normal
+# builds actually use.
+site: ## Run the marketing site dev server on :3002 (Part 09)
 	cd web/site && pnpm install && pnpm dev
 
-site-build: site-plans ## Production build of the marketing site (Part 09)
+site-build: ## Production build of the marketing site (Part 09)
 	cd web/site && pnpm install --frozen-lockfile && pnpm build
 
 openapi-sync: ## Sync the API's embedded OpenAPI copy from docs/openapi.yaml

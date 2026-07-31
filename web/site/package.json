@@ -6,7 +6,9 @@
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start -p 3002",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:plans": "node scripts/genplans.mjs",
+    "gen:openapi": "node scripts/gen-openapi.mjs"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",

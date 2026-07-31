@@ -43,7 +43,9 @@ cd desktop       && pnpm install && pnpm tauri dev  # native desktop app (Tauri 
   (wire protocol, transport API, `authz.Entitlements`, config schema, error taxonomy, plan catalog)
   change only by editing that file first. Don't drift them.
 - **Generated code stays in sync.** After editing the plan catalog run `make site-plans`; after
-  editing the OpenAPI run `make openapi-sync`. CI fails on drift.
+  editing the OpenAPI run `make openapi-sync` (backend's embedded copy) and `make site-openapi`
+  (the site's local copy — both fetch from a live control API, see `web/site/scripts/`). CI fails
+  on drift.
 - **Match the surrounding style.** Go is `gofmt`/`goimports`-clean; TS mirrors Go JSON tags in
   **snake_case** (the Go APIs marshal with `encoding/json`, so the TS shapes track the Go field tags).
 
