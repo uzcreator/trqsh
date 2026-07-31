@@ -143,13 +143,17 @@ func (s *Server) Router() http.Handler {
 	// approve.<base>; every other host (api.<base>) gets a bare 404.
 	r.Get("/", s.handleRoot)
 
-	// The interactive API docs (Swagger UI), the raw OpenAPI spec, and the verbose
-	// status all enumerate the API surface, so they are dev-only — a production
-	// deployment must not expose them publicly. Health checks use /healthz.
+	// The raw OpenAPI spec is always public: it's plain documentation content (the
+	// site's /docs/api reference page and, once split into its own repo, its
+	// build-time fetch both depend on this — see web/site/scripts/gen-openapi.mjs),
+	// and it's already effectively public via that rendered page. The interactive
+	// Swagger UI ("try it out" against prod) and the verbose live status
+	// (goroutine counts, uptime, store kind) are meaningfully more sensitive, so
+	// those stay dev-only. Health checks use /healthz.
+	r.Get("/openapi.yaml", s.handleOpenAPISpec)
 	if !s.cfg.IsProduction() {
 		r.Get("/status", s.handleStatus)
 		r.Get("/docs", s.handleDocsUI)
-		r.Get("/openapi.yaml", s.handleOpenAPISpec)
 	}
 
 	// approve.<base> admin console: the page + login are served same-origin as the
@@ -164,6 +168,11 @@ func (s *Server) Router() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		// Per-IP flood guard on the whole public API (internal RPC is exempt).
 		r.Use(s.apiLimiter.middleware)
+
+		// Unauthenticated, display-safe plan catalog (see handlers_plans_public.go),
+		// for build-time consumption by the marketing site — which can't import
+		// internal/billing across a module boundary once it's a separate repo.
+		r.Get("/plans/public", s.handleListPlansPublic)
 
 		// Public auth endpoints — stricter per-IP limit (brute-force / account spam).
 		r.Group(func(r chi.Router) {

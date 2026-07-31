@@ -151,6 +151,11 @@ paths:
       summary: The plan/quota catalog
       security: []
       responses: { "200": { description: OK } }
+  /plans/public:
+    get:
+      summary: The plan/quota catalog, unauthenticated (build-time consumption by the marketing site)
+      security: []
+      responses: { "200": { description: OK } }
   /billing/checkout:
     post:
       summary: Create a Stripe Checkout Session to subscribe to / change plan (Part 07)
