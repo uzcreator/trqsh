@@ -1,6 +1,6 @@
 # GoReleaser — cross-compile + package the CLI (trqsh) and edge (trqshd).
-# The desktop GUI is built + signed separately in release.yml (Wails needs CGO
-# and per-OS signing). Run locally: `goreleaser release --clean --snapshot`.
+# The desktop app (Tauri) is built separately in desktop-build.yml; goreleaser
+# only packages the Go binaries here. Run locally: `goreleaser release --clean --snapshot`.
 version: 2
 
 before:

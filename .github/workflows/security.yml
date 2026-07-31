@@ -24,7 +24,7 @@ jobs:
         with:
           # -no-fail: report findings without failing the build (triage in the
           # Security tab); tighten to failing once the baseline is clean.
-          args: "-no-fail -exclude-dir=web -exclude-dir=gui/frontend -fmt sarif -out results.sarif ./..."
+          args: "-no-fail -exclude-dir=web -fmt sarif -out results.sarif ./..."
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:

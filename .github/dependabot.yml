@@ -24,13 +24,6 @@ updates:
     groups:
       site-deps:
         patterns: ["*"]
-  - package-ecosystem: npm
-    directory: /gui/frontend
-    schedule:
-      interval: weekly
-    groups:
-      gui-deps:
-        patterns: ["*"]
 
   # CI actions + container base images.
   - package-ecosystem: github-actions

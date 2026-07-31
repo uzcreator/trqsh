@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [web/dashboard, web/site, gui/frontend, desktop]
+        app: [web/dashboard, web/site, desktop]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

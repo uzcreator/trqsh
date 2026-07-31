@@ -59,9 +59,9 @@ dashboard `:3000`; mailhog `:8025`; Grafana `:3001`.
 
 ## Release
 
-Tag `vX.Y.Z` → `release.yml`: goreleaser (CLI/edge archives, Homebrew, deb/rpm),
-signed GUI bundles (macOS notarized, Windows Authenticode), and the auto-update
-feed. `images.yml` publishes containers to GHCR on every main + tag.
+Tag `vX.Y.Z` → `release.yml`: goreleaser (CLI/edge archives, Homebrew, deb/rpm)
+plus the npm and PyPI wrapper packages. The desktop app (Tauri) ships from
+`desktop-build.yml`. `images.yml` publishes containers to GHCR on every main + tag.
 
 ## What is verified here vs. in CI
 

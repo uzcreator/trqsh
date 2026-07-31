@@ -32,9 +32,9 @@ curl -H 'Host: <sub>.lvh.me' http://127.0.0.1
 Frontends:
 
 ```bash
-cd web/site      && pnpm install && pnpm dev   # :3002
-cd web/dashboard && pnpm install && pnpm dev   # :3000
-cd gui/frontend  && pnpm install && pnpm dev   # desktop UI in a browser (mock agent)
+cd web/site      && pnpm install && pnpm dev        # :3002
+cd web/dashboard && pnpm install && pnpm dev        # :3000
+cd desktop       && pnpm install && pnpm tauri dev  # native desktop app (Tauri v2)
 ```
 
 ## Ground rules
@@ -45,7 +45,7 @@ cd gui/frontend  && pnpm install && pnpm dev   # desktop UI in a browser (mock a
 - **Generated code stays in sync.** After editing the plan catalog run `make site-plans`; after
   editing the OpenAPI run `make openapi-sync`. CI fails on drift.
 - **Match the surrounding style.** Go is `gofmt`/`goimports`-clean; TS mirrors Go JSON tags in
-  **snake_case** (Wails/Next marshal with the Go field tags).
+  **snake_case** (the Go APIs marshal with `encoding/json`, so the TS shapes track the Go field tags).
 
 ## Before you open a PR
 

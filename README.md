@@ -89,7 +89,7 @@ go run ./cmd/trqsh http 3000 --server 127.0.0.1:4443 --insecure     # agent
 curl -H 'Host: <sub>.lvh.me' http://127.0.0.1
 ```
 
-Frontends: `make site` (:3002), and `pnpm dev` in `web/dashboard` (:3000) / `gui/frontend`.
+Frontends: `make site` (:3002), `pnpm dev` in `web/dashboard` (:3000), and `pnpm tauri dev` in `desktop/` (the native Tauri app).
 
 ## Security
 
@@ -114,7 +114,7 @@ edge droplets + wildcard DNS), and GitHub Actions for CI, images, releases, and 
 cmd/{trqshd,trqsh,trqshapi}        edge, agent/CLI, control-plane binaries
 pkg/{proto,tunnel,authz}        shared frozen contracts (wire protocol, transport, entitlements)
 internal/{server,agent,api,billing}   edge · agent core · control plane · billing
-gui/                            Wails v3 desktop app (Go + React)
+desktop/                        Tauri v2 desktop app (React UI over the bundled Go agent)
 web/{dashboard,site}            Next.js dashboard + marketing site
 deploy/                         docker, helm, terraform, CI/CD, observability, secrets
 docs/                           engineering docs, API spec, build log

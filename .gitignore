@@ -51,10 +51,6 @@ dist/
 .turbo/
 pnpm-debug.log*
 
-# Wails build output
-gui/build/bin/
-gui/frontend/dist/
-
 # Local data (compose volumes, sqlite, etc.)
 /data/
 *.db

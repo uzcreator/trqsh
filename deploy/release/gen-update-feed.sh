@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Emit the auto-update feed the GUI/CLI poll. Shape matches gui/update.go
-# (releaseFeed: version, notes, url). Usage: gen-update-feed.sh v0.1.0
+# Emit a JSON version feed (version, notes, url). DORMANT: the old Wails GUI that
+# polled this feed was removed; the Tauri desktop app self-updates via the bundled
+# agent. Kept for potential future use. Usage: gen-update-feed.sh v0.1.0
 set -euo pipefail
 
 tag="${1:?usage: gen-update-feed.sh <tag>}"

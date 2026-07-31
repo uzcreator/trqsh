@@ -6,7 +6,7 @@ Artifacts and package-manager manifests produced by `.github/workflows/release.y
 ```
 release/
 ├── install.sh            curl | sh installer for the CLI (Linux/macOS)
-├── gen-update-feed.sh    emits the GUI/CLI auto-update feed (latest.json)
+├── gen-update-feed.sh    dormant version-feed generator (latest.json); no live consumer
 └── scoop/trqsh.json       Scoop (Windows) manifest template
 ```
 
@@ -19,13 +19,15 @@ release/
 | CLI (Windows) | Scoop (`scoop/trqsh.json`) + winget manifest PR |
 | CLI (Linux) | `.deb` / `.rpm` (goreleaser `nfpms:`) |
 | Edge (`trqshd`) | container image `ghcr.io/trqsh/edge` + archives |
-| Desktop GUI | signed bundles per OS (macOS notarized, Windows Authenticode) |
+| Desktop app | Tauri installers per OS via `desktop-build.yml` → `trqsh-uz/gui` releases |
 
-## Auto-update feed
+## Auto-update feed (dormant)
 
-`gen-update-feed.sh <tag>` emits `latest.json` matching the shape the GUI polls
-(`gui/update.go` → `{version, notes, url}`), published to
-`https://downloads.trqsh.uz/desktop/latest.json` (the Spaces `releases` bucket).
+`gen-update-feed.sh <tag>` emits a `latest.json` version feed
+(`{version, notes, url}`). It currently has **no consumer**: the old Wails GUI
+that polled it was removed, and the Tauri desktop app checks for updates through
+the bundled agent, which queries the `trqsh-uz/gui` releases API directly (see
+`internal/agent/update.go`). The script is kept for potential future use.
 
 ```bash
 deploy/release/gen-update-feed.sh v0.1.0
@@ -33,6 +35,7 @@ deploy/release/gen-update-feed.sh v0.1.0
 
 ## Required secrets (release environment)
 
-`HOMEBREW_TAP_TOKEN`, `APPLE_ID` / `APPLE_TEAM_ID` / `APPLE_APP_PASSWORD`
-(notarization), `WINDOWS_CERT_BASE64` / `WINDOWS_CERT_PASSWORD` (Authenticode),
-`SPACES_ACCESS_ID` / `SPACES_SECRET_KEY` (feed upload).
+`RELEASE_REPO_TOKEN` (publish to the public `trqsh-uz/cli` + `trqsh-uz/gui`
+releases), `HOMEBREW_TAP_TOKEN` (Homebrew tap), and `NPM_TOKEN` / `PYPI_TOKEN`
+(language wrappers). Desktop builds are not code-signed yet — `desktop-build.yml`
+ships unsigned preview builds.
