@@ -29,6 +29,27 @@ func (s *Server) adminEnabled() bool {
 	return s.cfg.AdminUser != "" && s.cfg.AdminPassword != ""
 }
 
+// isAdminHost reports whether the request arrived on approve.<base> (the edge
+// preserves the original Host and sets X-Forwarded-Host when proxying). The admin
+// console answers only there, keeping it off the bare api.<base>.
+func (s *Server) isAdminHost(r *http.Request) bool {
+	host := r.Host
+	if xf := r.Header.Get("X-Forwarded-Host"); xf != "" {
+		host = xf
+	}
+	return strings.HasPrefix(strings.ToLower(host), "approve.")
+}
+
+// handleRoot serves the admin console at the root of approve.<base> so the bare
+// hostname works; every other host gets a plain 404 (the API is not browsable).
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if s.adminEnabled() && s.isAdminHost(r) {
+		s.handleAdminPage(w, r)
+		return
+	}
+	http.NotFound(w, r)
+}
+
 // signAdmin issues an opaque, HMAC-signed session value "<exp>.<mac>" bound to the
 // JWT secret. It carries no identity beyond "is the admin", which is all we need.
 func (s *Server) signAdmin(exp time.Time) string {
@@ -198,8 +219,10 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminPage(w http.ResponseWriter, r *http.Request) {
-	if !s.adminEnabled() {
-		http.Error(w, "admin console is disabled", http.StatusNotFound)
+	// Hidden when disabled, and (in production) only served on approve.<base> so
+	// the console never appears on the bare api.<base>.
+	if !s.adminEnabled() || (s.cfg.IsProduction() && !s.isAdminHost(r)) {
+		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
