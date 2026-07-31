@@ -6,9 +6,15 @@ name: desktop-build
 # accident).
 #
 # The app is a thin native client: the Go agent is bundled as a sidecar binary
-# (src-tauri/binaries/trqsh-<target-triple>). We build that Go binary natively on
-# each runner (no cross-compilation) and name it with the Rust host triple that
-# Tauri resolves at bundle time.
+# (src-tauri/binaries/trqsh-<target-triple>). Rather than compiling it from this
+# repo's own Go source (desktop/ doesn't carry backend source), each runner
+# downloads the matching platform/arch archive already published to the public
+# trqsh-uz/cli releases and renames the binary inside it to the Rust host
+# triple Tauri resolves at bundle time. This means a desktop build bundles
+# whichever CLI version was most recently released there, not this repo's
+# tip-of-main — a deliberate tradeoff: no Go toolchain needed in this
+# workflow, no cross-repo secret beyond the default GITHUB_TOKEN (trqsh-uz/cli
+# is public).
 
 on:
   workflow_dispatch:
@@ -43,9 +49,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.26" }
-
       - uses: pnpm/action-setup@v4
         with: { version: 10 }
       - uses: actions/setup-node@v4
@@ -71,20 +74,52 @@ jobs:
             libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev patchelf \
             libayatana-appindicator3-dev rpm
 
-      # Build the Go agent and drop it in as the Tauri sidecar for this runner's
-      # host triple (e.g. trqsh-x86_64-pc-windows-msvc.exe).
-      - name: Build Go agent sidecar
+      # Download the trqsh CLI/agent release archive matching this runner's
+      # OS+arch from the public trqsh-uz/cli releases, verify its checksum
+      # (same checksums.txt mechanism packaging/install.sh uses), and drop the
+      # extracted binary in as the Tauri sidecar under the Rust host triple
+      # (e.g. trqsh-x86_64-pc-windows-msvc.exe).
+      - name: Download trqsh agent sidecar
         shell: bash
         env:
-          CGO_ENABLED: "0"
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           triple="$(rustc -vV | sed -n 's/^host: //p')"
           ext=""
           [ "${{ matrix.platform }}" = "windows" ] && ext=".exe"
-          mkdir -p desktop/src-tauri/binaries
-          go build -trimpath -ldflags "-s -w" \
-            -o "desktop/src-tauri/binaries/trqsh-${triple}${ext}" ./cmd/trqsh
+
+          case "${{ matrix.platform }}" in
+            windows) goos=windows; fmt=zip ;;
+            darwin)  goos=darwin;  fmt=tar.gz ;;
+            linux)   goos=linux;   fmt=tar.gz ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64)  goarch=amd64 ;;
+            arm64|aarch64) goarch=arm64 ;;
+            *) echo "::error::unsupported arch $(uname -m)"; exit 1 ;;
+          esac
+
+          version="$(gh release view --repo trqsh-uz/cli --json tagName -q .tagName | sed 's/^v//')"
+          archive="trqsh_${version}_${goos}_${goarch}.${fmt}"
+          echo "downloading ${archive} (trqsh-uz/cli v${version}) for triple ${triple}"
+
+          tmp="$(mktemp -d)"
+          gh release download "v${version}" --repo trqsh-uz/cli \
+            --pattern "$archive" --pattern checksums.txt --dir "$tmp"
+
+          checksum() { command -v sha256sum >/dev/null 2>&1 && sha256sum "$1" || shasum -a 256 "$1"; }
+          want="$(grep " ${archive}\$" "$tmp/checksums.txt" | awk '{print $1}')"
+          got="$(checksum "$tmp/$archive" | awk '{print $1}')"
+          [ "$want" = "$got" ] || { echo "::error::checksum mismatch for $archive"; exit 1; }
+
+          mkdir -p "$tmp/extracted" desktop/src-tauri/binaries
+          if [ "$fmt" = "zip" ]; then
+            unzip -o "$tmp/$archive" -d "$tmp/extracted"
+          else
+            tar -xzf "$tmp/$archive" -C "$tmp/extracted"
+          fi
+          mv "$tmp/extracted/trqsh${ext}" "desktop/src-tauri/binaries/trqsh-${triple}${ext}"
           ls -la desktop/src-tauri/binaries
 
       - name: Install frontend deps
