@@ -1,0 +1,17 @@
+# vegeta targets for control-plane / web HTTP load. Copy to controlplane.targets
+# and edit the hostnames for your environment (staging vs prod).
+#
+# These defaults are READ-ONLY and UNAUTHENTICATED so they are safe to run:
+GET https://api.trqsh.uz/healthz
+GET https://trqsh.uz/
+GET https://app.trqsh.uz/
+
+# --- Auth endpoints (uncomment to load the credential path) -----------------
+# NOTE: /v1/auth/* is per-IP rate limited (5 sustained / 10 burst by default), so a
+# single-source attack will be throttled to ~429s almost immediately — that proves
+# the limiter works but does NOT measure raw capacity. To capacity-test the auth
+# path, raise the limits in a STAGING env or drive it from many source IPs.
+#
+# POST https://api.trqsh.uz/v1/auth/login
+# Content-Type: application/json
+# @login-body.json

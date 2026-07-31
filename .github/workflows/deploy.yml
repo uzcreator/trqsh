@@ -1,9 +1,15 @@
 name: Deploy
 
+# MANUAL ONLY (workflow_dispatch). The automatic push/tag triggers were removed
+# on purpose: this workflow runs `helm upgrade` against secrets.KUBECONFIG_STAGING
+# / KUBECONFIG_PROD, but production currently runs on a plain docker-compose VPS,
+# NOT Kubernetes, and nobody has verified those kubeconfig secrets point at a real
+# (possibly cost-incurring) cluster. Do NOT restore the push/tag triggers until the
+# owner has verified the `staging` / `production` GitHub Environment secrets. When
+# dispatched, the per-job `if:` below still gates on the ref: run from `main` for
+# staging, from a `v*` tag for production.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -1,0 +1,39 @@
+# Internal API load balancer (docker-compose profile: apilb).
+#
+# Fronts N `api` replicas behind one stable name (`apilb:8080`) so the edge gets
+# even load distribution across replicas that Compose's plain DNS round-robin +
+# the edge's connection pooling do not provide on their own. Plain HTTP on the
+# private compose network only — TLS is terminated at the edge, not here.
+
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	reverse_proxy {
+		# `dynamic a` re-resolves the `api` compose service to EVERY replica IP via
+		# Docker's embedded DNS (127.0.0.11) on each refresh, so scaling api up/down
+		# is picked up without restarting Caddy.
+		dynamic a {
+			name api
+			port 8080
+			refresh 10s
+			resolvers 127.0.0.11
+		}
+
+		# Spread by active connection count (better than round-robin when requests
+		# vary in duration). Passive health pulls a replica out of rotation after a
+		# failure for fail_duration; lb_try_duration retries the next replica within
+		# the window so a single bad replica is transparent to the edge.
+		lb_policy least_conn
+		lb_try_duration 2s
+		fail_duration 10s
+
+		# Optional active health check against the API's public /healthz (Caddy 2.7+):
+		# health_uri /healthz
+		# health_interval 10s
+		# health_timeout 3s
+		# health_status 200
+	}
+}

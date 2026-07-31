@@ -6,6 +6,14 @@ provider "digitalocean" {
 
 provider "random" {}
 
+# Cloudflare is only used when enable_cloudflare_lb = true (dns_cloudflare.tf).
+# The token defaults to "" so the provider stays inert (no resources reference it)
+# in the default DO-only topology; `terraform validate`/`plan` do not contact
+# Cloudflare unless a cloudflare_* resource is instantiated.
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
 # Group all resources under one DO project for tidy billing/console.
 resource "digitalocean_project" "trqsh" {
   name        = var.project_name

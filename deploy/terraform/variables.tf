@@ -107,3 +107,83 @@ variable "redis_size" {
   type        = string
   default     = "db-s-1vcpu-1gb"
 }
+
+# --- Inter-edge forwarding (Stage D) ---------------------------------------
+
+variable "edge_forward_port" {
+  description = "Internal port edges use for the cross-edge forwarding hop (Stage D). Token-authenticated and firewalled to edge droplets only — never opened to the public internet."
+  type        = number
+  default     = 4444
+}
+
+variable "edge_forward_iface" {
+  description = "Which droplet interface edges advertise for the forwarding hop. \"public\" (default) is the only choice that works ACROSS regions, because DO VPCs are single-region; \"private\" gives a free, VPC-internal hop but only between edges in the same region/VPC."
+  type        = string
+  default     = "public"
+  validation {
+    condition     = contains(["public", "private"], var.edge_forward_iface)
+    error_message = "edge_forward_iface must be \"public\" or \"private\"."
+  }
+}
+
+# --- Cloudflare Load Balancing (optional, DNS-only steering) ----------------
+# All inert unless enable_cloudflare_lb = true. See dns_cloudflare.tf.
+
+variable "enable_cloudflare_lb" {
+  description = "Steer the wildcard tunnel record with Cloudflare Load Balancing (health-checked failover/latency) instead of the DigitalOcean round-robin. Requires the zone hosted at Cloudflare and a plan that includes Load Balancing. Defaults off so the module stays DO-only until deliberately turned on."
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with Load Balancing + DNS edit on the zone. Only used when enable_cloudflare_lb = true."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare account ID owning the LB monitor + pool (enable_cloudflare_lb = true)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for var.domain (enable_cloudflare_lb = true)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_lb_steering_policy" {
+  description = "Cloudflare LB steering policy: \"dynamic_latency\" (fastest healthy edge per resolver), \"off\" (strict failover order), \"geo\", \"proximity\", or \"random\"."
+  type        = string
+  default     = "dynamic_latency"
+}
+
+variable "cloudflare_lb_monitor_type" {
+  description = "Edge health-check type. \"tcp\" (default) probes :443 liveness and needs NO new firewall exposure; \"http\"/\"https\" probe a path (see cloudflare_lb_monitor_port/path) — to hit the edge /healthz you must additionally open that port to Cloudflare's health-check IP ranges."
+  type        = string
+  default     = "tcp"
+  validation {
+    condition     = contains(["tcp", "http", "https"], var.cloudflare_lb_monitor_type)
+    error_message = "cloudflare_lb_monitor_type must be \"tcp\", \"http\", or \"https\"."
+  }
+}
+
+variable "cloudflare_lb_monitor_port" {
+  description = "Port the Cloudflare monitor probes on each edge. 443 for the default TCP liveness check; 9090 (the edge metrics/health port) if you switch to an HTTP /healthz check and open that port to Cloudflare."
+  type        = number
+  default     = 443
+}
+
+variable "cloudflare_lb_monitor_path" {
+  description = "Path for an http/https monitor (ignored for tcp). The edge serves /healthz on its metrics port."
+  type        = string
+  default     = "/healthz"
+}
+
+variable "cloudflare_lb_monitor_expected_codes" {
+  description = "Expected HTTP status for an http/https monitor (ignored for tcp)."
+  type        = string
+  default     = "200"
+}

@@ -17,12 +17,24 @@ jobs:
         include:
           - name: edge
             dockerfile: deploy/docker/Dockerfile.edge
+            extra_build_args: ""
           - name: api
             dockerfile: deploy/docker/Dockerfile.api
+            extra_build_args: ""
           - name: migrate
             dockerfile: deploy/docker/Dockerfile.migrate
+            extra_build_args: ""
+          # The dashboard is Next.js: TRQSH_API_URL / NEXT_PUBLIC_TRQSH_BASE_DOMAIN
+          # are inlined at BUILD time, so the prod values must be baked into the
+          # published image (the Dockerfile defaults are localhost:8080 / lvh.me).
           - name: dashboard
             dockerfile: deploy/docker/Dockerfile.dashboard
+            extra_build_args: |
+              TRQSH_API_URL=https://api.trqsh.uz
+              NEXT_PUBLIC_TRQSH_BASE_DOMAIN=trqsh.uz
+          - name: site
+            dockerfile: deploy/docker/Dockerfile.site
+            extra_build_args: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -56,5 +68,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.ref_name }}
+            ${{ matrix.extra_build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

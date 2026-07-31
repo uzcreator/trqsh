@@ -10,6 +10,13 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    # Optional: only exercised when enable_cloudflare_lb = true (dns_cloudflare.tf).
+    # Pinned to the v4 line — v5 reworked the load-balancer schema into nested
+    # attributes, so upgrading requires rewriting dns_cloudflare.tf.
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.40"
+    }
   }
 
   # Remote state (DigitalOcean Spaces, S3-compatible). Configure via

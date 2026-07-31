@@ -17,3 +17,21 @@ acme_email            = "ops@trqsh.uz"
 
 # Set after `helm install` provisions the ingress LoadBalancer (or use external-dns).
 # control_ingress_ip = "203.0.113.10"
+
+# --- Inter-edge forwarding (Stage D) ----------------------------------------
+# Edges advertise their "public" interface by default so the forwarding hop works
+# ACROSS regions (DO VPCs are single-region). For a SINGLE-region deployment you can
+# use the free private hop instead:
+# edge_forward_iface = "private"
+# edge_forward_port  = 4444
+
+# --- Cloudflare Load Balancing (optional; DNS-only steering) -----------------
+# Leave enable_cloudflare_lb = false to keep the DigitalOcean wildcard round-robin.
+# Turn it on only with a Cloudflare-hosted zone + a Load Balancing plan (see
+# dns_cloudflare.tf for the full activation checklist and the wildcard-hostname
+# plan caveat).
+# enable_cloudflare_lb  = true
+# cloudflare_api_token  = "..."   # or export TF_VAR_cloudflare_api_token
+# cloudflare_account_id = "..."
+# cloudflare_zone_id    = "..."
+# cloudflare_lb_steering_policy = "dynamic_latency"

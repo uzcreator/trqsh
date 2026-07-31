@@ -11,14 +11,27 @@ deploy/
 ├── helm/trqsh/               Kubernetes chart: edge (DaemonSet), api, dashboard,
 │                            ingress, HPA/PDB, migrate hook, NetworkPolicy, SM
 ├── terraform/               DigitalOcean: DOKS + Postgres + Redis + edge droplets +
-│                            wildcard DNS + Spaces
+│                            wildcard DNS (+ optional Cloudflare LB) + Spaces
+├── apilb/                   opt-in Caddy internal API load balancer (compose profile)
+├── loadtest/               capacity harness: tunnelload (Go data plane) + vegeta (HTTP)
 ├── observability/           Prometheus + Grafana + OTel collector + alerts
 ├── release/                 install.sh, update-feed generator, scoop manifest
 └── secrets/                 SOPS-encrypted secret workflow + example
 ```
 
+Single-host production is `docker-compose.prod.yml` + `.env.prod.example` (see
+[`PRODUCTION.md`](PRODUCTION.md)); `.env.staging.example` is the same stack on a
+separate staging host for rehearsing risky changes first.
+
 CI/CD lives in [`../.github/workflows/`](../.github/workflows/) and
 [`../.goreleaser.yaml`](../.goreleaser.yaml).
+
+> **`deploy.yml` (Helm) is manual-only.** Its automatic push/tag triggers were
+> removed on purpose: it runs `helm upgrade` against `KUBECONFIG_STAGING` /
+> `KUBECONFIG_PROD`, but production currently runs on a plain docker-compose VPS
+> (see [`PRODUCTION.md`](PRODUCTION.md)), not Kubernetes, and those kubeconfig
+> secrets are unverified. Re-enable the triggers only after confirming the
+> `staging` / `production` GitHub Environment secrets point at a real cluster.
 
 ## Local (M1 in one command)
 
@@ -55,8 +68,11 @@ feed. `images.yml` publishes containers to GHCR on every main + tag.
 | Artifact | Verified locally | Verified in CI |
 |---|---|---|
 | `docker-compose.dev.yml` | ✅ `docker compose config` | ✅ |
+| `docker-compose.prod.yml` | ✅ `docker compose config` (base + `apilb`/`observability` profiles) | ✅ |
 | Dockerfiles | syntax review (daemon offline) | ✅ build + push |
+| `apilb/Caddyfile` | manual review (caddy offline) | — |
 | Helm chart | ✅ YAML + template balance | ✅ `helm lint` + `helm template` |
 | Terraform | ✅ HCL structure | ✅ `fmt -check` + `validate` |
+| Load-test harness | ✅ `go build`/`vet` (tunnelload) + `sh -n` (vegeta scripts) | ✅ |
 | Observability YAML/JSON | ✅ PyYAML + json | ✅ |
 | Release scripts | ✅ `sh -n` + smoke | ✅ |

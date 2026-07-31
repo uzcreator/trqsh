@@ -45,3 +45,24 @@ groups:
         annotations:
           summary: "Most agent handshakes are falling back to TCP"
           description: ">80% of handshakes are TCP over 10m; check UDP/QUIC reachability."
+
+      - alert: TrqshForwardFailureRateHigh
+        # Cross-edge forwarding (multi-edge only): a growing share of outgoing
+        # forward attempts ending in forward_dial/forward_write usually means a peer
+        # edge is unreachable (down, draining, network partition, or a stale/wrong
+        # TRQSH_FORWARD_ADVERTISE_ADDR) — a ratio catches this even at low absolute
+        # volume, where TrqshEdgeHighErrorRate's >1/s absolute threshold would not.
+        expr: |
+          sum(rate(trqsh_errors_total{kind=~"forward_dial|forward_write"}[5m]))
+            /
+          clamp_min(
+            sum(rate(trqsh_errors_total{kind=~"forward_dial|forward_write"}[5m]))
+              + sum(rate(trqsh_forwards_total{dir="out"}[5m])),
+            0.001
+          ) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cross-edge forward failure rate"
+          description: ">20% of outgoing forward attempts have failed over 10m; check peer edge health and forwarding-address advertisement."

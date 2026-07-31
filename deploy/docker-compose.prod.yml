@@ -6,7 +6,14 @@
 #
 #   cd /opt/trqsh/deploy
 #   cp .env.prod.example .env && nano .env         # fill in the secrets
-#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml pull  # pull the CI-built images
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# The api/edge/dashboard/site/migrate services run prebuilt images from GHCR
+# (.github/workflows/images.yml) pinned by TRQSH_IMAGE_TAG (default `latest` =
+# the last tagged release). Deploy a single changed service with a scoped
+# `pull <svc>` + `up -d <svc>` so unrelated services (and active tunnels on the
+# edge) are not recreated — see deploy/PRODUCTION.md.
 #
 # See deploy/PRODUCTION.md for the full walkthrough (DNS, TLS, first tunnel).
 #
@@ -36,6 +43,47 @@ services:
       timeout: 3s
       retries: 10
 
+  # Daily pg_dump of the trqsh database, gzipped into a SEPARATE named volume
+  # (trqsh_pg_backups) — deliberately NOT trqsh_pg, so a `docker volume rm` or
+  # corruption of the live data volume can't take the backups with it. Keeps 14
+  # days of dumps. No offsite copy is wired yet (owner hasn't picked a provider);
+  # see the rclone hook in the loop below and PRODUCTION.md "Backups".
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Same DSN pattern as the migrate service's GOOSE_DBSTRING line.
+      TRQSH_DATABASE_URL: postgres://trqsh:${POSTGRES_PASSWORD}@postgres:5432/trqsh?sslmode=disable
+    command:
+      - sh
+      - -c
+      - |
+        set -u
+        while true; do
+          ts=$$(date +%Y%m%d-%H%M%S)
+          tmp="/backups/.trqsh-$$ts.sql"
+          out="/backups/trqsh-$$ts.sql.gz"
+          echo "backup: dumping trqsh -> $$out"
+          if pg_dump "$$TRQSH_DATABASE_URL" > "$$tmp"; then
+            gzip -c "$$tmp" > "$$out"
+            echo "backup: wrote $$out"
+          else
+            echo "backup: pg_dump FAILED; keeping previous dumps" >&2
+          fi
+          rm -f "$$tmp"
+          # Retention: drop gzipped dumps older than 14 days.
+          find /backups -name 'trqsh-*.sql.gz' -mtime +14 -delete
+          # Offsite sync hook — pick a provider first, then uncomment (see
+          # PRODUCTION.md "Backups"):
+          #   rclone copy /backups remote:trqsh-backups
+          sleep 86400
+        done
+    volumes:
+      - trqsh_pg_backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -49,9 +97,11 @@ services:
 
   # One-shot schema migration (goose up), then exits 0.
   migrate:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.migrate
+    image: ghcr.io/trqsh-uz/migrate:${TRQSH_IMAGE_TAG:-latest}
+    # Local-dev fallback — build from source instead of pulling the CI image:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/docker/Dockerfile.migrate
     environment:
       GOOSE_DBSTRING: postgres://trqsh:${POSTGRES_PASSWORD}@postgres:5432/trqsh?sslmode=disable
     depends_on:
@@ -60,11 +110,29 @@ services:
     restart: "no"
 
   # Control plane: accounts, API keys, quotas, entitlements, billing.
+  #
+  # Horizontal scale-out: this service is stateless-per-request (state lives in
+  # Postgres + Redis), so you can run several replicas with
+  #   docker compose -f docker-compose.prod.yml up -d --scale api=N
+  # (no container_name / host port here, which is what lets --scale work; recent
+  # Compose also honours a `deploy.replicas: N` key on `up`). Before scaling past 1, read
+  # "Scaling the control API" in PRODUCTION.md — two flows (OAuth login + device
+  # login) still hold per-replica in-memory state, and connection pooling makes
+  # naive DNS round-robin uneven, so the opt-in `apilb` sidecar below is the
+  # recommended path.
   api:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.api
+    image: ghcr.io/trqsh-uz/api:${TRQSH_IMAGE_TAG:-latest}
+    # Local-dev fallback — build from source instead of pulling the CI image:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/docker/Dockerfile.api
     restart: unless-stopped
+    # Many concurrent client + internal-RPC connections; the default 1024 open
+    # files is too low. Host somaxconn also needs raising (see PRODUCTION.md).
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     environment:
       TRQSH_ENV: production
       TRQSH_API_ADDR: ":8080"
@@ -94,20 +162,29 @@ services:
   # the apex (trqsh.uz) and www to it. next.config build-time defaults already
   # point CTAs at the production app/api URLs.
   site:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.site
+    image: ghcr.io/trqsh-uz/site:${TRQSH_IMAGE_TAG:-latest}
+    # Local-dev fallback — build from source instead of pulling the CI image:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/docker/Dockerfile.site
     restart: unless-stopped
 
   # Web dashboard (web/dashboard, Next.js) at app.<base>. TRQSH_API_URL is the
   # PUBLIC api URL, baked at build so the browser's OAuth links resolve.
   dashboard:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.dashboard
-      args:
-        TRQSH_API_URL: https://api.${TRQSH_BASE_DOMAIN:-trqsh.uz}
-        NEXT_PUBLIC_TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
+    image: ghcr.io/trqsh-uz/dashboard:${TRQSH_IMAGE_TAG:-latest}
+    # TRQSH_API_URL / NEXT_PUBLIC_TRQSH_BASE_DOMAIN are inlined at BUILD time by
+    # Next.js. images.yml now bakes the production values (api.trqsh.uz / trqsh.uz)
+    # into the published image via per-service build-args, so the pulled image is
+    # prod-correct. If you serve a NON-trqsh.uz base domain, rebuild from source
+    # with the fallback below (which passes the args from your .env).
+    # Local-dev fallback — build from source instead of pulling the CI image:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/docker/Dockerfile.dashboard
+    #     args:
+    #       TRQSH_API_URL: https://api.${TRQSH_BASE_DOMAIN:-trqsh.uz}
+    #       NEXT_PUBLIC_TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
     restart: unless-stopped
     depends_on:
       api:
@@ -126,10 +203,19 @@ services:
 
   # Edge data plane: public ingress (:80/:443) + agent sessions (:4443 tcp+udp).
   edge:
-    build:
-      context: ..
-      dockerfile: deploy/docker/Dockerfile.edge
+    image: ghcr.io/trqsh-uz/edge:${TRQSH_IMAGE_TAG:-latest}
+    # Local-dev fallback — build from source instead of pulling the CI image:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/docker/Dockerfile.edge
     restart: unless-stopped
+    # Agent sessions + every proxied HTTP connection terminate here; the default
+    # 1024 open files is far too low. Host somaxconn also needs raising (see
+    # PRODUCTION.md).
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     environment:
       TRQSH_ENV: production
       TRQSH_BASE_DOMAIN: ${TRQSH_BASE_DOMAIN:-trqsh.uz}
@@ -137,7 +223,11 @@ services:
       TRQSH_EDGE_ID: ${TRQSH_EDGE_ID:-edge-1}
       TRQSH_REDIS_URL: redis://redis:6379/0
       TRQSH_ENTITLEMENTS: api
-      TRQSH_API_URL: http://api:8080
+      # Edge -> control API target (entitlement RPC + the api.<base> reverse proxy).
+      # Defaults to the `api` service. When you scale api>1, set TRQSH_API_TARGET=apilb
+      # in deploy/.env and start the `apilb` profile so requests are balanced across
+      # replicas instead of pinned by the edge's connection pool (see PRODUCTION.md).
+      TRQSH_API_URL: http://${TRQSH_API_TARGET:-api}:8080
       TRQSH_INTERNAL_TOKEN: ${TRQSH_INTERNAL_TOKEN:?set TRQSH_INTERNAL_TOKEN in deploy/.env}
       # Public ports bound high inside the container (nonroot); Docker maps 80/443.
       TRQSH_HTTP_ADDR: ":8080"
@@ -154,7 +244,7 @@ services:
       # app → dashboard, api → control API).
       TRQSH_SITE_UPSTREAM: "http://site:3000"
       TRQSH_APP_UPSTREAM: "http://dashboard:3000"
-      TRQSH_API_UPSTREAM: "http://api:8080"
+      TRQSH_API_UPSTREAM: "http://${TRQSH_API_TARGET:-api}:8080"
     volumes:
       - trqsh_tls:/var/lib/trqsh/tls
     ports:
@@ -174,7 +264,65 @@ services:
       dashboard:
         condition: service_started
 
+  # --- opt-in: internal API load balancer (profile: apilb) ---
+  # Only needed once you run more than one `api` replica (`--scale api=N`). Compose's
+  # embedded DNS round-robins api's A records, but the edge POOLS upstream connections
+  # (Stage B), so established connections stick to whichever replicas they first
+  # resolved — naive DNS spreads load unevenly. This tiny Caddy sidecar re-resolves
+  # the `api` service to ALL replica IPs and least-conn balances each request across
+  # them. Enable it AND point the edge at it:
+  #   TRQSH_API_TARGET=apilb  in deploy/.env, then
+  #   docker compose -f docker-compose.prod.yml --profile apilb up -d --scale api=3
+  # Internal only — no host port; the edge reaches it over the compose network.
+  apilb:
+    profiles: ["apilb"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - ./apilb/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_started
+
+  # --- opt-in: observability (profile: observability) ---
+  # Started only with `--profile observability up -d`, so the base stack carries
+  # no monitoring overhead unless you ask for it. NEITHER service is exposed on a
+  # public host port: both bind to 127.0.0.1 only, so they add no public attack
+  # surface — reach them over an SSH tunnel (see PRODUCTION.md "Observability").
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "127.0.0.1:9091:9090"
+    depends_on:
+      api:
+        condition: service_started
+      edge:
+        condition: service_started
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      # Login required (no anonymous access). Set GRAFANA_ADMIN_PASSWORD in .env.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   trqsh_pg:
+  trqsh_pg_backups:
   trqsh_redis:
   trqsh_tls:

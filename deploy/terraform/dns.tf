@@ -9,8 +9,11 @@ resource "digitalocean_domain" "trqsh" {
 }
 
 # Wildcard tunnels: one A record per edge reserved IP (DNS round-robin).
+#
+# Skipped when Cloudflare Load Balancing is enabled (dns_cloudflare.tf) — that path
+# owns *.<domain> instead, so the two never publish conflicting wildcard answers.
 resource "digitalocean_record" "wildcard" {
-  for_each = digitalocean_reserved_ip.edge
+  for_each = var.enable_cloudflare_lb ? {} : digitalocean_reserved_ip.edge
 
   domain = digitalocean_domain.trqsh.name
   type   = "A"
