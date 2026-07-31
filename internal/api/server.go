@@ -3,13 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	"github.com/trqsh-uz/trqsh/internal/api/auth"
 	"github.com/trqsh-uz/trqsh/internal/api/store"
 	"github.com/trqsh-uz/trqsh/internal/billing"
@@ -24,14 +26,14 @@ type Server struct {
 	auth    *auth.Auth
 	ent     *Entitlements
 	billing *billing.Service
+	metrics *metrics
 
 	authLimiter *rateLimiter
 	apiLimiter  *rateLimiter
 
 	providers map[string]auth.OAuthProvider
 
-	stateMu sync.Mutex
-	states  map[string]time.Time // oauth state -> expiry
+	oauthState oauthStateStore
 }
 
 // New builds the API server, choosing Postgres or the in-memory store from config.
@@ -41,7 +43,10 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 	}
 	var st store.Store
 	if cfg.DatabaseURL != "" {
-		ps, err := store.NewPostgresStore(cfg.DatabaseURL)
+		ps, err := store.NewPostgresStore(cfg.DatabaseURL, store.PoolConfig{
+			MaxOpenConns: cfg.DBMaxOpenConns,
+			MaxIdleConns: cfg.DBMaxIdleConns,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -57,8 +62,8 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 		store:     st,
 		auth:      a,
 		ent:       NewEntitlements(a, st, cfg.BaseDomain),
+		metrics:   newMetrics(),
 		providers: map[string]auth.OAuthProvider{},
-		states:    map[string]time.Time{},
 	}
 
 	// Billing (Part 07): always constructed so metered-quota enforcement runs
@@ -81,11 +86,36 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 			cfg.PublicURL+"/v1/auth/oauth/google/callback")
 	}
 
+	// Shared Redis client (optional): when TRQSH_REDIS_URL is set, the rate limiters
+	// enforce one bucket per client across ALL API replicas rather than each replica
+	// granting the full rate independently (N replicas => N× the intended limit). A
+	// single client is shared by both limiters instead of opening two connections.
+	var rdb *redis.Client
+	if cfg.RedisURL != "" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			return nil, fmt.Errorf("api: parse TRQSH_REDIS_URL: %w", err)
+		}
+		rdb = redis.NewClient(opt)
+	}
+
 	// Abuse guards: a strict per-IP limit on auth endpoints (brute-force /
 	// account-spam) and a broad flood limit on the rest of the public API.
 	// The internal edge RPC is exempt (high-volume entitlement checks).
-	s.authLimiter = newRateLimiter(5, 10, cfg.TrustProxy)
-	s.apiLimiter = newRateLimiter(50, 100, cfg.TrustProxy)
+	s.authLimiter = newRateLimiter(rdb, "auth", 5, 10, cfg.TrustProxy, log)
+	s.apiLimiter = newRateLimiter(rdb, "api", 50, 100, cfg.TrustProxy, log)
+
+	// OAuth CSRF state and the CLI/GUI device-authorization flow both need to
+	// survive a request landing on a different API replica than the one that
+	// started the flow (browser callback vs. the replica that issued the state;
+	// CLI poll vs. the replica the approval landed on) — same shared-Redis seam
+	// as the rate limiters above, same in-process fallback for a single replica.
+	if rdb != nil {
+		s.oauthState = newRedisStateStore(rdb, log)
+		a.SetDevices(newRedisDeviceStore(rdb, log))
+	} else {
+		s.oauthState = newMemStateStore()
+	}
 	return s, nil
 }
 
@@ -103,15 +133,24 @@ func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+	r.Use(s.metrics.middleware)
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(s.securityHeaders)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 
-	// Self-hosted, interactive API docs (Swagger UI) + live backend status.
-	r.Get("/status", s.handleStatus)
-	r.Get("/docs", s.handleDocsUI)
-	r.Get("/openapi.yaml", s.handleOpenAPISpec)
+	// The API is not a browsable site: the root serves the admin console only on
+	// approve.<base>; every other host (api.<base>) gets a bare 404.
+	r.Get("/", s.handleRoot)
+
+	// The interactive API docs (Swagger UI), the raw OpenAPI spec, and the verbose
+	// status all enumerate the API surface, so they are dev-only — a production
+	// deployment must not expose them publicly. Health checks use /healthz.
+	if !s.cfg.IsProduction() {
+		r.Get("/status", s.handleStatus)
+		r.Get("/docs", s.handleDocsUI)
+		r.Get("/openapi.yaml", s.handleOpenAPISpec)
+	}
 
 	// approve.<base> admin console: the page + login are served same-origin as the
 	// /v1/admin/* API (below) so the admin session cookie flows without CORS.
@@ -188,6 +227,19 @@ func (s *Server) Router() http.Handler {
 	return r
 }
 
+// opsHandler serves the internal-only metrics + health endpoints (mounted on
+// s.cfg.MetricsAddr, not the public router). Ungated like the edge's ops server:
+// the network boundary (no public host port; not reverse-proxied) is the guard.
+func (s *Server) opsHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(s.metrics.Registry(), promhttp.HandlerOpts{}))
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	return mux
+}
+
 // Run starts the HTTP server until ctx is canceled.
 func (s *Server) Run(ctx context.Context) error {
 	// Opt-in background metering: collect + push metered usage to Stripe.
@@ -195,6 +247,36 @@ func (s *Server) Run(ctx context.Context) error {
 		go s.billing.RunMeteringLoop(ctx, bc.MeteringInterval)
 		s.log.Info("billing metering loop started", "interval", bc.MeteringInterval)
 	}
+
+	// Ops server (metrics + health) on a SEPARATE internal port. /metrics must not
+	// ride on the public :8080 router, which the edge reverse-proxies to
+	// api.<base> — that would expose internal metrics publicly. Prometheus scrapes
+	// this port directly on the container network. A bind failure here is logged,
+	// not fatal: the control API stays up even if the ops port is unavailable.
+	if s.cfg.MetricsAddr != "" {
+		ops := &http.Server{
+			Addr:              s.cfg.MetricsAddr,
+			Handler:           s.opsHandler(),
+			ReadHeaderTimeout: 5 * time.Second, // slowloris guard (gosec G112)
+			ReadTimeout:       10 * time.Second,
+			WriteTimeout:      20 * time.Second,
+			IdleTimeout:       60 * time.Second,
+			MaxHeaderBytes:    1 << 16,
+		}
+		go func() {
+			<-ctx.Done()
+			sc, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = ops.Shutdown(sc)
+		}()
+		go func() {
+			s.log.Info("control API ops listening", "addr", s.cfg.MetricsAddr)
+			if err := ops.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				s.log.Warn("ops server stopped", "err", err)
+			}
+		}()
+	}
+
 	srv := &http.Server{
 		Addr:              s.cfg.Addr,
 		Handler:           s.Router(),

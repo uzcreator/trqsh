@@ -19,14 +19,40 @@ type PostgresStore struct {
 	db *sql.DB
 }
 
+// PoolConfig tunes the database/sql connection pool. Zero fields fall back to
+// sensible defaults in NewPostgresStore.
+type PoolConfig struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
+}
+
 // NewPostgresStore opens a Postgres connection pool from a postgres:// DSN.
-func NewPostgresStore(dsn string) (*PostgresStore, error) {
+func NewPostgresStore(dsn string, pc PoolConfig) (*PostgresStore, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("store: open postgres: %w", err)
 	}
-	db.SetMaxOpenConns(20)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	// MaxIdleConns tracks MaxOpenConns: this is a small number of long-lived server
+	// processes, so keeping idle connections warm avoids churn (the database/sql
+	// default of 2 would repeatedly close/reopen against a much larger open pool).
+	if pc.MaxOpenConns <= 0 {
+		pc.MaxOpenConns = 20
+	}
+	if pc.MaxIdleConns <= 0 {
+		pc.MaxIdleConns = pc.MaxOpenConns
+	}
+	if pc.ConnMaxLifetime <= 0 {
+		pc.ConnMaxLifetime = 45 * time.Minute // let LB/DNS changes eventually rotate connections
+	}
+	if pc.ConnMaxIdleTime <= 0 {
+		pc.ConnMaxIdleTime = 5 * time.Minute
+	}
+	db.SetMaxOpenConns(pc.MaxOpenConns)
+	db.SetMaxIdleConns(pc.MaxIdleConns)
+	db.SetConnMaxLifetime(pc.ConnMaxLifetime)
+	db.SetConnMaxIdleTime(pc.ConnMaxIdleTime)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -91,9 +92,29 @@ func NewClient(baseURL, token string) *Client {
 	return &Client{
 		baseURL:   baseURL,
 		token:     token,
-		http:      &http.Client{Timeout: 5 * time.Second},
+		http:      &http.Client{Transport: newTransport(), Timeout: 5 * time.Second},
 		cacheTTL:  30 * time.Second,
 		authCache: make(map[string]authCacheEntry),
+	}
+}
+
+// newTransport tunes the connection pool for this client's traffic shape: high
+// frequency (every tunnel bind + cached-auth miss) to a single upstream (the
+// control API). Go's default MaxIdleConnsPerHost is 2, which forces a fresh dial
+// on almost every concurrent call; raise it so idle connections are reused.
+// Proxy is disabled deliberately — this is internal edge->API RPC that must never
+// traverse an HTTP proxy.
+func newTransport() *http.Transport {
+	return &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          128,
+		MaxIdleConnsPerHost:   64,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
 }
 
