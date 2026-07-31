@@ -106,7 +106,7 @@ to report a vulnerability.
 Everything to ship and scale lives in **[`deploy/`](./deploy/)**: multi-stage Dockerfiles,
 `docker-compose` for the full local stack, a Helm chart (edge DaemonSet, API HPA/PDB, ingress,
 migrate hook, NetworkPolicy), Terraform (DigitalOcean: DOKS + managed Postgres/Redis + per-region
-edge droplets + wildcard DNS), and GitHub Actions for CI, images, releases, and deploys.
+edge droplets + wildcard DNS), and GitHub Actions for CI, images, and releases.
 
 ## Repository layout
 

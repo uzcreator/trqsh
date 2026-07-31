@@ -26,12 +26,10 @@ separate staging host for rehearsing risky changes first.
 CI/CD lives in [`../.github/workflows/`](../.github/workflows/) and
 [`../.goreleaser.yaml`](../.goreleaser.yaml).
 
-> **`deploy.yml` (Helm) is manual-only.** Its automatic push/tag triggers were
-> removed on purpose: it runs `helm upgrade` against `KUBECONFIG_STAGING` /
-> `KUBECONFIG_PROD`, but production currently runs on a plain docker-compose VPS
-> (see [`PRODUCTION.md`](PRODUCTION.md)), not Kubernetes, and those kubeconfig
-> secrets are unverified. Re-enable the triggers only after confirming the
-> `staging` / `production` GitHub Environment secrets point at a real cluster.
+> **No automated deploy workflow.** Production runs on a single docker-compose VPS
+> (see [`PRODUCTION.md`](PRODUCTION.md)), not Kubernetes. The Helm chart under
+> `helm/trqsh` is kept and lint/template-tested in CI (`ci.yml`) for future
+> Kubernetes use, but no CI job runs `helm upgrade` against a cluster.
 
 ## Local (M1 in one command)
 
