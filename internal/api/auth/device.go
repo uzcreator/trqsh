@@ -26,7 +26,25 @@ type DeviceRequest struct {
 	CreatedAt  time.Time
 }
 
-const deviceTTL = 10 * time.Minute
+// DeviceTTL bounds how long a device-authorization flow stays pollable before
+// Poll starts returning ErrDeviceExpired. Exported so internal/api's
+// Redis-backed DeviceStore (for multi-replica deployments) can match it
+// exactly rather than duplicating the value.
+const DeviceTTL = 10 * time.Minute
+
+// DeviceStore is the device-authorization flow's storage seam. newDeviceStore
+// (used by New, below) is the in-process default that serves a single API
+// replica; internal/api provides a Redis-backed implementation — injected via
+// Auth.SetDevices — for deployments running more than one replica, since the
+// CLI polls Poll() on whichever replica a load balancer picks, which is not
+// necessarily the replica Approve() landed on.
+type DeviceStore interface {
+	Create() *DeviceRequest
+	Approve(userCode, orgID, apiKey string) error
+	Poll(deviceCode string) (string, error)
+}
+
+var _ DeviceStore = (*deviceStore)(nil)
 
 type deviceStore struct {
 	mu       sync.Mutex
@@ -44,8 +62,8 @@ func newDeviceStore() *deviceStore {
 // Create starts a new device flow and returns its codes.
 func (d *deviceStore) Create() *DeviceRequest {
 	req := &DeviceRequest{
-		DeviceCode: randToken(16),
-		UserCode:   randUserCode(),
+		DeviceCode: NewDeviceCode(),
+		UserCode:   NewUserCode(),
 		CreatedAt:  time.Now(),
 	}
 	d.mu.Lock()
@@ -81,7 +99,7 @@ func (d *deviceStore) Poll(deviceCode string) (string, error) {
 	if !ok {
 		return "", ErrDeviceUnknown
 	}
-	if time.Since(req.CreatedAt) > deviceTTL {
+	if time.Since(req.CreatedAt) > DeviceTTL {
 		delete(d.byDevice, deviceCode)
 		delete(d.byUser, req.UserCode)
 		return "", ErrDeviceExpired
@@ -94,6 +112,15 @@ func (d *deviceStore) Poll(deviceCode string) (string, error) {
 	delete(d.byUser, req.UserCode)
 	return key, nil
 }
+
+// NewDeviceCode returns a fresh device_code. Exported so internal/api's
+// Redis-backed DeviceStore generates codes identically to the in-process one,
+// instead of duplicating the format.
+func NewDeviceCode() string { return randToken(16) }
+
+// NewUserCode returns a fresh, human-typable user_code. Exported for the same
+// reason as NewDeviceCode.
+func NewUserCode() string { return randUserCode() }
 
 func randToken(n int) string {
 	b := make([]byte, n)

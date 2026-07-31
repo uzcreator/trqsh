@@ -2,13 +2,10 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/subtle"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/trqsh-uz/trqsh/internal/api/auth"
@@ -370,22 +367,9 @@ func (s *Server) firstOrg(ctx context.Context, userID string) (store.Org, error)
 }
 
 func (s *Server) newState() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	state := hex.EncodeToString(b)
-	s.stateMu.Lock()
-	s.states[state] = time.Now().Add(10 * time.Minute)
-	s.stateMu.Unlock()
-	return state
+	return s.oauthState.New()
 }
 
 func (s *Server) checkState(state string) bool {
-	if state == "" {
-		return false
-	}
-	s.stateMu.Lock()
-	defer s.stateMu.Unlock()
-	exp, ok := s.states[state]
-	delete(s.states, state)
-	return ok && time.Now().Before(exp)
+	return s.oauthState.Check(state)
 }

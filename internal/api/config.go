@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -21,11 +22,17 @@ type Config struct {
 	Env string // TRQSH_ENV
 
 	Addr        string // TRQSH_API_ADDR (":8080")
+	MetricsAddr string // TRQSH_METRICS_ADDR (":9090") — internal-only ops port (/metrics, /healthz)
 	DatabaseURL string // TRQSH_DATABASE_URL; empty => in-memory store (dev only)
-	RedisURL    string // TRQSH_REDIS_URL (for live tunnels list; optional)
+	RedisURL    string // TRQSH_REDIS_URL; optional. When set, rate-limit buckets are shared across API replicas (else each replica grants the full rate independently). Also used for the live tunnels list.
 	BaseDomain  string // TRQSH_BASE_DOMAIN
-	PublicURL   string // TRQSH_API_PUBLIC_URL (for OAuth redirects), e.g. https://api.example.com
-	AppURL      string // TRQSH_APP_URL — public dashboard origin, e.g. https://app.example.com
+
+	// Postgres connection pool sizing. MaxIdleConns defaults to MaxOpenConns (not
+	// the database/sql default of 2) since these are long-lived server processes.
+	DBMaxOpenConns int    // TRQSH_DB_MAX_OPEN_CONNS
+	DBMaxIdleConns int    // TRQSH_DB_MAX_IDLE_CONNS
+	PublicURL      string // TRQSH_API_PUBLIC_URL (for OAuth redirects), e.g. https://api.example.com
+	AppURL         string // TRQSH_APP_URL — public dashboard origin, e.g. https://app.example.com
 	// (device-flow verification page + post-OAuth redirect). Defaults to https://app.<BaseDomain>.
 
 	JWTSecret     string // TRQSH_JWT_SECRET
@@ -57,13 +64,16 @@ func (c Config) IsProduction() bool { return strings.EqualFold(c.Env, "productio
 // production is gated by validate().
 func DefaultConfig() Config {
 	return Config{
-		Env:           "development",
-		Addr:          ":8080",
-		BaseDomain:    "lvh.me",
-		PublicURL:     "http://localhost:8080",
-		JWTSecret:     devJWTSecret,
-		InternalToken: devInternalToken,
-		DevAuth:       true,
+		Env:            "development",
+		Addr:           ":8080",
+		MetricsAddr:    ":9090",
+		BaseDomain:     "lvh.me",
+		PublicURL:      "http://localhost:8080",
+		JWTSecret:      devJWTSecret,
+		InternalToken:  devInternalToken,
+		DevAuth:        true,
+		DBMaxOpenConns: 20,
+		DBMaxIdleConns: 20,
 	}
 }
 
@@ -73,6 +83,7 @@ func LoadConfig() (Config, error) {
 	c := DefaultConfig()
 	env(&c.Env, "TRQSH_ENV")
 	env(&c.Addr, "TRQSH_API_ADDR")
+	env(&c.MetricsAddr, "TRQSH_METRICS_ADDR")
 	env(&c.DatabaseURL, "TRQSH_DATABASE_URL")
 	env(&c.RedisURL, "TRQSH_REDIS_URL")
 	env(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
@@ -86,6 +97,8 @@ func LoadConfig() (Config, error) {
 	env(&c.GoogleClientSecret, "TRQSH_GOOGLE_CLIENT_SECRET")
 	env(&c.AdminUser, "TRQSH_ADMIN_USER")
 	env(&c.AdminPassword, "TRQSH_ADMIN_PASSWORD")
+	envInt(&c.DBMaxOpenConns, "TRQSH_DB_MAX_OPEN_CONNS")
+	envInt(&c.DBMaxIdleConns, "TRQSH_DB_MAX_IDLE_CONNS")
 
 	// DevAuth defaults on in dev, off in production, unless explicitly set.
 	if v, ok := os.LookupEnv("TRQSH_DEV_AUTH"); ok {
@@ -144,6 +157,14 @@ func (c Config) validate() error {
 func env(dst *string, key string) {
 	if v, ok := os.LookupEnv(key); ok && strings.TrimSpace(v) != "" {
 		*dst = strings.TrimSpace(v)
+	}
+}
+
+func envInt(dst *int, key string) {
+	if v, ok := os.LookupEnv(key); ok {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			*dst = n
+		}
 	}
 }
 

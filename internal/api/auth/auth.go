@@ -24,7 +24,7 @@ type Auth struct {
 	secret     []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
-	devices    *deviceStore
+	devices    DeviceStore
 }
 
 // New builds an Auth manager. secret signs JWTs (HS256).
@@ -117,7 +117,12 @@ func (a *Auth) Refresh(refreshToken string) (Tokens, error) {
 func (a *Auth) Store() store.Store { return a.store }
 
 // Devices exposes the device-flow store.
-func (a *Auth) Devices() *deviceStore { return a.devices }
+func (a *Auth) Devices() DeviceStore { return a.devices }
+
+// SetDevices swaps the device-flow store — used to install a Redis-backed
+// DeviceStore (internal/api) in place of the in-process default New builds,
+// when the deployment runs more than one API replica.
+func (a *Auth) SetDevices(d DeviceStore) { a.devices = d }
 
 // AuthenticateAPIKey validates a raw API key and returns the owning org and key.
 func (a *Auth) AuthenticateAPIKey(ctx context.Context, raw string) (store.APIKey, error) {
