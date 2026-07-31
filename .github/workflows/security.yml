@@ -26,7 +26,7 @@ jobs:
           # Security tab); tighten to failing once the baseline is clean.
           args: "-no-fail -exclude-dir=web -fmt sarif -out results.sarif ./..."
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4.37.3
         with:
           sarif_file: results.sarif
           category: gosec
@@ -63,7 +63,7 @@ jobs:
           exit-code: "0"
           ignore-unfixed: true
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4.37.3
         with:
           sarif_file: trivy.sarif
           category: trivy
