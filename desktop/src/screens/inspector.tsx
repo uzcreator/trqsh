@@ -24,10 +24,16 @@ const toneClass: Record<ReturnType<typeof statusTone>, string> = {
   muted: "text-muted",
 };
 
+// Distinct from statusTone's good/warning/serious/critical (that's for the
+// *outcome*, e.g. a 500) — this is the *intent* of the request. GET reads
+// data (wire blue), POST creates (signal green), PUT/PATCH mutate (amber),
+// DELETE destroys (critical) — deliberately not reusing "primary" here, since
+// primary and good now share the same signal green and GET isn't a "live/
+// primary action" the way starting a tunnel is.
 function methodTone(method: string): string {
   switch (method) {
     case "GET":
-      return "text-primary";
+      return "text-wire";
     case "POST":
       return "text-good";
     case "PUT":

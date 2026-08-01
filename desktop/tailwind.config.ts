@@ -1,8 +1,7 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens shared with web/dashboard (Part 06) and web/site (Part 09):
-// RGB-channel CSS variables in src/index.css, dataviz reference palette. Keeping
-// this identical across the three surfaces is what makes the brand consistent.
+// Desktop's own "operator console" design tokens — RGB-channel CSS variables
+// in src/index.css. Independent from the other trqsh surfaces by design.
 const rgb = (v: string) => `rgb(var(${v}) / <alpha-value>)`;
 
 const config: Config = {
@@ -13,6 +12,7 @@ const config: Config = {
       colors: {
         page: rgb("--page"),
         surface: rgb("--surface"),
+        "surface-2": rgb("--surface-2"),
         card: rgb("--surface"),
         foreground: rgb("--foreground"),
         secondary: rgb("--secondary-ink"),
@@ -25,6 +25,9 @@ const config: Config = {
         },
         accent: rgb("--accent"),
         ring: rgb("--ring"),
+        // Reserved for data values/links (URLs, byte counts) — keeps numbers
+        // visually distinct from primary actions and chrome.
+        wire: rgb("--wire"),
         good: rgb("--good"),
         warning: rgb("--warning"),
         serious: rgb("--serious"),
@@ -33,7 +36,7 @@ const config: Config = {
         "series-2": rgb("--series-2"),
       },
       borderColor: { DEFAULT: rgb("--border") },
-      borderRadius: { lg: "0.6rem", md: "0.45rem", sm: "0.3rem" },
+      borderRadius: { lg: "0.75rem", md: "0.5rem", sm: "0.3rem" },
       fontFamily: {
         sans: ["system-ui", "-apple-system", '"Segoe UI"', "Roboto", "sans-serif"],
       },

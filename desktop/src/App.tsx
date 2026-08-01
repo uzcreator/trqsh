@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   BookOpen,
+  CreditCard,
   DownloadCloud,
   ExternalLink,
   Globe,
@@ -35,6 +36,7 @@ import { Settings } from "@/screens/settings";
 import { Account } from "@/screens/account";
 import { Keys } from "@/screens/keys";
 import { Domains } from "@/screens/domains";
+import { Billing } from "@/screens/billing";
 
 const MAX_CAPTURES = 200;
 
@@ -250,8 +252,9 @@ function Shell() {
         { combo: "mod+2", handler: () => setScreen("inspector") },
         { combo: "mod+3", handler: () => setScreen("domains") },
         { combo: "mod+4", handler: () => setScreen("keys") },
-        { combo: "mod+5", handler: () => setScreen("account") },
-        { combo: "mod+6", handler: () => setScreen("settings") },
+        { combo: "mod+5", handler: () => setScreen("billing") },
+        { combo: "mod+6", handler: () => setScreen("account") },
+        { combo: "mod+7", handler: () => setScreen("settings") },
       );
     }
     return list;
@@ -268,6 +271,7 @@ function Shell() {
         { id: "go-inspector", label: "Go to Inspector", group: "Navigate", icon: Activity, run: () => setScreen("inspector") },
         { id: "go-domains", label: "Go to Domains", group: "Navigate", icon: Network, run: () => setScreen("domains") },
         { id: "go-keys", label: "Go to API keys", group: "Navigate", icon: KeyRound, run: () => setScreen("keys") },
+        { id: "go-billing", label: "Go to Billing", group: "Navigate", icon: CreditCard, run: () => setScreen("billing") },
         { id: "go-account", label: "Go to Account", group: "Navigate", icon: User, run: () => setScreen("account") },
         { id: "go-settings", label: "Go to Settings", group: "Navigate", icon: SettingsIcon, run: () => setScreen("settings") },
       );
@@ -359,6 +363,7 @@ function Shell() {
         <Sidebar
           active={screen}
           onSelect={setScreen}
+          onDisconnect={disconnect}
           requestCount={captures.length}
           collapsed={collapsed}
           onToggleCollapsed={() => setManualCollapse(!collapsed)}
@@ -381,6 +386,7 @@ function Shell() {
             )}
             {screen === "domains" && <Domains />}
             {screen === "keys" && <Keys />}
+            {screen === "billing" && <Billing />}
             {screen === "account" && <Account status={status} tunnels={tunnels} />}
             {screen === "settings" && <Settings onDisconnect={disconnect} />}
           </div>

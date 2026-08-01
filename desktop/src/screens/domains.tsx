@@ -132,7 +132,7 @@ export function Domains() {
                   className="flex items-center gap-2 rounded-md border border-border bg-page px-3 py-2"
                 >
                   <Globe className="size-4 shrink-0 text-muted" />
-                  <span className="flex-1 truncate font-mono text-sm">
+                  <span className="flex-1 truncate font-mono text-sm text-wire">
                     {s.subdomain}.{BASE}
                   </span>
                   <Button
@@ -193,7 +193,7 @@ function DomainRow({ domain, onVerify }: { domain: CustomDomain; onVerify: () =>
   return (
     <div className="rounded-md border border-border bg-page">
       <div className="flex items-center gap-2 px-3 py-2">
-        <span className="flex-1 truncate font-mono text-sm">{domain.domain}</span>
+        <span className="flex-1 truncate font-mono text-sm text-wire">{domain.domain}</span>
         {verified ? (
           <Badge tone="good">
             <CheckCircle2 className="size-3" />

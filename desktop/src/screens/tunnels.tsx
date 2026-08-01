@@ -91,7 +91,7 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
                 if (web) agent.openURL(t.public_url);
               }}
               className={cn(
-                "selectable truncate font-mono text-sm text-primary",
+                "selectable truncate font-mono text-sm text-wire",
                 web && "hover:underline",
               )}
               title={t.public_url}
@@ -143,10 +143,10 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
       )}
 
       <div className="mt-3 grid grid-cols-4 gap-2 border-t border-border pt-3">
-        <Stat label="Requests" value={count(t.metrics.requests)} />
-        <Stat label="Conns" value={count(t.metrics.connections)} />
-        <Stat label="In" value={bytes(t.metrics.bytes_in)} />
-        <Stat label="Out" value={bytes(t.metrics.bytes_out)} />
+        <Stat label="Requests" value={<span className="text-wire">{count(t.metrics.requests)}</span>} />
+        <Stat label="Conns" value={<span className="text-wire">{count(t.metrics.connections)}</span>} />
+        <Stat label="In" value={<span className="text-wire">{bytes(t.metrics.bytes_in)}</span>} />
+        <Stat label="Out" value={<span className="text-wire">{bytes(t.metrics.bytes_out)}</span>} />
       </div>
     </div>
   );
@@ -185,10 +185,10 @@ export function Tunnels({
         </div>
         <div className="flex items-center gap-3">
           {tunnels.length > 0 && (
-            <div className="hidden items-center gap-3 text-xs text-muted sm:flex">
-              <span className="tabular">{count(totals.requests)} req</span>
-              <span className="tabular">↓ {bytes(totals.bytesIn)}</span>
-              <span className="tabular">↑ {bytes(totals.bytesOut)}</span>
+            <div className="tabular hidden items-center gap-3 font-mono text-xs text-wire sm:flex">
+              <span>{count(totals.requests)} req</span>
+              <span>↓ {bytes(totals.bytesIn)}</span>
+              <span>↑ {bytes(totals.bytesOut)}</span>
             </div>
           )}
           <Button onClick={onNew}>

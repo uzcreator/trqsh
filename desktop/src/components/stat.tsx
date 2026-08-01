@@ -15,7 +15,7 @@ export function Stat({
       <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
         {label}
       </span>
-      <span className="tabular text-sm font-semibold text-foreground">{value}</span>
+      <span className="tabular font-mono text-sm font-semibold text-foreground">{value}</span>
     </div>
   );
 }

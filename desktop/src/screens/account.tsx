@@ -144,9 +144,9 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-2">
-            <Stat label="Requests" value={count(monthRequests)} />
-            <Stat label="Used" value={bytes(usedBytes)} />
-            <Stat label="Session" value={bytes(session.bytes)} />
+            <Stat label="Requests" value={<span className="text-wire">{count(monthRequests)}</span>} />
+            <Stat label="Used" value={<span className="text-wire">{bytes(usedBytes)}</span>} />
+            <Stat label="Session" value={<span className="text-wire">{bytes(session.bytes)}</span>} />
           </div>
           <Meter
             value={usedBytes}

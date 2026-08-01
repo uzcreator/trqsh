@@ -9,7 +9,10 @@ const tone: Record<DotStatus, string> = {
   offline: "bg-muted",
 };
 
-/** Small state indicator. Pulses while connecting. */
+/** Small state indicator. "online" radiates two staggered signal rings — the
+ *  app's signature motif for "this is a live connection, right now" (see
+ *  .signal-ring in index.css). "connecting" gets a plainer single ping;
+ *  offline/error are static, nothing to signal. */
 export function StatusDot({
   status,
   className,
@@ -23,12 +26,18 @@ export function StatusDot({
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60" />
       )}
       {status === "online" && (
-        <span
-          className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-40"
-          style={{ animationDuration: "2.5s" }}
-        />
+        <>
+          <span className="signal-ring absolute inline-flex size-full rounded-full bg-good" />
+          <span className="signal-ring-delayed absolute inline-flex size-full rounded-full bg-good" />
+        </>
       )}
-      <span className={cn("relative inline-flex size-2.5 rounded-full", tone[status])} />
+      <span
+        className={cn(
+          "relative inline-flex size-2.5 rounded-full",
+          tone[status],
+          status === "online" && "shadow-[0_0_6px_rgb(var(--good)/0.8)]",
+        )}
+      />
     </span>
   );
 }

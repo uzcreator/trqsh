@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 export function Sparkline({
   data,
   className,
-  strokeClass = "stroke-primary",
-  fillClass = "fill-primary/10",
+  strokeClass = "stroke-wire",
+  fillClass = "fill-wire/10",
   height = 28,
 }: {
   data: number[];

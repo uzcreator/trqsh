@@ -2,47 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Shared design tokens (dataviz reference palette) — identical to web/dashboard.
-   RGB channels so Tailwind opacity utilities work. */
+/* trqsh desktop design tokens — an "operator console" palette: a near-black
+   void with a faint green cast (not neutral gray — ties the whole neutral
+   scale to the brand hue), a signal-green primary for anything live/primary
+   ("this tunnel is up right now"), and a cobalt "wire" blue reserved for data
+   values/links (URLs, byte counts) so numbers read as distinct from chrome.
+   RGB channels so Tailwind opacity utilities work. Dark is the primary
+   surface (matches how this app is actually used — glanced at while coding);
+   light is a deliberately-derived counterpart, not an afterthought. */
 :root {
-  --page: 249 249 247;
-  --surface: 252 252 251;
-  --foreground: 11 11 11;
-  --secondary-ink: 82 81 78;
-  --muted-ink: 137 135 129;
-  --border: 225 224 217;
-  --border-strong: 195 194 183;
-  --primary: 42 120 214;
+  --page: 246 248 246;
+  --surface: 253 254 252;
+  --surface-2: 240 243 241;
+  --foreground: 11 18 14;
+  --secondary-ink: 75 90 82;
+  --muted-ink: 126 140 133;
+  --border: 220 227 222;
+  --border-strong: 195 205 198;
+  --primary: 15 157 110;
   --primary-foreground: 255 255 255;
-  --accent: 238 244 252;
-  --ring: 42 120 214;
-  --good: 12 163 12;
-  --warning: 250 178 25;
-  --serious: 236 131 90;
-  --critical: 208 59 59;
-  --series-1: 42 120 214;
-  --series-2: 27 175 122;
+  --accent: 227 245 236;
+  --ring: 15 157 110;
+  --wire: 59 111 209;
+  --good: 15 157 110;
+  --warning: 201 138 30;
+  --serious: 217 122 61;
+  --critical: 225 69 89;
+  --series-1: 15 157 110;
+  --series-2: 59 111 209;
   color-scheme: light;
 }
 
 .dark {
-  --page: 13 13 13;
-  --surface: 26 26 25;
-  --foreground: 255 255 255;
-  --secondary-ink: 195 194 183;
-  --muted-ink: 137 135 129;
-  --border: 44 44 42;
-  --border-strong: 56 56 53;
-  --primary: 57 135 229;
-  --primary-foreground: 255 255 255;
-  --accent: 19 35 58;
-  --ring: 57 135 229;
-  --good: 12 163 12;
-  --warning: 250 178 25;
-  --serious: 236 131 90;
-  --critical: 208 59 59;
-  --series-1: 57 135 229;
-  --series-2: 25 158 112;
+  --page: 10 14 12;
+  --surface: 18 24 21;
+  --surface-2: 26 33 29;
+  --foreground: 237 242 239;
+  --secondary-ink: 160 173 166;
+  --muted-ink: 124 139 132;
+  --border: 36 46 41;
+  --border-strong: 52 66 59;
+  --primary: 52 211 153;
+  --primary-foreground: 6 20 15;
+  --accent: 22 38 30;
+  --ring: 52 211 153;
+  --wire: 91 141 239;
+  --good: 52 211 153;
+  --warning: 245 185 66;
+  --serious: 242 153 74;
+  --critical: 243 91 107;
+  --series-1: 52 211 153;
+  --series-2: 91 141 239;
   color-scheme: dark;
 }
 
@@ -85,6 +95,27 @@
     border-color: rgb(var(--primary) / 0.4);
     box-shadow: 0 8px 22px -14px rgb(var(--primary) / 0.3);
   }
+}
+
+/* Signature "signal" motif for a live tunnel (components/ui/status-dot.tsx):
+   two rings radiate outward on a stagger, like a radar ping — reinforcing
+   that a tunnel is a connection happening right now, not a static state. */
+@keyframes signal-ring {
+  from {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.signal-ring {
+  animation: signal-ring 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.signal-ring-delayed {
+  animation: signal-ring 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 1.1s;
 }
 
 /* Soft entrance when a workspace screen mounts. */
