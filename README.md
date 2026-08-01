@@ -12,6 +12,8 @@ free tier**, **UDP tunnels**, a **first-class desktop app**, and an **open-sourc
 [![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8)](https://go.dev)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
+**Created and maintained by [Otabek Hamroqulov](https://github.com/Hamroqulovv)**
+
 </div>
 
 ```console
@@ -123,6 +125,10 @@ plan/                           architecture + build specs (frozen contracts)
 
 See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for setup, standards, and the PR checklist, and
 **[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)**.
+
+## Author
+
+trqsh is created and maintained by **Otabek Hamroqulov** — GitHub [@Hamroqulovv](https://github.com/Hamroqulovv).
 
 ## License
 

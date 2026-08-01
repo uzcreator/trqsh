@@ -20,7 +20,7 @@
     "directory": "packaging/npm"
   },
   "license": "Apache-2.0",
-  "author": "trqsh <ops@trqsh.uz>",
+  "author": "Otabek Hamroqulov (https://github.com/Hamroqulovv)",
   "publishConfig": {
     "access": "public"
   },

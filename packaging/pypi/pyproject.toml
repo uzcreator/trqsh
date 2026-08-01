@@ -9,7 +9,7 @@ description = "Expose localhost to the internet — fast QUIC tunnels with a des
 readme = "README.md"
 requires-python = ">=3.8"
 license = "Apache-2.0"
-authors = [{ name = "trqsh", email = "ops@trqsh.uz" }]
+authors = [{ name = "Otabek Hamroqulov", email = "ops@trqsh.uz" }]
 keywords = ["trqsh", "tunnel", "localhost", "ngrok-alternative", "quic", "http3", "webhook"]
 classifiers = [
   "Development Status :: 4 - Beta",
