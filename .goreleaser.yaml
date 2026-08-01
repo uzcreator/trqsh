@@ -77,9 +77,10 @@ nfpms:
     bindir: /usr/bin
 
 release:
-  # Binaries are published to the PUBLIC releases repo (source stays private in
-  # trqsh-uz/trqsh). Requires RELEASE_REPO_TOKEN (a PAT with contents:write on
-  # trqsh-uz/cli) as GITHUB_TOKEN in release.yml.
+  # Binaries are published to the dedicated PUBLIC releases repo trqsh-uz/cli
+  # (package managers point at it for downloads, kept separate from source).
+  # Requires RELEASE_REPO_TOKEN (a PAT with contents:write on trqsh-uz/cli) as
+  # GITHUB_TOKEN in release.yml.
   github:
     owner: trqsh-uz
     name: cli

@@ -1,58 +1,63 @@
-# web/site — Marketing site & docs (Part 09)
+# web/site — Marketing site & docs
 
-The acquisition + activation funnel: landing, pricing, download, and full docs
-including an API reference. Next.js (App Router) + Tailwind + shadcn-style UI,
-sharing the brand tokens in `app/globals.css` with Parts 04 (GUI) and 06 (dashboard).
+The public face of trqsh: landing, pricing, download, and the full documentation
+(including a generated API reference). **Next.js 15** (App Router) + **TypeScript** +
+**Tailwind**, with a hand-written shadcn-style UI kit. Lives at
+**[trqsh.uz](https://trqsh.uz)**.
+
+Part of the [trqsh monorepo](../../README.md) — the backend it links to lives in
+[`cmd/`](../../cmd) / [`internal/`](../../internal), and the brand/design tokens are
+shared with [`web/dashboard`](../dashboard) and [`desktop`](../../desktop).
 
 ## Run
 
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3002
-pnpm build      # static production build
+pnpm build      # production build
 pnpm typecheck
 ```
 
 Runs on **:3002** so it can coexist with the dashboard (:3000) locally.
 
-## Structure
+## Content is generated from the live API (never hardcoded)
 
+Two pieces of content are generated from a running control API at build/regenerate time,
+then **checked in** — so a normal `pnpm build` never needs the API to be up, only
+regeneration does. This keeps the site's numbers from ever drifting from what the edge
+actually enforces, and lets the site build with no Go toolchain:
+
+- **Pricing** — `lib/catalog.generated.ts` is produced by `scripts/genplans.mjs`, which
+  fetches `GET $TRQSH_API_URL/v1/plans/public` (the unauthenticated plan catalog).
+- **API reference** — `lib/openapi.generated.yaml` is produced by `scripts/gen-openapi.mjs`,
+  which fetches `$TRQSH_API_URL/openapi.yaml`; the `/docs/api` page renders from it.
+
+Regenerate after the backend's plan catalog or OpenAPI changes:
+
+```bash
+node scripts/genplans.mjs
+node scripts/gen-openapi.mjs
+# or, from the repo root:  make site-plans site-openapi
 ```
-app/
-  (marketing)/        landing, pricing, download, terms, privacy
-  docs/               docs shell, [slug] (Markdown), api (OpenAPI), errors
-  sitemap.ts robots.ts icon.svg
-components/            header, footer, pricing table, comparison, latency chart, …
-lib/
-  catalog.generated.ts   GENERATED from internal/billing.Catalog (do not edit)
-  plans.ts               pricing shaped from the generated catalog
-  errors.ts              §8 error taxonomy → /docs/errors anchors
-  docs.ts openapi.ts     build-time Markdown + OpenAPI pipeline
-scripts/genplans/        Go generator for catalog.generated.ts
-../../docs/content/      Markdown source for the docs pages
-```
 
-## Content sources (never hardcoded)
-
-- **Pricing** comes from `internal/billing.Catalog` via a generated snapshot, so
-  prices/limits can't drift from what the edge enforces. Regenerate after changing
-  the catalog:
-
-  ```bash
-  make site-plans      # or: go run ./web/site/scripts/genplans
-  ```
-
-- **API reference** renders from the canonical `docs/openapi.yaml` (Part 05) at
-  build time.
-- **Download links** resolve to the real Part 08 release artifacts; version is set
-  by `TRQSH_LATEST_VERSION`.
+CI re-runs both and fails on any diff, so the checked-in copies can't silently go stale.
+Docs pages render from Markdown in [`docs/content/`](../../docs/content).
 
 ## Deploy-time env
 
 | Var | Default | Purpose |
 |---|---|---|
-| `TRQSH_DASHBOARD_URL` | `http://localhost:3000` | Sign-up / login CTAs |
-| `TRQSH_API_URL` | `http://localhost:8080` | OAuth deep-links |
-| `TRQSH_GITHUB_REPO` | `trqsh-uz/trqsh` | Release/download links |
+| `TRQSH_DASHBOARD_URL` | `https://app.trqsh.uz` | Sign-up / login CTAs |
+| `TRQSH_API_URL` | `https://api.trqsh.uz` | OAuth deep-links + build-time content fetch |
+| `TRQSH_GITHUB_REPO` | `trqsh-uz/trqsh` | Release / download links |
 | `TRQSH_SITE_URL` | `https://trqsh.uz` | Canonical origin, sitemap, OG |
-| `TRQSH_LATEST_VERSION` | `0.1.0` | Download artifact filenames |
+| `TRQSH_LATEST_VERSION` | see `lib/site.ts` | Download artifact filenames |
+
+## Deploy
+
+Built as a Docker image
+([`deploy/docker/Dockerfile.site`](../../deploy/docker/Dockerfile.site) — a self-contained
+Next.js standalone server) and published to `ghcr.io/trqsh-uz/site` by
+[`.github/workflows/images.yml`](../../.github/workflows/images.yml). See
+[`deploy/`](../../deploy) for how it runs behind the edge, which reverse-proxies the apex
+domain to it.

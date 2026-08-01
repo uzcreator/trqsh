@@ -10,11 +10,9 @@ free tier**, **UDP tunnels**, a **first-class desktop app**, and an **open-sourc
 [![Security](https://github.com/trqsh-uz/trqsh/actions/workflows/security.yml/badge.svg)](https://github.com/trqsh-uz/trqsh/actions/workflows/security.yml)
 [![CodeQL](https://github.com/trqsh-uz/trqsh/actions/workflows/codeql.yml/badge.svg)](https://github.com/trqsh-uz/trqsh/actions/workflows/codeql.yml)
 [![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8)](https://go.dev)
-[![License](https://img.shields.io/badge/agent-Apache--2.0-blue)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
 </div>
-
-> `trqsh` is a working codename — rename before launch (trademark check first).
 
 ```console
 $ trqsh http 3000
@@ -32,7 +30,7 @@ Inspect     http://localhost:4040
   inspector + replay.
 - 🔌 **Every protocol, incl. UDP** — HTTP/HTTPS/TLS/TCP **and UDP** (ngrok has none).
 - 🌐 **Custom domains + reserved subdomains**, teams/orgs, simple predictable pricing.
-- 🔓 **Open-source agent** — audit it, script it, self-host it.
+- 🔓 **Fully open source (Apache-2.0)** — audit it, script it, self-host the entire stack.
 
 ## Architecture
 
@@ -128,5 +126,5 @@ See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for setup, standards, and the PR ch
 
 ## License
 
-The client **agent** and shared libraries (`cmd/trqsh`, `internal/agent`, `pkg/*`) are licensed under
-**[Apache-2.0](./LICENSE)**. The hosted edge, control plane, and billing are proprietary.
+trqsh is **open source** under **[Apache-2.0](./LICENSE)** — the whole stack: the agent/CLI, the
+edge, the control plane, and billing. Run it as a service, self-host it, fork it, or build on it.

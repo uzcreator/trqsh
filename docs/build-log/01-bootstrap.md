@@ -46,7 +46,7 @@ docs/build-log/             this build log
 - **Go version floor:** `go 1.23` in `go.mod` (matches the stack decision; newer toolchains are fine).
 - **`go.work` present** even though there is a single module today, so the open-source client
   (`cmd/trqsh` + `pkg/*`) can later split into its own module without churn.
-- **License:** Apache-2.0 for the client/shared libs; the hosted edge/control/billing stay proprietary.
+- **License:** Apache-2.0 (the whole stack — agent, edge, control plane, billing — is open source).
 - **Dev deps:** Postgres **16** + Redis **7** via compose, with healthchecks and named volumes so
   Parts 02/05 can run immediately. Part 08 will extend this file with edge/api/mailhog.
 - **Binary stubs use an empty `func main()`** so `go build ./...` will pass as-is once Go is present.

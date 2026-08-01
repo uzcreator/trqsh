@@ -1,8 +1,8 @@
 # Contributing to trqsh
 
-Thanks for your interest in improving trqsh. The **agent** (`cmd/trqsh`, `internal/agent`) and the
-shared libraries (`pkg/*`) are open source; the edge, control plane, and billing are also in this
-repo for development but are proprietary. Contributions are welcome across all of it.
+Thanks for your interest in improving trqsh. The whole stack — the agent/CLI, the edge, the
+control plane, and billing — is **open source under Apache-2.0**, and contributions are welcome
+across all of it.
 
 ## Development setup
 

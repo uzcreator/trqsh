@@ -1,10 +1,13 @@
 # Self-hosting
 
-The trqsh **agent is open source**. You can audit it, build it yourself, and run it
-however you like. The hosted edge, control plane, and billing are operated by trqsh
-as a service.
+trqsh is **fully open source** (Apache-2.0) — not just the agent, but the entire stack: the
+edge, the control plane, and billing. You can run the whole thing yourself, or use the
+hosted service at [trqsh.uz](https://trqsh.uz) and skip the operations.
 
-## Build the agent from source
+## Just the agent
+
+If you only want to point the CLI at the hosted service (or someone else's edge), build the
+agent from source:
 
 ```sh
 git clone https://github.com/trqsh-uz/trqsh
@@ -13,30 +16,46 @@ go build ./cmd/trqsh
 ```
 
 You now have a `trqsh` binary identical to the released one (releases are just this,
-cross-compiled and signed). Point it at the hosted edge with your API key and it
-behaves exactly like the packaged CLI.
+cross-compiled and signed). Point it at an edge with your API key and it behaves exactly
+like the packaged CLI.
 
-## Why the agent is open
-
-- **Trust** — you can see precisely what runs on your machine and what it sends.
+- **Trust** — see precisely what runs on your machine and what it sends.
 - **Scriptability** — embed the agent core in your own tools; the Go API is stable.
 - **Portability** — build for any platform Go targets.
 
-## What isn't open (yet)
+## The whole platform
 
-The edge (`trqshd`), control API, and billing are proprietary and run as the hosted
-service — that's what your subscription pays for, and it's what keeps the network,
-certificates, and multi-region routing maintained.
+Everything needed to run your own trqsh — edge, control API, dashboard, and site — is in
+the repository:
 
-## Running your own edge
+```sh
+git clone https://github.com/trqsh-uz/trqsh
+cd trqsh
+make dev          # full local stack: postgres, redis, migrate, api, edge, mailhog
+```
 
-A fully self-hosted deployment (your own edge + control plane) isn't part of the
-free open-source distribution today. If you have a strong need — air-gapped
-networks, compliance, on-prem — [get in touch](mailto:hello@trqsh.uz); we're
-interested in an open-core path.
+For a real deployment, [`deploy/`](https://github.com/trqsh-uz/trqsh/tree/main/deploy) has
+everything: multi-stage Dockerfiles, `docker-compose` for a single box, a Helm chart (edge
+DaemonSet, API autoscaling, ingress, migrations, network policies), and Terraform for a
+multi-region setup with managed Postgres/Redis and wildcard DNS. Start with
+[`deploy/PRODUCTION.md`](https://github.com/trqsh-uz/trqsh/blob/main/deploy/PRODUCTION.md).
+
+You'll need a domain with a wildcard DNS record pointed at your edge, and — for public
+HTTPS — a wildcard TLS certificate, which the edge can obtain automatically via Let's
+Encrypt DNS-01.
+
+## Hosted vs self-hosted
+
+| | Hosted (trqsh.uz) | Self-hosted |
+|---|---|---|
+| Setup | none — just `trqsh login` | run the edge + control plane |
+| Domain & TLS | managed | your domain + wildcard cert |
+| Multi-region | included | your infrastructure |
+| Cost | subscription | your servers |
+| Best for | most people | air-gapped, on-prem, compliance, tinkering |
 
 ## Contributing
 
-Issues and pull requests for the agent are welcome on
-[GitHub](https://github.com/trqsh-uz/trqsh). See the repository's contributing guide for
-the development setup and coding standards.
+Issues and pull requests are welcome on [GitHub](https://github.com/trqsh-uz/trqsh). See the
+repository's [contributing guide](https://github.com/trqsh-uz/trqsh/blob/main/CONTRIBUTING.md)
+for the development setup and coding standards.

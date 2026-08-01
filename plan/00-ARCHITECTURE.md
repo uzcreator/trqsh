@@ -7,7 +7,8 @@
 
 trqsh is a hosted developer tunneling service. A local **agent** exposes a `localhost` service to
 the public internet through trqsh's **edge** servers, without port-forwarding. Revenue comes from a
-**SaaS subscription**; the **agent is open source**, the edge/control/billing are proprietary.
+**SaaS subscription** (the hosted service at trqsh.uz); the **entire stack is open source**
+(Apache-2.0) — agent, edge, control plane, and billing — so anyone can self-host.
 
 ### Differentiators (design every feature to protect these)
 1. **QUIC-first transport** → lower latency on lossy/mobile links + connection migration; automatic

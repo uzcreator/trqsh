@@ -22,7 +22,7 @@ jobs:
           args: release --clean
         env:
           # PAT with contents:write on the PUBLIC trqsh-uz/cli repo, so the
-          # release + assets land there (source stays private in trqsh-uz/trqsh).
+          # release + assets land there (the dedicated downloads repo).
           GITHUB_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
