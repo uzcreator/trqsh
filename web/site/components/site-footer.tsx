@@ -7,7 +7,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto max-w-content px-4 py-12 sm:px-6 sm:py-14">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_2.6fr] lg:gap-16">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.4fr_2.6fr] lg:gap-16">
           {/* Brand */}
           <div className="max-w-sm">
             <Logo />

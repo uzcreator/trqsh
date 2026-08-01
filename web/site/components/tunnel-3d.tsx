@@ -20,11 +20,13 @@ export function Tunnel3D({ className }: { className?: string }) {
   const [enabled, setEnabled] = React.useState(false);
 
   React.useEffect(() => {
+    // The scene itself is already mobile-tuned (fewer rings/segments/packets,
+    // capped pixel ratio, no pointer-parallax listener below 768px — see
+    // tunnel-scene.tsx's `mobile` checks), so every device gets the real
+    // WebGL tunnel. Only reduced-motion (and no-WebGL, caught in
+    // tunnel-scene.tsx) fall back to the static CSS glow.
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Phones (< 768px) keep the CSS glow — the three.js chunk isn't even fetched,
-    // so first paint stays fast on mobile. Tablets and up get the full scene.
-    const bigEnough = window.matchMedia("(min-width: 768px)").matches;
-    setEnabled(!reduce && bigEnough);
+    setEnabled(!reduce);
   }, []);
 
   return (

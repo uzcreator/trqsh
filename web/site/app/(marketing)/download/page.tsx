@@ -37,7 +37,7 @@ export default function DownloadPage() {
         </h2>
         <DownloadSection />
 
-        <section className="mx-auto mt-16 grid max-w-4xl gap-5 sm:grid-cols-2">
+        <section className="mx-auto mt-16 grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="border-gradient rounded-2xl border border-border bg-surface p-6 shadow-sm">
             <TerminalSquare className="mb-3 h-6 w-6 text-brand" />
             <h2 className="text-base font-semibold text-foreground">One-line install (macOS / Linux)</h2>

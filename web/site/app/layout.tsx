@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { site } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
+import { CursorOrbit } from "@/components/cursor-orbit";
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.siteUrl),
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
+        <CursorOrbit />
         <SiteHeader />
         {children}
       </body>

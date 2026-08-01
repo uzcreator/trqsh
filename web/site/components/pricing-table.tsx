@@ -26,7 +26,7 @@ export function PricingTable() {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {cardPlans.map((p) => (
           <PlanCard key={p.code} plan={p} cadence={cadence} />
         ))}

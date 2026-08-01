@@ -36,7 +36,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
   const next = idx < mdSlugs.length - 1 ? docEntry(mdSlugs[idx + 1]) : undefined;
 
   return (
-    <div className="grid gap-10 py-10 xl:grid-cols-[minmax(0,1fr)_13rem]">
+    <div className="grid grid-cols-1 gap-10 py-10 xl:grid-cols-[minmax(0,1fr)_13rem]">
       <div className="min-w-0">
         <article className="prose" dangerouslySetInnerHTML={{ __html: doc.html }} />
 

@@ -4,23 +4,21 @@ import {
   Gauge,
   Gift,
   GitBranch,
-  Globe,
+  Info,
   MonitorSmartphone,
   Radio,
   Download,
-  Play,
   Share2,
-  SearchCode,
-  Signal,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/reveal";
-import { InstallTabs } from "@/components/install-tabs";
 import { LatencyChart } from "@/components/latency-chart";
-import { ComparisonTable } from "@/components/comparison-table";
+import ThreeDCarousel, { type ThreeDCarouselItem } from "@/components/ThreeDCarousel";
 import { SmartDownload } from "@/components/smart-download";
 import { Tunnel3D } from "@/components/tunnel-3d";
+import PlasmaGlobe from "@/components/PlasmaGlobe";
+import { HeroHeadline } from "@/components/hero-headline";
 import { signupUrl } from "@/lib/site";
 import { planByCode } from "@/lib/plans";
 import { formatBytes } from "@/lib/format";
@@ -28,55 +26,63 @@ import { cn } from "@/lib/utils";
 
 const free = planByCode("free");
 
-const DIFFERENTIATORS = [
+const HERO_INFO = [
+  "QUIC/HTTP-3 — lower latency than TCP tunnels.",
+  "A generous free tier, plus full UDP support.",
+  "Open-source agent with a real desktop app.",
+];
+
+// The most essential points from both "how it works" and "why trqsh" — kept
+// short deliberately: more cards means tighter angular spacing on the ring,
+// which reads as cluttered and makes the auto-rotation feel busy rather than
+// smooth. Seven is the sweet spot between "too sparse" and "too crowded".
+const ICON_CLASS = "h-5 w-5";
+
+const CAROUSEL_ITEMS: ThreeDCarouselItem[] = [
   {
-    icon: Gauge,
-    title: "QUIC-first, so it's fast",
-    body: "Tunnels ride QUIC/HTTP-3 by default — lower latency on lossy and mobile links, with connection migration when you hop Wi-Fi ↔ 5G. Blocked UDP? It falls back to TCP automatically.",
+    icon: <Download className={ICON_CLASS} />,
+    title: "Install in one line",
+    body: "Grab the desktop app or the open-source CLI. No account required to try it.",
+    code: "brew install trqsh/tap/trqsh",
   },
   {
-    icon: Gift,
+    icon: <Gauge className={ICON_CLASS} />,
+    title: "QUIC-first, so it's fast",
+    body: "Lower latency on lossy and mobile links, with connection migration when you hop Wi-Fi ↔ 5G.",
+    stat: "QUIC / HTTP-3",
+  },
+  {
+    icon: <Gift className={ICON_CLASS} />,
     title: "A free tier that isn't a trap",
     body: free
-      ? `${formatBytes(free.max_bandwidth_bytes_mo)} of transfer, ${free.max_concurrent_tunnels} concurrent tunnels, and a reserved subdomain — free forever. Deliberately more generous than ngrok's 2026 tier.`
+      ? `${formatBytes(free.max_bandwidth_bytes_mo)} of transfer, free forever — deliberately more generous than ngrok's 2026 tier.`
       : "Generous limits, free forever — deliberately more generous than ngrok's 2026 tier.",
+    stat: free ? `${formatBytes(free.max_bandwidth_bytes_mo)} free / mo` : "Free forever",
   },
   {
-    icon: MonitorSmartphone,
+    icon: <MonitorSmartphone className={ICON_CLASS} />,
     title: "A real desktop app",
-    body: "Not just a CLI. A polished native app for macOS, Windows, and Linux with one-click tunnels, a live request inspector, replay, and a system tray.",
+    body: "A polished native app for macOS, Windows, and Linux — one-click tunnels, live inspector, replay.",
+    stat: "macOS · Windows · Linux",
   },
   {
-    icon: Radio,
+    icon: <Share2 className={ICON_CLASS} />,
+    title: "Share your live URL",
+    body: "Your localhost is on the internet at a real HTTPS address, on any device.",
+    code: "https://tidy-otter.trqsh.uz",
+  },
+  {
+    icon: <Radio className={ICON_CLASS} />,
     title: "Every protocol, including UDP",
-    body: "HTTP, HTTPS, TLS, raw TCP — and UDP, which ngrok simply doesn't do. Tunnel game servers, DNS, WebRTC, and QUIC services, not just web apps.",
+    body: "HTTP, HTTPS, TLS, raw TCP — and UDP, which ngrok simply doesn't do.",
+    stat: "HTTP · TCP · UDP",
   },
   {
-    icon: Globe,
-    title: "Custom domains & teams",
-    body: "Instant reserved subdomains, bring-your-own custom domains with guided DNS, and shared team domains with SSO/SAML on the Team plan.",
-  },
-  {
-    icon: GitBranch,
+    icon: <GitBranch className={ICON_CLASS} />,
     title: "Open-source agent",
-    body: "The agent you run is open source — audit it, script it, self-host it. No black box on your machine. Trust through transparency.",
+    body: "Audit it, script it, self-host it — no black box on your machine.",
+    stat: "Apache-2.0",
   },
-];
-
-const STEPS = [
-  { icon: Download, title: "Install in one line", body: "Grab the desktop app or the open-source CLI. No account required to try it.", code: "brew install trqsh/tap/trqsh" },
-  { icon: Play, title: "Run one command", body: "Point trqsh at a local port. It opens a QUIC session to the nearest edge.", code: "trqsh http 3000" },
-  { icon: Share2, title: "Share your live URL", body: "Your localhost is on the internet at a real HTTPS address, on any device.", code: "https://tidy-otter.trqsh.uz" },
-  { icon: SearchCode, title: "Inspect & replay", body: "Watch every request live, inspect headers and bodies, and replay any call.", code: "localhost:4040" },
-];
-
-const TRUST = [
-  "Open-source agent",
-  "QUIC / HTTP-3",
-  "HTTP · TCP · UDP",
-  "macOS · Windows · Linux",
-  "Reserved subdomains",
-  "Inspector & replay",
 ];
 
 export default function LandingPage() {
@@ -94,98 +100,55 @@ export default function LandingPage() {
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-content px-4 py-16 sm:px-6 sm:py-20">
-          <div className="max-w-2xl">
-            <div className="animate-fade-up">
-              <Badge variant="default" className="mb-5 border border-brand/20">
-                <Signal className="h-3.5 w-3.5" /> Now running on QUIC / HTTP-3
-              </Badge>
-            </div>
-            <h1
-              className="animate-fade-up text-[2.15rem] font-semibold leading-[1.06] tracking-tight text-foreground sm:text-5xl xl:text-6xl"
-              style={{ animationDelay: "90ms" }}
-            >
-              Your localhost,
-              <br />
-              <span className="gradient-text">live on the internet.</span>
-            </h1>
-            <p
-              className="animate-fade-up mt-5 max-w-xl text-base leading-relaxed text-secondary sm:text-lg"
-              style={{ animationDelay: "180ms" }}
-            >
-              trqsh exposes a local port to a public HTTPS URL in seconds — over QUIC for lower
-              latency, with UDP support, a desktop app, and a free tier that stays out of your way.
-            </p>
+          <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+            <div className="max-w-2xl">
+              <HeroHeadline />
 
-            <div className="animate-fade-up mt-8" style={{ animationDelay: "270ms" }}>
-              <SmartDownload variant="hero" />
+              <HeroInfoChip delayMs={420} />
+
+              <p
+                className="animate-fade-up mt-5 max-w-xl text-base leading-relaxed text-secondary sm:text-lg"
+                style={{ animationDelay: "180ms" }}
+              >
+                trqsh exposes a local port to a public HTTPS URL in seconds — over QUIC for lower
+                latency, with UDP support, a desktop app, and a free tier that stays out of your way.
+              </p>
+
+              <div className="animate-fade-up mt-8" style={{ animationDelay: "270ms" }}>
+                <SmartDownload variant="hero" />
+              </div>
             </div>
 
-            <div className="animate-fade-up mt-8 max-w-md" style={{ animationDelay: "360ms" }}>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Or install the CLI</p>
-              <InstallTabs />
-            </div>
+            {/* Globe sits beside the copy on wide screens only — see
+                components/PlasmaGlobe.tsx for the lg breakpoint gate (avoids
+                running two WebGL scenes at once on tablets). */}
+            <PlasmaGlobe className="relative hidden h-[380px] w-[380px] shrink-0 lg:block xl:h-[440px] xl:w-[440px]" />
           </div>
         </div>
       </section>
 
-      {/* Trust row — static */}
-      <div className="border-y border-border bg-surface/40">
-        <div className="mx-auto flex max-w-content flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 py-4 text-sm text-muted sm:gap-x-6 sm:px-6">
-          {TRUST.map((t, i) => (
-            <span key={t} className="flex items-center gap-5 whitespace-nowrap sm:gap-6">
-              {t}
-              {i < TRUST.length - 1 && <span className="hidden text-brand/40 sm:inline">◆</span>}
-            </span>
-          ))}
+      {/* How it works + Why trqsh, combined into one 3D carousel
+          (components/ThreeDCarousel.tsx). Auto-rotates; click a card to bring
+          it forward and enlarge it for reading; drag to spin it manually. */}
+      <section className="border-y border-border bg-surface/40 py-14 sm:py-16">
+        <div className="mx-auto max-w-content px-4 sm:px-6">
+          <Reveal className="mx-auto mb-10 max-w-2xl text-center">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand">Why trqsh</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              From localhost to live, and why it's worth it
+            </h2>
+            <p className="mt-3 text-secondary">
+              Drag to spin it, or tap a card to bring it forward.
+            </p>
+          </Reveal>
+          <ThreeDCarousel items={CAROUSEL_ITEMS} />
         </div>
-      </div>
-
-      {/* How it works — compact, no stacking */}
-      <Section
-        eyebrow="How it works"
-        title="From localhost to live in four moves"
-        subtitle="No stacking, no scroll gymnastics — just the four commands that put your machine on the internet."
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((step, i) => (
-            <Reveal key={step.title} delay={(i % 4) * 70} className="h-full">
-              <div className="card-hover flex h-full flex-col rounded-xl border border-border bg-surface p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-brand">
-                    <step.icon className="h-5 w-5" />
-                  </span>
-                  <span className="font-mono text-xs font-semibold text-muted tabular">0{i + 1}</span>
-                </div>
-                <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
-                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-secondary">{step.body}</p>
-                <code className="mt-4 block overflow-x-auto whitespace-nowrap rounded-md border border-border bg-page px-3 py-2 font-mono text-xs text-brand">
-                  {step.code}
-                </code>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </Section>
-
-      {/* Differentiators */}
-      <Section
-        eyebrow="Why trqsh"
-        title="The fastest, friendliest way to share localhost"
-        subtitle="Five promises: speed, a generous free tier, a great app, every protocol, and an open agent."
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {DIFFERENTIATORS.map((f, i) => (
-            <Reveal key={f.title} delay={(i % 3) * 80} className="h-full">
-              <FeatureCard icon={f.icon} title={f.title} body={f.body} />
-            </Reveal>
-          ))}
-        </div>
-      </Section>
+      </section>
 
       {/* Speed / QUIC */}
       <section className="relative overflow-hidden border-y border-border bg-surface/40">
         <div className="mx-auto max-w-content px-4 py-20 sm:px-6">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <Reveal>
               <Badge variant="default" className="mb-4 border border-brand/20">
                 <Gauge className="h-3.5 w-3.5" /> Speed
@@ -218,20 +181,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Comparison */}
-      <section className="border-b border-border">
-        <div className="mx-auto max-w-content px-4 py-20 sm:px-6">
-          <Reveal className="mx-auto mb-10 max-w-2xl text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand">Honest comparison</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">How trqsh stacks up</h2>
-            <p className="mt-3 text-secondary">
-              Credit where it&apos;s due — and exactly where trqsh pulls ahead.
-            </p>
-          </Reveal>
-          <ComparisonTable />
-        </div>
-      </section>
-
       {/* Pricing + final CTA, merged */}
       <section className="relative overflow-hidden">
         <div className="hero-glow pointer-events-none absolute inset-0 -z-10" aria-hidden />
@@ -241,17 +190,8 @@ export default function LandingPage() {
             Ship your localhost in 60 seconds
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-secondary">
-            The same numbers our edge actually enforces — free forever, upgrade only when you outgrow it.
+            Free forever, upgrade only when you outgrow it.
           </p>
-
-          {free && (
-            <div className="mx-auto mt-8 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
-              <Stat value={formatBytes(free.max_bandwidth_bytes_mo)} label="Free / mo" />
-              <Stat value={String(free.max_concurrent_tunnels)} label="Concurrent tunnels" />
-              <Stat value={String(free.max_reserved_subdomains)} label="Reserved subdomain" />
-              <Stat value="$0" label="Forever" />
-            </div>
-          )}
 
           <div className="mx-auto mt-8 max-w-3xl text-left">
             <SmartDownload variant="card" />
@@ -270,54 +210,35 @@ export default function LandingPage() {
   );
 }
 
-function Section({
-  eyebrow,
-  title,
-  subtitle,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
+// Small hover/focus affordance next to the hero headline — reveals a
+// solid card with a few lines about the site — a plain opaque panel (not
+// glassmorphism) so it stays fully legible over the busy hero content.
+//
+// z-30 on the trigger is load-bearing, not decorative: .animate-fade-up
+// animates opacity/transform, and both this chip and the paragraph below it
+// use that class. An element with an in-flight (or fill-mode: both, so
+// "ever ran") transform/opacity animation gets its own stacking context in
+// modern browsers, so the popover's z-20 was only ever being compared
+// against its aunt <p> *as a whole promoted layer*, ranked by DOM order —
+// the popover lost to the paragraph regardless of its z-index. An explicit
+// z-index here forces a real comparison and wins it.
+function HeroInfoChip({ delayMs }: { delayMs: number }) {
   return (
-    <section className="mx-auto max-w-content px-4 py-20 sm:px-6">
-      <Reveal className="mx-auto mb-10 max-w-2xl text-center">
-        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand">{eyebrow}</p>
-        <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{title}</h2>
-        {subtitle && <p className="mt-3 text-secondary">{subtitle}</p>}
-      </Reveal>
-      {children}
-    </section>
-  );
-}
+    <div
+      className="group relative z-30 mt-4 inline-flex w-fit animate-fade-up items-center gap-1.5 text-xs font-medium text-muted"
+      style={{ animationDelay: `${delayMs}ms` }}
+      tabIndex={0}
+    >
+      <Info className="h-3.5 w-3.5 text-brand" />
+      <span className="border-b border-dashed border-border-strong">What is trqsh, exactly?</span>
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  body,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="border-gradient card-hover group h-full rounded-xl border border-border bg-surface p-6">
-      <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-brand transition-transform duration-300 group-hover:scale-110">
-        <Icon className="h-5 w-5" />
+      <div className="pointer-events-none absolute left-0 top-full z-20 mt-3 w-80 max-w-[85vw] -translate-y-1 rounded-xl border border-border-strong bg-surface-2 p-3 text-left text-sm normal-case leading-snug text-secondary opacity-0 shadow-2xl transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus:translate-y-0 group-focus:opacity-100">
+        {HERO_INFO.map((line, i) => (
+          <p key={line} className={i > 0 ? "mt-1" : undefined}>
+            {line}
+          </p>
+        ))}
       </div>
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-secondary">{body}</p>
-    </div>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-surface/60 p-4">
-      <div className="text-2xl font-semibold tracking-tight text-foreground tabular">{value}</div>
-      <div className="mt-1 text-xs text-muted">{label}</div>
     </div>
   );
 }

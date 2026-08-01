@@ -57,11 +57,11 @@ export default function TunnelScene({ className }: { className?: string }) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1 : 1.6));
 
-    const green = colorFromVar("--brand", "15 172 108");
-    const teal = colorFromVar("--brand-3", "20 184 166");
-    const blue = colorFromVar("--brand-2", "37 78 190");
-    const glow = colorFromVar("--glow", "24 210 140");
-    const page = colorFromVar("--page", "6 9 8");
+    const green = colorFromVar("--brand", "79 70 229");
+    const teal = colorFromVar("--brand-3", "10 147 150");
+    const blue = colorFromVar("--brand-2", "2 62 138");
+    const glow = colorFromVar("--glow", "90 70 255");
+    const page = colorFromVar("--page", "0 18 25");
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(page.getHex(), 0.085);

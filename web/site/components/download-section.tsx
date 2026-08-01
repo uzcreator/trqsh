@@ -36,7 +36,7 @@ export function DownloadSection() {
 
   return (
     <div>
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {order.map((id) => {
           const os = OS_DOWNLOADS[id];
           const Icon = OS_ICON[id];

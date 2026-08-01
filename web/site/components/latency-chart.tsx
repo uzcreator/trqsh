@@ -1,32 +1,47 @@
-// QUIC-vs-TCP latency visual for the landing page. Pure SVG (no client JS, no
-// image request) so it costs nothing at runtime and scales crisply. It follows
-// the dataviz reference palette from the shared tokens: fixed categorical slots
-// (series-1 for the highlighted line, series-3 for the comparison), --grid for
-// gridlines, --baseline for axes, tabular numerals on ticks.
+"use client";
+
+import * as React from "react";
+import { LineChart, type AnimatedLineProps, type MarkElementProps } from "@mui/x-charts/LineChart";
+import { motion } from "motion/react";
+import { buttonVariants } from "./ui/button";
+import { cn } from "@/lib/utils";
+
+// QUIC-vs-TCP latency visual for the landing page. @mui/x-charts renders the
+// axes/grid/geometry (SVG under the hood); custom `line`/`mark` slots swap in
+// motion.dev for the draw-in animation. @mui/material is NOT a dependency —
+// x-charts v9 doesn't require it, so this stays out of the site's Tailwind-
+// only styling approach except for this one chart; the axis/grid colors are
+// pinned to the same design tokens the old hand-rolled SVG used, via `sx`.
 //
-// The numbers are an *illustrative model*, not a measured benchmark — labeled as
-// such — showing the real, well-documented effect: TCP suffers head-of-line
+// The numbers are an *illustrative model*, not a measured benchmark — labeled
+// as such — showing the real, well-documented effect: TCP suffers head-of-line
 // blocking as packet loss rises, while QUIC's independent streams degrade gently.
 
 const LOSS = [0, 1, 2, 3, 4, 5]; // % packet loss
 const TCP = [40, 95, 165, 250, 350, 470]; // ms, illustrative
 const QUIC = [38, 55, 74, 96, 120, 148]; // ms, illustrative
 
-const W = 640;
-const H = 340;
-const PAD = { l: 44, r: 16, t: 18, b: 38 };
-const PLOT_W = W - PAD.l - PAD.r;
-const PLOT_H = H - PAD.t - PAD.b;
-const Y_MAX = 500;
-
-const x = (loss: number) => PAD.l + (loss / 5) * PLOT_W;
-const y = (ms: number) => PAD.t + (1 - ms / Y_MAX) * PLOT_H;
-
-const path = (data: number[]) =>
-  data.map((v, i) => `${i === 0 ? "M" : "L"} ${x(LOSS[i]).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-
 export function LatencyChart() {
-  const yTicks = [0, 100, 200, 300, 400, 500];
+  const [key, replay] = React.useReducer((v: number) => v + 1, 0);
+
+  // x-charts sizes itself via an internal ResizeObserver when no `width` prop
+  // is given — inside this grid column (Reveal > grid lg:grid-cols-2), that
+  // measured 0 on first read, so the chart's SVG got viewBox="0 0 0 280" and
+  // rendered nothing at all (no axes, no ticks, no lines — "the numbers are
+  // not viewable" was literally "there is no chart"). Measuring the wrapper
+  // ourselves and passing an explicit width sidesteps whatever x-charts'
+  // internal observer was getting wrong in this layout.
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [width, setWidth] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <figure className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
@@ -44,50 +59,106 @@ export function LatencyChart() {
         </span>
       </figcaption>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Latency versus packet loss: QUIC stays low while a TCP tunnel climbs sharply.">
-        {/* gridlines + y ticks */}
-        {yTicks.map((t) => (
-          <g key={t}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(t)} y2={y(t)} stroke="rgb(var(--grid))" strokeWidth={1} />
-            <text x={PAD.l - 8} y={y(t) + 3} textAnchor="end" className="tabular" fill="rgb(var(--muted-ink))" fontSize={11}>
-              {t}
-            </text>
-          </g>
-        ))}
-        {/* baseline / axes */}
-        <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} stroke="rgb(var(--baseline))" strokeWidth={1.5} />
-        {/* x ticks */}
-        {LOSS.map((l) => (
-          <text key={l} x={x(l)} y={H - PAD.b + 18} textAnchor="middle" className="tabular" fill="rgb(var(--muted-ink))" fontSize={11}>
-            {l}%
-          </text>
-        ))}
+      <div ref={wrapRef} className="-mx-1">
+        {width > 0 && (
+        <LineChart
+          key={key}
+          width={width}
+          height={280}
+          xAxis={[
+            {
+              data: LOSS,
+              valueFormatter: (v: number) => `${v}%`,
+              disableLine: true,
+              tickLabelStyle: { fontSize: 11 },
+              // Without this, x-charts auto-generates intermediate ticks
+              // (0%, 0.5%, 1%, 1.5% ... 5% — 11 labels) that crowd together
+              // and become unreadable at this chart's width. Pin ticks to
+              // exactly the 6 real data points, matching the original design.
+              tickInterval: LOSS,
+            },
+          ]}
+          yAxis={[
+            {
+              min: 0,
+              max: 500,
+              disableLine: true,
+              tickLabelStyle: { fontSize: 11 },
+              tickInterval: [0, 100, 200, 300, 400, 500],
+            },
+          ]}
+          series={[
+            {
+              data: QUIC,
+              curve: "linear",
+              color: "rgb(var(--series-1))",
+              label: "trqsh (QUIC)",
+              showMark: true,
+            },
+            {
+              data: TCP,
+              curve: "linear",
+              color: "rgb(var(--series-3))",
+              label: "TCP tunnel",
+              showMark: true,
+            },
+          ]}
+          slots={{ line: AnimatedLine, mark: AnimatedMark }}
+          grid={{ horizontal: true }}
+          margin={{ left: 36, right: 12, top: 12, bottom: 28 }}
+          hideLegend
+          sx={{
+            ".MuiChartsAxis-tickLabel": { fill: "rgb(var(--muted-ink))" },
+            ".MuiChartsAxis-tick": { stroke: "rgb(var(--baseline))" },
+            ".MuiChartsGrid-line": { stroke: "rgb(var(--grid))" },
+            ".MuiLineElement-root": { strokeWidth: 2.5 },
+            "--Charts-axisLabelColor": "rgb(var(--secondary-ink))",
+          }}
+        />
+        )}
+      </div>
 
-        {/* TCP line (comparison) */}
-        <path d={path(TCP)} fill="none" stroke="rgb(var(--series-3))" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-        {TCP.map((v, i) => (
-          <circle key={i} cx={x(LOSS[i])} cy={y(v)} r={3} fill="rgb(var(--series-3))" />
-        ))}
-
-        {/* QUIC line (highlight) */}
-        <path d={path(QUIC)} fill="none" stroke="rgb(var(--series-1))" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-        {QUIC.map((v, i) => (
-          <circle key={i} cx={x(LOSS[i])} cy={y(v)} r={3} fill="rgb(var(--series-1))" />
-        ))}
-
-        {/* axis labels */}
-        <text x={PAD.l} y={H - 4} fill="rgb(var(--secondary-ink))" fontSize={11}>
-          Packet loss →
-        </text>
-        <text x={PAD.l - 34} y={PAD.t + 6} fill="rgb(var(--secondary-ink))" fontSize={11}>
-          ms
-        </text>
-      </svg>
-
-      <p className="mt-2 text-xs text-muted">
-        Illustrative model of head-of-line blocking, not a measured benchmark. Your mileage varies by
-        network and workload.
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted">
+          Illustrative model of head-of-line blocking, not a measured benchmark. Your mileage varies by
+          network and workload.
+        </p>
+        <button
+          type="button"
+          onClick={replay}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0 text-xs")}
+        >
+          Replay
+        </button>
+      </div>
     </figure>
+  );
+}
+
+function AnimatedLine({ d, ownerState, skipAnimation }: AnimatedLineProps) {
+  return (
+    <motion.path
+      d={d}
+      fill="transparent"
+      stroke={ownerState.color}
+      strokeWidth={2.5}
+      initial={{ opacity: skipAnimation ? 1 : 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1.5, ease: "easeInOut" }}
+    />
+  );
+}
+
+function AnimatedMark({ x, y, color, skipAnimation }: MarkElementProps) {
+  return (
+    <motion.circle
+      cx={x}
+      cy={y}
+      r={3}
+      fill={color}
+      initial={{ scale: skipAnimation ? 1 : 0, opacity: skipAnimation ? 1 : 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 1, delay: 0.5, ease: "backOut" }}
+    />
   );
 }

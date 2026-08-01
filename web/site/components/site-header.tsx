@@ -7,7 +7,7 @@ import { Github, Menu, X } from "lucide-react";
 import { Logo } from "./logo";
 import { ScrollProgress } from "./scroll-progress";
 import { buttonVariants } from "./ui/button";
-import { primaryNav, signupUrl, loginUrl, site } from "@/lib/site";
+import { primaryNav, signupUrl, site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -33,18 +33,13 @@ export function SiteHeader() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 animate-slide-down border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",
-        scrolled
-          ? "border-border bg-page/80 shadow-[0_10px_30px_-20px_rgb(0_0_0/0.9)] backdrop-blur-xl supports-[backdrop-filter]:bg-page/60"
-          : "border-transparent bg-transparent"
-      )}
-    >
+    <header className="sticky top-0 z-40 animate-slide-down">
       <div
         className={cn(
-          "mx-auto flex max-w-content items-center justify-between gap-4 px-4 transition-[height] duration-300 sm:px-6",
-          scrolled ? "h-14" : "h-16"
+          "flex items-center justify-between gap-4 transition-all duration-500 ease-out",
+          scrolled
+            ? "mx-3 mt-3 h-14 max-w-3xl rounded-full border border-border-strong bg-surface/90 px-4 shadow-[0_10px_40px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/75 sm:mx-auto sm:px-5"
+            : "mx-auto mt-0 h-16 max-w-content rounded-none border border-transparent bg-transparent px-4 shadow-none sm:px-6"
         )}
       >
         <div className="flex items-center gap-6">
@@ -93,10 +88,13 @@ export function SiteHeader() {
           >
             <Github className="h-4 w-4" />
           </a>
-          <a href={loginUrl} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-            Log in
-          </a>
-          <a href={signupUrl} className={cn(buttonVariants({ size: "sm" }), "glow-brand")}>
+          <a
+            href={signupUrl}
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "btn-shine glow-brand duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            )}
+          >
             Start free
           </a>
         </div>
@@ -137,10 +135,14 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="my-2 h-px bg-border" />
-          <a href={loginUrl} className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
-            Log in
-          </a>
-          <a href={signupUrl} className={cn(buttonVariants(), "w-full glow-brand")}>
+          <a
+            href={signupUrl}
+            onClick={() => setOpen(false)}
+            className={cn(
+              buttonVariants(),
+              "btn-shine glow-brand w-full duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            )}
+          >
             Start free
           </a>
         </nav>

@@ -17,6 +17,7 @@ import { detectArch, detectOS } from "@/lib/detect";
 import { site } from "@/lib/site";
 import { CodeBlock } from "./code-block";
 import { buttonVariants } from "./ui/button";
+import { BorderBeam } from "./lightswind/border-beam";
 import { cn } from "@/lib/utils";
 
 const OS_ICON: Record<OSId, React.ComponentType<{ className?: string }>> = {
@@ -53,7 +54,6 @@ export function SmartDownload({
   const primary = primaryDownload(os, arch);
   const isApp = OS_DOWNLOADS[os].desktop.length > 0;
   const cli = primaryCli(os);
-  const Icon = OS_ICON[os];
 
   const switcher = (
     <div className="inline-flex gap-1 rounded-lg border border-border-strong bg-surface/70 p-1">
@@ -96,7 +96,10 @@ export function SmartDownload({
         <div className="flex flex-wrap items-center gap-3">
           <a
             href={primary.href}
-            className={cn(buttonVariants({ size: "xl" }), "btn-shine glow-brand group")}
+            className={cn(
+              buttonVariants({ size: "xl" }),
+              "btn-shine glow-brand group relative overflow-hidden border-2 border-white/15"
+            )}
           >
             <Download className="h-5 w-5" />
             <span className="flex flex-col items-start leading-tight">
@@ -105,6 +108,7 @@ export function SmartDownload({
                 <span className="text-[0.7rem] font-normal opacity-80">{ARCH_LABEL[arch]}</span>
               )}
             </span>
+            <BorderBeam size={32} duration={5} borderWidth={2} />
           </a>
           <Link
             href="/download"
@@ -112,10 +116,6 @@ export function SmartDownload({
           >
             All platforms <ArrowRight className="h-4 w-4" />
           </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <Icon className="h-3.5 w-3.5 text-muted" />
-          {detectedNote}
         </div>
       </div>
     );
@@ -133,7 +133,7 @@ export function SmartDownload({
         {switcher}
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="flex flex-col">
           <span className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
             {isApp ? "Desktop app · recommended" : "Direct download · recommended"}

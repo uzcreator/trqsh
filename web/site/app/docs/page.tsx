@@ -39,7 +39,7 @@ export default function DocsIndexPage() {
         </div>
       </div>
 
-      <div className="mb-14 grid gap-4 sm:grid-cols-2">
+      <div className="mb-14 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {HIGHLIGHTS.map((h) => (
           <Link
             key={h.href}
@@ -64,7 +64,7 @@ export default function DocsIndexPage() {
         {docsNav.map((cat) => (
           <div key={cat.title}>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{cat.title}</h2>
-            <ul className="grid gap-2 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {cat.items.map((item) => (
                 <li key={item.slug}>
                   <Link

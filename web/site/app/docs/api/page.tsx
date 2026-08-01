@@ -33,7 +33,7 @@ export default function ApiReferencePage() {
   }
 
   return (
-    <div className="grid gap-10 py-10 xl:grid-cols-[minmax(0,1fr)_13rem]">
+    <div className="grid grid-cols-1 gap-10 py-10 xl:grid-cols-[minmax(0,1fr)_13rem]">
       <div className="min-w-0">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">{spec.title}</h1>
         <p className="mt-2 text-sm text-muted tabular">Version {spec.version}</p>
