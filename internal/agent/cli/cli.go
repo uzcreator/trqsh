@@ -55,14 +55,25 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&g.controlA, "control-addr", "", "local control API listen address")
 
 	root.AddCommand(
+		// Tunnels (foreground + background).
 		newHTTPCmd(g),
 		newTCPCmd(g),
 		newUDPCmd(g),
 		newStartCmd(g),
+		newLsCmd(g),
+		newOpenCmd(g),
 		newStatusCmd(g),
 		newStopCmd(g),
+		newDownCmd(g),
 		newDaemonCmd(g),
+		// Auth + account.
 		newLoginCmd(g),
+		newLogoutCmd(g),
+		newWhoamiCmd(g),
+		// Account resources.
+		newSubdomainsCmd(g),
+		newDomainsCmd(g),
+		// Misc.
 		newConfigCmd(g),
 		newVersionCmd(),
 		newUpdateCmd(),

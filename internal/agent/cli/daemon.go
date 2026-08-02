@@ -53,7 +53,9 @@ func newDaemonCmd(g *globalFlags) *cobra.Command {
 					return fmt.Errorf("control token: %w", err)
 				}
 			}
-			api := agent.NewLocalAPI(core).SetToken(token)
+			// OnShutdown lets `trqsh down` stop this daemon over the control API:
+			// canceling ctx unblocks the run loop below and shuts the core down.
+			api := agent.NewLocalAPI(core).SetToken(token).OnShutdown(stop)
 
 			fmt.Printf("trqsh daemon — control API on http://%s\n", cfg.ControlAddr)
 			if token != "" {

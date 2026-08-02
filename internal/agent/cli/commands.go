@@ -1,13 +1,11 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -17,64 +15,71 @@ import (
 
 func newHTTPCmd(g *globalFlags) *cobra.Command {
 	var subdomain, basicAuth, hostHeader string
+	var detach bool
 	cmd := &cobra.Command{
 		Use:   "http <port|addr>",
 		Short: "Expose a local HTTP service",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTunnels(cmd, g, []agent.TunnelSpec{{
+			return runOrDetach(cmd, g, []agent.TunnelSpec{{
 				Proto:      "http",
 				Addr:       normalizeAddr(args[0]),
 				Subdomain:  subdomain,
 				BasicAuth:  basicAuth,
 				HostHeader: hostHeader,
-			}})
+			}}, detach)
 		},
 	}
 	cmd.Flags().StringVar(&subdomain, "subdomain", "", "requested subdomain (reserved subdomains need Pro)")
 	cmd.Flags().StringVar(&basicAuth, "basic-auth", "", "protect with basic auth (user:pass)")
 	cmd.Flags().StringVar(&hostHeader, "host-header", "", "rewrite the Host header sent to the local service")
+	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "run in the background and return immediately")
 	return cmd
 }
 
 func newTCPCmd(g *globalFlags) *cobra.Command {
 	var remotePort int
+	var detach bool
 	cmd := &cobra.Command{
 		Use:   "tcp <port|addr>",
 		Short: "Expose a local TCP service",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTunnels(cmd, g, []agent.TunnelSpec{{
+			return runOrDetach(cmd, g, []agent.TunnelSpec{{
 				Proto:      "tcp",
 				Addr:       normalizeAddr(args[0]),
 				RemotePort: remotePort,
-			}})
+			}}, detach)
 		},
 	}
 	cmd.Flags().IntVar(&remotePort, "remote-port", 0, "requested remote port (0 = ephemeral)")
+	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "run in the background and return immediately")
 	return cmd
 }
 
 func newUDPCmd(g *globalFlags) *cobra.Command {
 	var remotePort int
+	var detach bool
 	cmd := &cobra.Command{
 		Use:   "udp <port|addr>",
 		Short: "Expose a local UDP service",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTunnels(cmd, g, []agent.TunnelSpec{{
+			return runOrDetach(cmd, g, []agent.TunnelSpec{{
 				Proto:      "udp",
 				Addr:       normalizeAddr(args[0]),
 				RemotePort: remotePort,
-			}})
+			}}, detach)
 		},
 	}
 	cmd.Flags().IntVar(&remotePort, "remote-port", 0, "requested remote port (0 = ephemeral)")
+	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "run in the background and return immediately")
 	return cmd
 }
 
 func newStartCmd(g *globalFlags) *cobra.Command {
-	return &cobra.Command{
+	var detach bool
+	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start all tunnels defined in the config file",
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -93,9 +98,11 @@ func newStartCmd(g *globalFlags) *cobra.Command {
 					RemotePort: t.RemotePort,
 				})
 			}
-			return runTunnels(cmd, g, specs)
+			return runOrDetach(cmd, g, specs, detach)
 		},
 	}
+	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "run in the background and return immediately")
+	return cmd
 }
 
 func newStatusCmd(g *globalFlags) *cobra.Command {
@@ -121,63 +128,6 @@ func newStatusCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func newStopCmd(g *globalFlags) *cobra.Command {
-	return &cobra.Command{
-		Use:   "stop",
-		Short: "Stop all tunnels on a running agent",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := g.loadConfig(cmd)
-			if err != nil {
-				return err
-			}
-			var tunnels []agent.Tunnel
-			if err := controlGET(cfg.ControlAddr, "/tunnels", &tunnels); err != nil {
-				return fmt.Errorf("no running agent at %s", cfg.ControlAddr)
-			}
-			for _, t := range tunnels {
-				_ = controlDelete(cfg.ControlAddr, "/tunnels/"+t.ID)
-				fmt.Printf("stopped %s\n", t.Name)
-			}
-			return nil
-		},
-	}
-}
-
-func newLoginCmd(g *globalFlags) *cobra.Command {
-	var token string
-	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Save an API key",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if token == "" && len(args) > 0 {
-				token = args[0]
-			}
-			if token == "" {
-				fmt.Print("API key: ")
-				sc := bufio.NewScanner(os.Stdin)
-				if sc.Scan() {
-					token = strings.TrimSpace(sc.Text())
-				}
-			}
-			if token == "" {
-				return fmt.Errorf("no token provided")
-			}
-			cfg, err := g.loadConfig(cmd)
-			if err != nil {
-				return err
-			}
-			cfg.APIKey = token
-			if err := cfg.Save(agent.DefaultConfigPath()); err != nil {
-				return err
-			}
-			fmt.Printf("saved API key to %s\n", agent.DefaultConfigPath())
-			return nil
-		},
-	}
-	cmd.Flags().StringVar(&token, "token", "", "API key to save")
-	return cmd
 }
 
 func newConfigCmd(g *globalFlags) *cobra.Command {

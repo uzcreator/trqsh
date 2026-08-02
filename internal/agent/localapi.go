@@ -30,6 +30,11 @@ type LocalAPI struct {
 	core  *Agent
 	token string
 
+	// onShutdown, when set, is invoked by POST /shutdown so a supervising CLI can
+	// stop a background daemon it started. Left nil (a no-op) for the desktop app,
+	// which owns its daemon's lifecycle directly.
+	onShutdown func()
+
 	mu   sync.Mutex
 	subs map[int]chan Event
 	next int
@@ -44,6 +49,13 @@ func NewLocalAPI(core *Agent) *LocalAPI {
 // (dev only). Returns the receiver for chaining.
 func (l *LocalAPI) SetToken(tok string) *LocalAPI {
 	l.token = tok
+	return l
+}
+
+// OnShutdown registers a callback for POST /shutdown, letting a CLI stop a
+// background daemon it launched (`trqsh down`). Returns the receiver for chaining.
+func (l *LocalAPI) OnShutdown(fn func()) *LocalAPI {
+	l.onShutdown = fn
 	return l
 }
 
@@ -144,6 +156,17 @@ func (l *LocalAPI) Handler() http.Handler {
 	mux.HandleFunc("DELETE /requests", func(w http.ResponseWriter, _ *http.Request) {
 		l.core.Inspector().Clear()
 		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("POST /shutdown", func(w http.ResponseWriter, _ *http.Request) {
+		// Ack first, then trigger shutdown just after so this response can flush
+		// before the process exits. A nil hook (desktop-owned daemon) is a no-op.
+		w.WriteHeader(http.StatusNoContent)
+		if l.onShutdown != nil {
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				l.onShutdown()
+			}()
+		}
 	})
 	mux.HandleFunc("GET /update", func(w http.ResponseWriter, r *http.Request) {
 		info, err := latestRelease(r.Context())
