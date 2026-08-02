@@ -9,7 +9,7 @@ const base = `${site.githubUrl}/releases/download/v${v}`;
 
 // The desktop app (Tauri) versions independently of the CLI; its assets live under
 // the `desktop-v<version>` tag. Asset names follow Tauri's bundler convention.
-const dv = process.env.TRQSH_DESKTOP_VERSION || "0.3.0";
+const dv = process.env.TRQSH_DESKTOP_VERSION || "0.3.1";
 const guiBase = `${site.githubUrl}/releases/download/desktop-v${dv}`;
 
 export const releasesUrl = `${site.githubUrl}/releases/latest`;
