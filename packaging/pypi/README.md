@@ -45,6 +45,18 @@ it. Pure standard library — no runtime dependencies.
 | `TRQSH_DOWNLOAD_BASE` | Full base URL of a mirror serving the release assets (for air-gapped/internal mirrors). |
 | `TRQSH_SKIP_CHECKSUM=1` | Skip SHA-256 verification (not recommended). |
 
+## Uninstall
+
+```bash
+trqsh uninstall        # remove local data (config, key, cache) + stop tunnels
+pip uninstall trqsh    # then remove the package itself
+```
+
+Run `trqsh uninstall` first: `pip uninstall` drops the package but leaves your saved
+key, control token, logs, and the cached binary under `~/.cache/trqsh/` behind —
+`trqsh uninstall` clears those and stops any background daemon. Add `-y` to skip the
+confirmation.
+
 ## Author
 
 trqsh is created and maintained by **Otabek Hamroqulov** — GitHub

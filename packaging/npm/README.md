@@ -4,9 +4,9 @@ Install the [trqsh](https://trqsh.uz) CLI through npm. This package downloads th
 signed, prebuilt binary for your platform from the GitHub release on install.
 
 ```bash
-npm install -g trqsh
+npm install -g @trqsh-uz/trqsh
 # or run without installing
-npx trqsh http 3000
+npx @trqsh-uz/trqsh http 3000
 ```
 
 ## Commands
@@ -48,6 +48,17 @@ Also `trqsh tcp <port>` and `trqsh udp <port>` for raw TCP/UDP tunnels. Run
 
 No third-party dependencies; unpacking uses PowerShell's `Expand-Archive` on
 Windows and `tar` elsewhere.
+
+## Uninstall
+
+```bash
+trqsh uninstall                 # remove local data (config, key, cache) + stop tunnels
+npm rm -g @trqsh-uz/trqsh       # then remove the package itself
+```
+
+Run `trqsh uninstall` first: `npm rm` deletes the package but leaves your saved key,
+control token, logs, and downloaded binary behind — `trqsh uninstall` clears those and
+stops any background daemon. Add `-y` to skip the confirmation.
 
 ## Author
 

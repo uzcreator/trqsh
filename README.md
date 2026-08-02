@@ -73,6 +73,10 @@ trqsh http 3000 -d    # …or in the background — `trqsh ls` to list, `trqsh s
 Full docs and an API reference live on the site (`web/site` → `/docs`), and the control API serves
 its own interactive Swagger UI at **`/docs`**.
 
+**Uninstall:** `trqsh uninstall` clears local data (config, key, cache) and stops any background
+tunnels, then remove the package itself — `npm rm -g @trqsh-uz/trqsh`, `pip uninstall trqsh`, or
+`scoop uninstall trqsh`.
+
 ## Local development
 
 ```bash
