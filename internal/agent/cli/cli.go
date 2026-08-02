@@ -77,6 +77,7 @@ func newRootCmd() *cobra.Command {
 		newConfigCmd(g),
 		newVersionCmd(),
 		newUpdateCmd(),
+		newUninstallCmd(g),
 	)
 	return root
 }
