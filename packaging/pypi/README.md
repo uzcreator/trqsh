@@ -1,13 +1,32 @@
-# trqsh (PyPI)
+# trqsh
 
-Install the [trqsh](https://trqsh.uz) CLI with pip. This package fetches the
-signed, prebuilt binary for your platform from the GitHub release on first run.
+**Expose localhost to the internet over fast, QUIC-first tunnels** — HTTP, TCP, and
+UDP, with reserved subdomains, custom domains, and a live request inspector. This
+package installs the signed `trqsh` CLI binary for your platform: a thin wrapper
+around a small Go binary, downloaded from GitHub on first run and verified against
+SHA-256 checksums.
+
+[![PyPI](https://img.shields.io/pypi/v/trqsh)](https://pypi.org/project/trqsh/)
+[![Python](https://img.shields.io/pypi/pyversions/trqsh)](https://pypi.org/project/trqsh/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/uzcreator/trqsh/blob/main/LICENSE)
 
 ```bash
 pip install trqsh
 # or, isolated:
 pipx install trqsh
+
+trqsh login        # sign in through your browser
+trqsh http 3000    # → a public HTTPS URL for localhost:3000
 ```
+
+## Why trqsh
+
+- **QUIC-first, TCP fallback** — lower latency on lossy/mobile networks, with
+  automatic fallback where UDP is blocked.
+- **Every protocol, including UDP** — HTTP, HTTPS, TLS, TCP, and UDP tunnels.
+- **Background tunnels** (`-d`) that keep running after your terminal closes.
+- **Reserved subdomains and custom domains**, plus a live request inspector.
+- **Fully open source** (Apache-2.0) — audit it, self-host the whole stack.
 
 ## Commands
 
