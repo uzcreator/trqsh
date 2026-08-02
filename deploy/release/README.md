@@ -15,10 +15,10 @@ release/
 | Target | Mechanism |
 |---|---|
 | CLI (Linux/macOS) | `curl -fsSL https://trqsh.uz/install.sh \| sh` → GitHub Releases |
-| CLI (macOS) | Homebrew tap `trqsh/tap` (goreleaser `brews:`) |
+| CLI (macOS) | Homebrew tap `uzcreator/tap` (goreleaser `brews:`) |
 | CLI (Windows) | Scoop (`scoop/trqsh.json`) + winget manifest PR |
 | CLI (Linux) | `.deb` / `.rpm` (goreleaser `nfpms:`) |
-| Edge (`trqshd`) | container image `ghcr.io/trqsh/edge` + archives |
+| Edge (`trqshd`) | container image `ghcr.io/uzcreator/edge` + archives |
 | Desktop app | Tauri installers per OS via `desktop-build.yml` → `uzcreator/trqsh` releases |
 
 ## Auto-update feed (dormant)

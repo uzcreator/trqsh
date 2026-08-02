@@ -51,7 +51,7 @@ changelog:
     exclude: ["^docs:", "^test:", "^chore:"]
 
 # Homebrew tap — disabled for the first release. Re-enable once the tap repo
-# (github.com/trqsh-uz/homebrew-tap) exists and HOMEBREW_TAP_TOKEN is set.
+# (github.com/uzcreator/homebrew-tap) exists and HOMEBREW_TAP_TOKEN is set.
 # brews:
 #   - name: trqsh
 #     ids: [default]

@@ -6,7 +6,7 @@ fullnameOverride: ""
 
 # Container images. Full ref = "{registry}/{repository}:{tag}".
 image:
-  registry: ghcr.io/trqsh
+  registry: ghcr.io/uzcreator
   tag: "" # defaults to .Chart.AppVersion
   pullPolicy: IfNotPresent
   pullSecrets: []

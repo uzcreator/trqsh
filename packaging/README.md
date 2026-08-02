@@ -19,7 +19,7 @@ wrapper verifies against it.
 | **Shell** | [`install.sh`](./install.sh) | `curl -fsSL https://trqsh.uz/install.sh \| sh` | script here |
 | **Scoop** (Win) | [`scoop/trqsh.json`](./scoop) | `scoop install trqsh` | manifest here |
 | **winget** (Win) | [`winget/`](./winget) | `winget install trqsh.trqsh` | manifests here |
-| **Homebrew** (Mac/Linux) | goreleaser `brews:` | `brew install trqsh/tap/trqsh` | goreleaser → `trqsh/homebrew-tap` |
+| **Homebrew** (Mac/Linux) | goreleaser `brews:` | `brew install uzcreator/tap/trqsh` | goreleaser → `uzcreator/homebrew-tap` |
 | **apt / dnf** (`.deb`/`.rpm`) | goreleaser `nfpms:` | download from Releases | goreleaser |
 
 The npm and PyPI packages carry **no third-party dependencies** — they detect the
