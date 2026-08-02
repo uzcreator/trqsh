@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: 🔒 Report a security vulnerability
-    url: https://github.com/trqsh-uz/trqsh/security/advisories/new
+    url: https://github.com/uzcreator/trqsh/security/advisories/new
     about: Report privately. See SECURITY.md — do NOT open a public issue.
   - name: 🚫 Report abuse (phishing/malware on a tunnel)
     url: mailto:abuse@trqsh.uz

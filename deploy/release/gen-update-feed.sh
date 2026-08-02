@@ -6,7 +6,7 @@ set -euo pipefail
 
 tag="${1:?usage: gen-update-feed.sh <tag>}"
 version="${tag#v}"
-repo="${GITHUB_REPOSITORY:-trqsh-uz/trqsh}"
+repo="${GITHUB_REPOSITORY:-uzcreator/trqsh}"
 url="https://github.com/${repo}/releases/tag/${tag}"
 notes="trqsh ${version}. See the release notes for changes."
 

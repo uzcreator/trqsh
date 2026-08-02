@@ -36,7 +36,7 @@ Windows). Two ways to get it:
 
 - **CI** — [`.github/workflows/desktop-build.yml`](../.github/workflows/desktop-build.yml)
   downloads the released `trqsh` CLI for each platform from the public
-  [trqsh-uz/cli](https://github.com/trqsh-uz/cli) releases, verifies its checksum, and drops
+  [uzcreator/trqsh](https://github.com/uzcreator/trqsh) releases, verifies its checksum, and drops
   it in under the host-triple name. A packaged build therefore bundles the **most recently
   released** CLI, not backend tip-of-main — deliberate, so installers always ship a stable
   agent.
@@ -57,6 +57,6 @@ in the build workflow. On Windows the UI renders in WebView2.
 ## Releases
 
 CI builds installers for Windows / macOS / Linux and publishes them to the public
-**[trqsh-uz/gui](https://github.com/trqsh-uz/gui)** releases repo (the `gui` name predates
+**[uzcreator/trqsh](https://github.com/uzcreator/trqsh)** releases repo (the `gui` name predates
 the Wails→Tauri rewrite and is kept so existing download URLs keep working). Trigger via a
 `v*` tag or the workflow's manual dispatch with `publish: true`.

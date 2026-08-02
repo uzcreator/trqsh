@@ -32,7 +32,7 @@ Also `trqsh tcp <port>` and `trqsh udp <port>` for raw TCP/UDP tunnels. Run
 - `postinstall` runs `lib/install.js`, which detects your platform (`darwin`,
   `linux`, `win32`) and CPU (`x64`, `arm64`), downloads
   `trqsh_<version>_<os>_<arch>.<ext>` from
-  `https://github.com/trqsh-uz/cli/releases`, verifies its SHA-256 against
+  `https://github.com/uzcreator/trqsh/releases`, verifies its SHA-256 against
   `checksums.txt`, and unpacks the binary into `vendor/`.
 - `bin/trqsh.js` execs that binary, forwarding arguments, stdio, and the exit
   code. If install scripts were skipped, it downloads on first run.

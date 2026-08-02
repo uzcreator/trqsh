@@ -1,4 +1,4 @@
-# Publish the npm wrapper (@trqsh-uz/trqsh) on its own. The wrapper only fetches
+# Publish the npm wrapper (@uzcreator/trqsh) on its own. The wrapper only fetches
 # the prebuilt binary from the downloads release at install time, so it can ship
 # independently of the full goreleaser release (Actions → npm-publish → Run).
 name: npm-publish

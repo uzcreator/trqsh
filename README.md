@@ -6,9 +6,9 @@
 Cloudflare Tunnel, but **QUIC-first** (faster on lossy/mobile links), with a **genuinely generous
 free tier**, **UDP tunnels**, a **first-class desktop app**, and an **open-source agent**.
 
-[![CI](https://github.com/trqsh-uz/trqsh/actions/workflows/ci.yml/badge.svg)](https://github.com/trqsh-uz/trqsh/actions/workflows/ci.yml)
-[![Security](https://github.com/trqsh-uz/trqsh/actions/workflows/security.yml/badge.svg)](https://github.com/trqsh-uz/trqsh/actions/workflows/security.yml)
-[![CodeQL](https://github.com/trqsh-uz/trqsh/actions/workflows/codeql.yml/badge.svg)](https://github.com/trqsh-uz/trqsh/actions/workflows/codeql.yml)
+[![CI](https://github.com/uzcreator/trqsh/actions/workflows/ci.yml/badge.svg)](https://github.com/uzcreator/trqsh/actions/workflows/ci.yml)
+[![Security](https://github.com/uzcreator/trqsh/actions/workflows/security.yml/badge.svg)](https://github.com/uzcreator/trqsh/actions/workflows/security.yml)
+[![CodeQL](https://github.com/uzcreator/trqsh/actions/workflows/codeql.yml/badge.svg)](https://github.com/uzcreator/trqsh/actions/workflows/codeql.yml)
 [![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8)](https://go.dev)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 

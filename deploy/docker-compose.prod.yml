@@ -97,7 +97,7 @@ services:
 
   # One-shot schema migration (goose up), then exits 0.
   migrate:
-    image: ghcr.io/trqsh-uz/migrate:${TRQSH_IMAGE_TAG:-latest}
+    image: ghcr.io/uzcreator/migrate:${TRQSH_IMAGE_TAG:-latest}
     # Local-dev fallback — build from source instead of pulling the CI image:
     #   build:
     #     context: ..
@@ -121,7 +121,7 @@ services:
   # naive DNS round-robin uneven, so the opt-in `apilb` sidecar below is the
   # recommended path.
   api:
-    image: ghcr.io/trqsh-uz/api:${TRQSH_IMAGE_TAG:-latest}
+    image: ghcr.io/uzcreator/api:${TRQSH_IMAGE_TAG:-latest}
     # Local-dev fallback — build from source instead of pulling the CI image:
     #   build:
     #     context: ..
@@ -162,7 +162,7 @@ services:
   # the apex (trqsh.uz) and www to it. next.config build-time defaults already
   # point CTAs at the production app/api URLs.
   site:
-    image: ghcr.io/trqsh-uz/site:${TRQSH_IMAGE_TAG:-latest}
+    image: ghcr.io/uzcreator/site:${TRQSH_IMAGE_TAG:-latest}
     # Local-dev fallback — build from source instead of pulling the CI image:
     #   build:
     #     context: ..
@@ -172,7 +172,7 @@ services:
   # Web dashboard (web/dashboard, Next.js) at app.<base>. TRQSH_API_URL is the
   # PUBLIC api URL, baked at build so the browser's OAuth links resolve.
   dashboard:
-    image: ghcr.io/trqsh-uz/dashboard:${TRQSH_IMAGE_TAG:-latest}
+    image: ghcr.io/uzcreator/dashboard:${TRQSH_IMAGE_TAG:-latest}
     # TRQSH_API_URL / NEXT_PUBLIC_TRQSH_BASE_DOMAIN are inlined at BUILD time by
     # Next.js. images.yml now bakes the production values (api.trqsh.uz / trqsh.uz)
     # into the published image via per-service build-args, so the pulled image is
@@ -203,7 +203,7 @@ services:
 
   # Edge data plane: public ingress (:80/:443) + agent sessions (:4443 tcp+udp).
   edge:
-    image: ghcr.io/trqsh-uz/edge:${TRQSH_IMAGE_TAG:-latest}
+    image: ghcr.io/uzcreator/edge:${TRQSH_IMAGE_TAG:-latest}
     # Local-dev fallback — build from source instead of pulling the CI image:
     #   build:
     #     context: ..

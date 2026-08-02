@@ -8,7 +8,7 @@ the same open-source agent core.
 **Homebrew** (recommended):
 
 ```sh
-brew install trqsh-uz/tap/trqsh
+brew install uzcreator/tap/trqsh
 ```
 
 **One-line script:**
@@ -39,7 +39,7 @@ curl -fsSL https://trqsh.uz/install.sh | sh
 ```
 
 **Packages:** `.deb` and `.rpm` builds are attached to every
-[GitHub release](https://github.com/trqsh-uz/trqsh/releases). The desktop app is
+[GitHub release](https://github.com/uzcreator/trqsh/releases). The desktop app is
 available as an AppImage.
 
 ## Verify the download

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -20,12 +21,13 @@ type UpdateInfo struct {
 }
 
 const (
-	// We resolve the latest version from the /releases/latest *redirect* rather
-	// than the GitHub API: the API is rate-limited to 60 req/h per IP
-	// (unauthenticated), which 403s in practice; the plain web redirect is not,
-	// and just needs the Location header to read the newest tag.
-	latestReleaseURL = "https://github.com/trqsh-uz/gui/releases/latest"
-	downloadBaseURL  = "https://github.com/trqsh-uz/gui/releases/download"
+	// Desktop releases now share the main repo (uzcreator/trqsh) but carry a
+	// `desktop-v*` tag prefix so they don't collide with the CLI's `v*` tags.
+	// /releases/latest can't filter by prefix, so we list releases via the API and
+	// pick the newest desktop-tagged one; the hourly cache below keeps this well
+	// under the 60 req/h unauthenticated rate limit.
+	releasesAPIURL  = "https://api.github.com/repos/uzcreator/trqsh/releases?per_page=30"
+	downloadBaseURL = "https://github.com/uzcreator/trqsh/releases/download"
 )
 
 var (
@@ -45,38 +47,44 @@ func latestRelease(ctx context.Context) (UpdateInfo, error) {
 	}
 	updMu.Unlock()
 
-	// Don't follow the redirect — we want to read its Location header.
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestReleaseURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesAPIURL, nil)
 	if err != nil {
 		return UpdateInfo{}, err
 	}
 	req.Header.Set("User-Agent", "trqsh-desktop")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := client.Do(req)
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
 	if err != nil {
 		return UpdateInfo{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
-	loc := resp.Header.Get("Location")
-	if loc == "" {
-		return UpdateInfo{}, fmt.Errorf("releases/latest: no redirect (status %s)", resp.Status)
+	if resp.StatusCode != http.StatusOK {
+		return UpdateInfo{}, fmt.Errorf("releases: status %s", resp.Status)
 	}
-	// loc looks like https://github.com/trqsh-uz/gui/releases/tag/v0.2.3
-	i := strings.LastIndex(loc, "/tag/")
-	if i == -1 {
-		return UpdateInfo{}, fmt.Errorf("releases/latest: unexpected location %q", loc)
-	}
-	tag := loc[i+len("/tag/"):]
-	version := strings.TrimPrefix(tag, "v")
 
-	info := UpdateInfo{Version: version, URL: loc}
+	var rels []struct {
+		TagName string `json:"tag_name"`
+		Body    string `json:"body"`
+		Draft   bool   `json:"draft"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rels); err != nil {
+		return UpdateInfo{}, err
+	}
+	// Releases come newest-first; take the first non-draft desktop-tagged one.
+	var tag, notes string
+	for _, r := range rels {
+		if !r.Draft && strings.HasPrefix(r.TagName, "desktop-v") {
+			tag, notes = r.TagName, r.Body
+			break
+		}
+	}
+	if tag == "" {
+		return UpdateInfo{}, fmt.Errorf("no desktop release found")
+	}
+	version := strings.TrimPrefix(tag, "desktop-v")
+
+	info := UpdateInfo{Version: version, Notes: notes, URL: "https://github.com/uzcreator/trqsh/releases/tag/" + tag}
 	// Point straight at this OS's installer (asset names follow Tauri's bundler
 	// convention, matching what CI publishes and the website links).
 	if asset := assetName(version, runtime.GOOS); asset != "" {

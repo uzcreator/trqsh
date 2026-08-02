@@ -49,7 +49,7 @@ Docs pages render from Markdown in [`docs/content/`](../../docs/content).
 |---|---|---|
 | `TRQSH_DASHBOARD_URL` | `https://app.trqsh.uz` | Sign-up / login CTAs |
 | `TRQSH_API_URL` | `https://api.trqsh.uz` | OAuth deep-links + build-time content fetch |
-| `TRQSH_GITHUB_REPO` | `trqsh-uz/trqsh` | Release / download links |
+| `TRQSH_GITHUB_REPO` | `uzcreator/trqsh` | Release / download links |
 | `TRQSH_SITE_URL` | `https://trqsh.uz` | Canonical origin, sitemap, OG |
 | `TRQSH_LATEST_VERSION` | see `lib/site.ts` | Download artifact filenames |
 
@@ -57,7 +57,7 @@ Docs pages render from Markdown in [`docs/content/`](../../docs/content).
 
 Built as a Docker image
 ([`deploy/docker/Dockerfile.site`](../../deploy/docker/Dockerfile.site) — a self-contained
-Next.js standalone server) and published to `ghcr.io/trqsh-uz/site` by
+Next.js standalone server) and published to `ghcr.io/uzcreator/site` by
 [`.github/workflows/images.yml`](../../.github/workflows/images.yml). See
 [`deploy/`](../../deploy) for how it runs behind the edge, which reverse-proxies the apex
 domain to it.

@@ -32,7 +32,7 @@ Also `trqsh tcp <port>` and `trqsh udp <port>` for raw TCP/UDP tunnels. Run
 The console script `trqsh` calls `trqsh.ensure_binary()`, which detects your OS
 (`darwin`/`linux`/`windows`) and CPU (`amd64`/`arm64`), downloads
 `trqsh_<version>_<os>_<arch>.<ext>` from
-`https://github.com/trqsh-uz/cli/releases`, verifies its SHA-256 against
+`https://github.com/uzcreator/trqsh/releases`, verifies its SHA-256 against
 `checksums.txt`, caches the binary under `~/.cache/trqsh/<version>/`, and execs
 it. Pure standard library — no runtime dependencies.
 

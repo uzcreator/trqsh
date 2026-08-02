@@ -4,7 +4,7 @@
 
 const dashboardUrl = process.env.TRQSH_DASHBOARD_URL || "https://app.trqsh.uz";
 const apiUrl = process.env.TRQSH_API_URL || "https://api.trqsh.uz";
-const githubRepo = process.env.TRQSH_GITHUB_REPO || "trqsh-uz/cli";
+const githubRepo = process.env.TRQSH_GITHUB_REPO || "uzcreator/trqsh";
 const siteUrl = process.env.TRQSH_SITE_URL || "https://trqsh.uz";
 const version = process.env.TRQSH_LATEST_VERSION || "0.1.2";
 // Telegram handle (without @) users message to buy/upgrade a plan. There is no

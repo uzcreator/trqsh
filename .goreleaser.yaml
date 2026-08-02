@@ -56,7 +56,7 @@ changelog:
 #   - name: trqsh
 #     ids: [default]
 #     repository:
-#       owner: trqsh-uz
+#       owner: uzcreator
 #       name: homebrew-tap
 #     homepage: "https://trqsh.uz"
 #     description: "Expose localhost to the internet — fast."
@@ -77,12 +77,10 @@ nfpms:
     bindir: /usr/bin
 
 release:
-  # Binaries are published to the dedicated PUBLIC releases repo trqsh-uz/cli
-  # (package managers point at it for downloads, kept separate from source).
-  # Requires RELEASE_REPO_TOKEN (a PAT with contents:write on trqsh-uz/cli) as
-  # GITHUB_TOKEN in release.yml.
+  # Binaries ship as GitHub Releases on this same repo (uzcreator/trqsh); the
+  # package managers (npm/pypi/scoop) and the website point their downloads here.
   github:
-    owner: trqsh-uz
-    name: cli
+    owner: uzcreator
+    name: trqsh
   draft: false
   prerelease: auto

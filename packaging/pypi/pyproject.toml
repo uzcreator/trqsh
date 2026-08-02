@@ -26,8 +26,8 @@ classifiers = [
 [project.urls]
 Homepage = "https://trqsh.uz"
 Documentation = "https://trqsh.uz/docs"
-Source = "https://github.com/trqsh-uz/cli"
-Issues = "https://github.com/trqsh-uz/cli/issues"
+Source = "https://github.com/uzcreator/trqsh"
+Issues = "https://github.com/uzcreator/trqsh/issues"
 
 [project.scripts]
 trqsh = "trqsh.__main__:main"

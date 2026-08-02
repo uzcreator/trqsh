@@ -3,7 +3,7 @@
 # Detects OS/arch, downloads the latest release archive, installs `trqsh`.
 set -eu
 
-REPO="${TRQSH_REPO:-trqsh-uz/trqsh}"
+REPO="${TRQSH_REPO:-uzcreator/trqsh}"
 BIN="trqsh"
 INSTALL_DIR="${TRQSH_INSTALL_DIR:-/usr/local/bin}"
 

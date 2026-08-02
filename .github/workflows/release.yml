@@ -21,9 +21,9 @@ jobs:
           version: "~> 2"
           args: release --clean
         env:
-          # PAT with contents:write on the PUBLIC trqsh-uz/cli repo, so the
-          # release + assets land there (the dedicated downloads repo).
-          GITHUB_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
+          # Same-repo release now: the workflow's default token (permissions:
+          # contents: write, above) suffices — no cross-repo PAT needed.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   # Publish the npm wrapper (npx trqsh / npm i -g trqsh). Runs after the release

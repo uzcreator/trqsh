@@ -52,7 +52,7 @@ middleware.ts      route protection
 
 Built as a Docker image
 ([`deploy/docker/Dockerfile.dashboard`](../../deploy/docker/Dockerfile.dashboard)) and
-published to `ghcr.io/trqsh-uz/dashboard` by
+published to `ghcr.io/uzcreator/dashboard` by
 [`.github/workflows/images.yml`](../../.github/workflows/images.yml). `TRQSH_API_URL` and
 `NEXT_PUBLIC_TRQSH_BASE_DOMAIN` are inlined at **build** time, so the published image bakes
 the production values; see [`deploy/PRODUCTION.md`](../../deploy/PRODUCTION.md).

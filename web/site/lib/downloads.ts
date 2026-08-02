@@ -1,16 +1,16 @@
 import { site } from "./site";
 
-// CLI archives are published to the public trqsh-uz/cli repo by .goreleaser.yaml
-// (`trqsh_<version>_<os>_<arch>`, zip on Windows). The desktop GUI ships from its
-// own repo, trqsh-uz/gui, and is the headline download wherever it's available.
+// CLI archives and desktop installers both ship as GitHub Releases on the main
+// uzcreator/trqsh repo (`.goreleaser.yaml` for the CLI, `desktop-build.yml` for the
+// app). CLI releases are tagged `v<version>`, desktop releases `desktop-v<version>`.
 
 const v = site.version;
 const base = `${site.githubUrl}/releases/download/v${v}`;
 
-// The desktop app (Tauri) versions independently of the CLI and ships from
-// trqsh-uz/gui. Asset names follow Tauri's bundler convention.
+// The desktop app (Tauri) versions independently of the CLI; its assets live under
+// the `desktop-v<version>` tag. Asset names follow Tauri's bundler convention.
 const dv = process.env.TRQSH_DESKTOP_VERSION || "0.3.0";
-const guiBase = `https://github.com/trqsh-uz/gui/releases/download/v${dv}`;
+const guiBase = `${site.githubUrl}/releases/download/desktop-v${dv}`;
 
 export const releasesUrl = `${site.githubUrl}/releases/latest`;
 export const checksumsUrl = `${base}/checksums.txt`;
@@ -47,7 +47,7 @@ export interface OSDownload {
 
 const npmSnippet: InstallSnippet = { label: "npm", command: "npm install -g @trqsh-uz/trqsh" };
 const pipSnippet: InstallSnippet = { label: "pipx", command: "pipx install trqsh" };
-const scoopSnippet: InstallSnippet = { label: "Scoop", command: "scoop bucket add trqsh https://github.com/trqsh-uz/scoop-bucket; scoop install trqsh" };
+const scoopSnippet: InstallSnippet = { label: "Scoop", command: "scoop bucket add trqsh https://github.com/uzcreator/scoop-bucket; scoop install trqsh" };
 const scriptSnippet: InstallSnippet = { label: "Install script", command: installShCommand, recommended: true };
 
 export const OS_DOWNLOADS: Record<OSId, OSDownload> = {
