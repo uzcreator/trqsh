@@ -65,8 +65,9 @@ curl -fsSL https://trqsh.uz/install.sh | sh
 # Windows
 scoop install trqsh
 
-trqsh login
-trqsh http 3000     # → a public HTTPS URL for localhost:3000
+trqsh login           # sign in through your browser
+trqsh http 3000       # → a public HTTPS URL for localhost:3000
+trqsh http 3000 -d    # …or in the background — `trqsh ls` to list, `trqsh stop all` to stop
 ```
 
 Full docs and an API reference live on the site (`web/site` → `/docs`), and the control API serves
