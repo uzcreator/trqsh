@@ -164,19 +164,6 @@ func newVersionCmd() *cobra.Command {
 	}
 }
 
-func newUpdateCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "update",
-		Short: "Check for and install updates",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			// TODO(part-08): query the release feed, compare versions, download +
-			// verify a signed binary, and swap in place.
-			fmt.Println("self-update is not available yet — see https://trqsh.uz/download")
-			return nil
-		},
-	}
-}
-
 // --- local control API client helpers ---
 
 func controlGET(addr, path string, out any) error {

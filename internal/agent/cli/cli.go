@@ -79,7 +79,7 @@ func newRootCmd() *cobra.Command {
 		// Misc.
 		newConfigCmd(g),
 		newVersionCmd(),
-		newUpdateCmd(),
+		newUpdateCmd(g),
 		newUninstallCmd(g),
 	)
 	return root
