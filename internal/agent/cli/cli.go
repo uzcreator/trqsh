@@ -17,10 +17,12 @@ import (
 	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
 )
 
-// Execute runs the root command.
+// Execute runs the root command. Error formatting is centralized here
+// (SilenceErrors on the root command stops cobra from also printing its own
+// "Error: ..." line) so every failure is reported exactly once, via printErr.
 func Execute() {
 	if err := newRootCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		printErr(err)
 		os.Exit(1)
 	}
 }
@@ -39,10 +41,11 @@ type globalFlags struct {
 func newRootCmd() *cobra.Command {
 	g := &globalFlags{}
 	root := &cobra.Command{
-		Use:          "trqsh",
-		Short:        "trqsh — expose your localhost to the internet, fast.",
-		Long:         "trqsh tunnels local services to a public URL over a QUIC-first, TCP-fallback transport.",
-		SilenceUsage: true,
+		Use:           "trqsh",
+		Short:         "trqsh — expose your localhost to the internet, fast.",
+		Long:          "trqsh tunnels local services to a public URL over a QUIC-first, TCP-fallback transport.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 	pf := root.PersistentFlags()
 	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.trqsh-uz/trqsh.yml)")
@@ -153,7 +156,6 @@ func runTunnels(cmd *cobra.Command, g *globalFlags, specs []agent.TunnelSpec) er
 	for _, spec := range specs {
 		t, err := core.StartTunnel(ctx, spec)
 		if err != nil {
-			printErr(err)
 			_ = core.Shutdown(context.Background())
 			return err
 		}
