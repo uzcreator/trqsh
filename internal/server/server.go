@@ -42,6 +42,7 @@ type Server struct {
 	agentLn   tunnel.Listener
 	httpLn    net.Listener
 	httpsLn   net.Listener
+	h3        *h3Ingress   // optional HTTP/3 (QUIC) public ingress (nil when TRQSH_H3_ADDR is unset)
 	forwardLn net.Listener // internal inter-edge forwarding listener (nil in single-edge mode)
 	fwdAddr   string       // address advertised to peers for this edge
 	opsSrv    *http.Server
@@ -172,6 +173,14 @@ func (s *Server) Run(ctx context.Context) error {
 	if err := s.startHTTPS(ctx); err != nil {
 		return err
 	}
+	// Optional HTTP/3 (QUIC) ingress. Additive and best-effort: a bind failure is
+	// logged but never fatal, so the edge always keeps serving HTTP/1.1 — the h3
+	// endpoint is only ever an Alt-Svc upgrade browsers opt into.
+	if s.cfg.H3Addr != "" {
+		if err := s.startH3(ctx); err != nil {
+			s.log.Warn("http/3 ingress disabled", "addr", s.cfg.H3Addr, "err", err)
+		}
+	}
 	// Inter-edge forwarding mesh (multi-edge only). Bring up the internal listener
 	// and start advertising/refreshing this edge's presence so peers can hand it
 	// traffic for tunnels homed here.
@@ -219,6 +228,15 @@ func (s *Server) HTTPAddr() net.Addr {
 		return nil
 	}
 	return s.httpLn.Addr()
+}
+
+// H3Addr is the HTTP/3 (QUIC) ingress UDP address, or nil when HTTP/3 is
+// disabled (TRQSH_H3_ADDR unset) or failed to bind. Valid after Ready fires.
+func (s *Server) H3Addr() net.Addr {
+	if s.h3 == nil {
+		return nil
+	}
+	return s.h3.addr
 }
 
 func (s *Server) agentTLSConfig() (*tls.Config, error) {
@@ -485,6 +503,9 @@ func (s *Server) drain() error {
 	}
 	if s.httpsLn != nil {
 		_ = s.httpsLn.Close()
+	}
+	if s.h3 != nil {
+		_ = s.h3.close()
 	}
 	if s.agentLn != nil {
 		_ = s.agentLn.Close()

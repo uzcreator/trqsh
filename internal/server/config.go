@@ -24,6 +24,14 @@ type Config struct {
 	// Public ingress.
 	HTTPAddr  string // TRQSH_HTTP_ADDR,  e.g. ":80"
 	HTTPSAddr string // TRQSH_HTTPS_ADDR, e.g. ":443"
+	// Optional HTTP/3 (QUIC) public ingress. When set, the edge serves the same
+	// routing over QUIC on this UDP address and advertises it via Alt-Svc, so
+	// browsers can multiplex many concurrent requests on one connection without
+	// HTTP/1.1 head-of-line blocking (the pain when tunneling dev servers that
+	// fan out into hundreds of small requests). Empty => HTTP/3 disabled (the TCP
+	// HTTP/1.1 ingress is unchanged). Set it to the same port as HTTPSAddr, e.g.
+	// ":443", so the advertised h3 endpoint matches the TLS origin.
+	H3Addr string // TRQSH_H3_ADDR, e.g. ":443" (UDP)
 
 	// Routing / identity.
 	BaseDomain string // TRQSH_BASE_DOMAIN, e.g. "lvh.me" (dev) / "trqsh.uz" (prod)
@@ -120,6 +128,7 @@ func LoadConfig() (Config, error) {
 	envStr(&c.TCPAddr, "TRQSH_TCP_ADDR")
 	envStr(&c.HTTPAddr, "TRQSH_HTTP_ADDR")
 	envStr(&c.HTTPSAddr, "TRQSH_HTTPS_ADDR")
+	envStr(&c.H3Addr, "TRQSH_H3_ADDR")
 	envStr(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
 	envStr(&c.Region, "TRQSH_REGION")
 	envStr(&c.EdgeID, "TRQSH_EDGE_ID")
