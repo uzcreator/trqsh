@@ -88,9 +88,11 @@ resource "digitalocean_reserved_ip_assignment" "edge" {
   droplet_id = each.value.id
 }
 
-# Cloud firewall: allow public ingress + agent ports; SSH from anywhere (tighten
-# to a bastion in prod). The inter-edge forwarding port is deliberately NOT in the
-# public set below — it gets its own edge-only rule.
+# Cloud firewall: allow public ingress on the product ports only. SSH is NOT in
+# this public set — it's a separate, opt-in rule below gated by
+# ssh_allowed_cidrs, so a fresh apply ships with no SSH ingress at all rather
+# than defaulting open. The inter-edge forwarding port is also deliberately NOT
+# in the public set — it gets its own edge-only rule.
 resource "digitalocean_firewall" "edge" {
   name        = "${var.project_name}-edge"
   droplet_ids = [for d in digitalocean_droplet.edge : d.id]
@@ -101,12 +103,23 @@ resource "digitalocean_firewall" "edge" {
       { proto = "tcp", ports = "443" },
       { proto = "tcp", ports = "4443" },
       { proto = "udp", ports = "4443" },
-      { proto = "tcp", ports = "22" },
     ]
     content {
       protocol         = inbound_rule.value.proto
       port_range       = inbound_rule.value.ports
       source_addresses = ["0.0.0.0/0", "::/0"]
+    }
+  }
+
+  # SSH: only opened when ssh_allowed_cidrs is set (e.g. to a bastion or admin
+  # IP/VPN range). Leave it unset to ship edges with no SSH ingress rule at
+  # all; use the DO web console / recovery mode for out-of-band access.
+  dynamic "inbound_rule" {
+    for_each = length(var.ssh_allowed_cidrs) > 0 ? [1] : []
+    content {
+      protocol         = "tcp"
+      port_range       = "22"
+      source_addresses = var.ssh_allowed_cidrs
     }
   }
 
@@ -120,14 +133,29 @@ resource "digitalocean_firewall" "edge" {
     source_tags = [digitalocean_tag.edge.name]
   }
 
-  outbound_rule {
-    protocol              = "tcp"
-    port_range            = "1-65535"
-    destination_addresses = ["0.0.0.0/0", "::/0"]
-  }
-  outbound_rule {
-    protocol              = "udp"
-    port_range            = "1-65535"
-    destination_addresses = ["0.0.0.0/0", "::/0"]
+  # Egress restricted to what an edge actually needs to originate outbound:
+  # HTTP(S) for apt package installs, the GHCR edge-image pull, calls to the
+  # control API, ACME/Let's Encrypt, and the Cloudflare API (DNS-01 + zone
+  # lookups); DNS resolution; and the managed Postgres/Redis ports (DO managed
+  # databases always use 25060/25061, see
+  # https://docs.digitalocean.com/products/databases — edges outside
+  # primary_region reach them over the public endpoint since DO VPCs are
+  # single-region). Tunneled traffic itself flows back down the
+  # already-established agent session, not a fresh outbound connection, so it
+  # needs no broader allowance. Review against your actual egress needs before
+  # applying to real infrastructure.
+  dynamic "outbound_rule" {
+    for_each = [
+      { proto = "tcp", ports = "80" },
+      { proto = "tcp", ports = "443" },
+      { proto = "tcp", ports = "53" },
+      { proto = "udp", ports = "53" },
+      { proto = "tcp", ports = "25060-25061" },
+    ]
+    content {
+      protocol              = outbound_rule.value.proto
+      port_range            = outbound_rule.value.ports
+      destination_addresses = ["0.0.0.0/0", "::/0"]
+    }
   }
 }
