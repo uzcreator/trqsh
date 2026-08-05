@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/net/http2"
+
 	"github.com/trqsh-uz/trqsh/internal/entitlerpc"
 	"github.com/trqsh-uz/trqsh/pkg/authz"
 	"github.com/trqsh-uz/trqsh/pkg/proto"
@@ -42,9 +44,10 @@ type Server struct {
 	agentLn   tunnel.Listener
 	httpLn    net.Listener
 	httpsLn   net.Listener
-	h3        *h3Ingress   // optional HTTP/3 (QUIC) public ingress (nil when TRQSH_H3_ADDR is unset)
-	forwardLn net.Listener // internal inter-edge forwarding listener (nil in single-edge mode)
-	fwdAddr   string       // address advertised to peers for this edge
+	h3        *h3Ingress    // optional HTTP/3 (QUIC) public ingress (nil when TRQSH_H3_ADDR is unset)
+	h2Server  *http2.Server // shared HTTP/2 server for the TCP ingress (nil unless TRQSH_ENABLE_H2)
+	forwardLn net.Listener  // internal inter-edge forwarding listener (nil in single-edge mode)
+	fwdAddr   string        // address advertised to peers for this edge
 	opsSrv    *http.Server
 
 	mu       sync.Mutex
@@ -228,6 +231,14 @@ func (s *Server) HTTPAddr() net.Addr {
 		return nil
 	}
 	return s.httpLn.Addr()
+}
+
+// HTTPSAddr is the public HTTPS (TCP) ingress address. Valid after Ready fires.
+func (s *Server) HTTPSAddr() net.Addr {
+	if s.httpsLn == nil {
+		return nil
+	}
+	return s.httpsLn.Addr()
 }
 
 // H3Addr is the HTTP/3 (QUIC) ingress UDP address, or nil when HTTP/3 is

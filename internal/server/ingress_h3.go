@@ -83,7 +83,7 @@ func (s *Server) startH3(ctx context.Context) error {
 	}
 	h3 := &http3.Server{
 		TLSConfig:      tlsConf,
-		Handler:        http.HandlerFunc(s.serveH3),
+		Handler:        http.HandlerFunc(s.routeHTTPS),
 		Port:           advPort,
 		IdleTimeout:    httpIdleTimeout,
 		MaxHeaderBytes: 1 << 20,
@@ -109,10 +109,12 @@ func (s *Server) startH3(ctx context.Context) error {
 	return nil
 }
 
-// serveH3 is the HTTP/3 request handler. It mirrors serveHTTPConn's routing but
-// writes through an http.ResponseWriter instead of a raw net.Conn.
-func (s *Server) serveH3(w http.ResponseWriter, r *http.Request) {
-	const scheme = "https" // HTTP/3 is TLS-only
+// routeHTTPS is the shared HTTP/2 + HTTP/3 request handler. It mirrors
+// serveHTTPConn's routing but writes through an http.ResponseWriter instead of a
+// raw net.Conn, so it serves both the QUIC (h3) ingress and the h2 half of the
+// TCP ingress. WebSockets never reach here — they stay on the HTTP/1.1 path.
+func (s *Server) routeHTTPS(w http.ResponseWriter, r *http.Request) {
+	const scheme = "https" // h2 and h3 are both TLS-only
 	host := hostOnly(r.Host)
 
 	bt := s.hub.LookupHost(host)

@@ -94,8 +94,3 @@ func (d *devCertManager) TLSConfig() *tls.Config {
 		MinVersion:     tls.VersionTLS12,
 	}
 }
-
-// tlsListener wraps a raw listener with the cert manager's TLS config.
-func tlsListener(inner net.Listener, cm CertManager) net.Listener {
-	return tls.NewListener(inner, cm.TLSConfig())
-}

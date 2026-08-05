@@ -38,6 +38,14 @@ type Config struct {
 	// UDP 443, so browsers must be told 443, not 8443. 0 => advertise the bound
 	// port (correct when the edge binds the public port directly).
 	H3AdvertisePort int // TRQSH_H3_ADVERTISE_PORT, e.g. 443
+	// Serve HTTP/2 (in addition to HTTP/1.1) on the TCP HTTPS ingress. h2
+	// multiplexes many requests over one connection, removing the browser's ~6
+	// connection-per-host HTTP/1.1 limit for clients that can't reach the UDP h3
+	// port (blocked UDP, older browsers). WebSockets stay on HTTP/1.1 (h2 Extended
+	// CONNECT is not advertised), so enabling this is the nginx-style h2+h1.1
+	// pattern. Off by default (h2 is the primary path, not a fallback like h3);
+	// validate WebSocket tunnels after enabling, and set back to 0 to revert.
+	EnableH2 bool // TRQSH_ENABLE_H2
 
 	// Routing / identity.
 	BaseDomain string // TRQSH_BASE_DOMAIN, e.g. "lvh.me" (dev) / "trqsh.uz" (prod)
@@ -136,6 +144,7 @@ func LoadConfig() (Config, error) {
 	envStr(&c.HTTPSAddr, "TRQSH_HTTPS_ADDR")
 	envStr(&c.H3Addr, "TRQSH_H3_ADDR")
 	envInt(&c.H3AdvertisePort, "TRQSH_H3_ADVERTISE_PORT")
+	c.EnableH2 = envBool("TRQSH_ENABLE_H2", c.EnableH2)
 	envStr(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
 	envStr(&c.Region, "TRQSH_REGION")
 	envStr(&c.EdgeID, "TRQSH_EDGE_ID")

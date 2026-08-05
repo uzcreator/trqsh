@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/subtle"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"github.com/trqsh-uz/trqsh/pkg/proto"
 )
@@ -36,8 +39,17 @@ func (s *Server) startHTTPS(ctx context.Context) error {
 		return fmt.Errorf("server: https listen %s: %w", s.cfg.HTTPSAddr, err)
 	}
 	s.httpsLn = raw
-	tlsLn := tlsListener(raw, s.certs)
-	s.log.Info("https ingress up", "addr", s.cfg.HTTPSAddr)
+	tlsConf := s.certs.TLSConfig()
+	if s.cfg.EnableH2 {
+		// Prefer h2, keep http/1.1 (and the acme-tls/1 challenge proto) after it.
+		// Extended CONNECT stays off (x/net/http2 default), so browsers run
+		// WebSockets over http/1.1 — see serveMaybeH2.
+		tlsConf = tlsConf.Clone()
+		tlsConf.NextProtos = append([]string{"h2"}, tlsConf.NextProtos...)
+		s.h2Server = &http2.Server{IdleTimeout: httpIdleTimeout}
+	}
+	tlsLn := tls.NewListener(raw, tlsConf)
+	s.log.Info("https ingress up", "addr", s.cfg.HTTPSAddr, "h2", s.cfg.EnableH2)
 	s.wg.Add(1)
 	go func() { defer s.wg.Done(); s.acceptHTTP(ctx, tlsLn, "https") }()
 	return nil
@@ -53,8 +65,45 @@ func (s *Server) acceptHTTP(ctx context.Context, ln net.Listener, scheme string)
 			continue
 		}
 		s.wg.Add(1)
-		go func() { defer s.wg.Done(); s.serveHTTPConn(c, scheme) }()
+		go func() {
+			defer s.wg.Done()
+			if s.cfg.EnableH2 {
+				s.serveMaybeH2(ctx, c, scheme)
+			} else {
+				s.serveHTTPConn(c, scheme)
+			}
+		}()
 	}
+}
+
+// serveMaybeH2 completes the TLS handshake and, when the client negotiated h2,
+// serves the connection with the shared multiplexed handler (routeHTTPS);
+// otherwise it hands off to the unchanged HTTP/1.1 path. Only reached when
+// TRQSH_ENABLE_H2 is set. WebSockets always land on the HTTP/1.1 path: the h2
+// server does not advertise Extended CONNECT (RFC 8441), so browsers open
+// WebSockets over http/1.1 — the same well-worn pattern as nginx.
+func (s *Server) serveMaybeH2(ctx context.Context, c net.Conn, scheme string) {
+	tc, ok := c.(*tls.Conn)
+	if !ok {
+		s.serveHTTPConn(c, scheme) // plain HTTP listener: no ALPN, always h1.1
+		return
+	}
+	hctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	err := tc.HandshakeContext(hctx)
+	cancel()
+	if err != nil {
+		_ = c.Close()
+		return
+	}
+	if tc.ConnectionState().NegotiatedProtocol == "h2" {
+		defer func() { _ = c.Close() }()
+		s.h2Server.ServeConn(tc, &http2.ServeConnOpts{
+			Context: ctx,
+			Handler: http.HandlerFunc(s.routeHTTPS),
+		})
+		return
+	}
+	s.serveHTTPConn(tc, scheme) // handshake already done; h1.1 path unchanged
 }
 
 // serveHTTPConn proxies HTTP over a public connection: it parses each request,
