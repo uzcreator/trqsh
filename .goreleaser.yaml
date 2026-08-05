@@ -47,6 +47,24 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+# Keyless-sign checksums.txt with cosign/Sigstore (via the release workflow's
+# GitHub Actions OIDC token — no key material to manage or leak). Signing the
+# checksum file is enough to cover every archive/package transitively, since
+# each one's hash is listed in it. Verify a download with:
+#   cosign verify-blob --bundle checksums.txt.sigstore.json \
+#     --certificate-identity-regexp 'https://github.com/uzcreator/trqsh/.*' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+#     checksums.txt
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - "sign-blob"
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+
 snapshot:
   version_template: "{{ incpatch .Version }}-dev"
 

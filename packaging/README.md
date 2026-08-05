@@ -27,6 +27,21 @@ platform, download the archive, verify its checksum, unpack the binary, and exec
 it. `install.sh` is also copied to [`../web/site/public/install.sh`](../web/site/public/install.sh)
 so the marketing site serves it at `trqsh.uz/install.sh`.
 
+`checksums.txt` is itself keyless-signed at release time with
+[cosign](https://github.com/sigstore/cosign) via GitHub Actions' OIDC token (no
+key material to manage) — see the `signs:` block in
+[`../.goreleaser.yaml`](../.goreleaser.yaml). To verify a download beyond the
+checksum (i.e. confirm `checksums.txt` itself really came from this repo's CI,
+not just that a binary matches whatever checksums.txt says):
+
+```bash
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/uzcreator/trqsh/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+```
+
 ## Releasing (per version)
 
 1. Tag `vX.Y.Z`; CI runs `goreleaser release` → publishes archives + `checksums.txt`
