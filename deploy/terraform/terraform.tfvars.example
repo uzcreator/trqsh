@@ -12,8 +12,13 @@ edge_regions          = ["fra1", "nyc3", "sgp1"]
 edge_nodes_per_region = 2
 acme_email            = "ops@trqsh.uz"
 
-# SSH keys placed on edge droplets (DO fingerprints).
-# ssh_key_fingerprints = ["aa:bb:cc:..."]
+# SSH keys placed on edge droplets (DO fingerprints). Required — an empty list
+# makes DigitalOcean fall back to emailing a random root password.
+ssh_key_fingerprints = ["aa:bb:cc:..."]
+
+# CIDRs allowed to SSH into edge droplets (:22). Leave unset/empty to ship
+# edges with no SSH ingress rule at all.
+# ssh_allowed_cidrs = ["203.0.113.4/32"]
 
 # Set after `helm install` provisions the ingress LoadBalancer (or use external-dns).
 # control_ingress_ip = "203.0.113.10"

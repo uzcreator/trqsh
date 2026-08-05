@@ -49,7 +49,17 @@ variable "edge_image" {
 }
 
 variable "ssh_key_fingerprints" {
-  description = "SSH key fingerprints to place on edge droplets."
+  description = "SSH key fingerprints to place on edge droplets. Required (no default): an empty list makes DigitalOcean fall back to emailing a random root password instead of installing a key."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.ssh_key_fingerprints) > 0
+    error_message = "ssh_key_fingerprints must not be empty — supply at least one DO SSH key fingerprint so droplets don't fall back to password auth."
+  }
+}
+
+variable "ssh_allowed_cidrs" {
+  description = "CIDR blocks allowed to reach edge droplets on :22 (e.g. a bastion or admin VPN range). Leave empty (default) to ship edges with no SSH ingress rule at all."
   type        = list(string)
   default     = []
 }

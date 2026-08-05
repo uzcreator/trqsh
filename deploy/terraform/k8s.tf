@@ -12,6 +12,17 @@ resource "digitalocean_kubernetes_cluster" "control" {
   version  = data.digitalocean_kubernetes_versions.current.latest_version
   vpc_uuid = digitalocean_vpc.control.id
 
+  # Keep the control plane patched against k8s CVEs automatically; surge
+  # upgrade replaces nodes with extra capacity first so upgrades are
+  # zero-downtime instead of draining in place. Window picked for low
+  # traffic (Sunday pre-dawn UTC) so an upgrade never lands mid-peak.
+  auto_upgrade    = true
+  surge_upgrade   = true
+  maintenance_policy {
+    start_time = "04:00"
+    day        = "sunday"
+  }
+
   node_pool {
     name       = "control"
     size       = var.control_node_size
