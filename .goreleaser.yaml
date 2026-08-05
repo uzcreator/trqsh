@@ -13,7 +13,12 @@ builds:
     binary: trqsh
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
-    ldflags: ["-s -w -X github.com/trqsh-uz/trqsh/internal/agent.Version={{.Version}}"]
+    ldflags:
+      - >-
+        -s -w
+        -X github.com/trqsh-uz/trqsh/internal/agent.Version={{.Version}}
+        -X github.com/trqsh-uz/trqsh/internal/agent.Commit={{.ShortCommit}}
+        -X github.com/trqsh-uz/trqsh/internal/agent.BuildDate={{.Date}}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
 
