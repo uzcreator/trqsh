@@ -94,10 +94,20 @@ async function install() {
   try {
     if (process.platform === "win32") {
       // PowerShell ships with Windows; more reliable than tar for .zip.
+      //
+      // The archive/dest paths are passed through environment variables and
+      // read back as $env:... inside a fixed command string, rather than
+      // interpolated into the -Command text directly. A Windows path can
+      // legitimately contain a single quote (e.g. a username like O'Brien,
+      // or a custom npm prefix), and PowerShell's quoting rules aren't
+      // limited to ASCII quote characters either (curly/smart Unicode quotes
+      // can also close a quoted string), so naively doubling `'` characters
+      // isn't a reliable escape. Env vars carry the values as plain data,
+      // with no command text built from them at all.
       execFileSync(
         "powershell",
-        ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${tmp}' -DestinationPath '${C.vendorDir}' -Force`],
-        { stdio: "ignore" }
+        ["-NoProfile", "-NonInteractive", "-Command", "Expand-Archive -LiteralPath $env:TRQSH_INSTALL_SRC -DestinationPath $env:TRQSH_INSTALL_DEST -Force"],
+        { stdio: "ignore", env: { ...process.env, TRQSH_INSTALL_SRC: tmp, TRQSH_INSTALL_DEST: C.vendorDir } }
       );
     } else {
       execFileSync("tar", ["-xzf", tmp, "-C", C.vendorDir], { stdio: "ignore" });
