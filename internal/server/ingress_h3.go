@@ -35,9 +35,10 @@ import (
 // Cross-edge forwarding is likewise h1.1-only for now: an h3 request for a
 // tunnel homed on another edge 404s locally rather than being forwarded.
 type h3Ingress struct {
-	srv  *http3.Server
-	conn net.PacketConn
-	addr net.Addr
+	srv    *http3.Server
+	conn   net.PacketConn
+	addr   net.Addr
+	altSvc string // value advertised in the Alt-Svc header, e.g. `h3=":443"; ma=86400`
 }
 
 // close shuts the HTTP/3 server (stops accepting, closes active conns) and then
@@ -80,7 +81,11 @@ func (s *Server) startH3(ctx context.Context) error {
 		IdleTimeout:    httpIdleTimeout,
 		MaxHeaderBytes: 1 << 20,
 	}
-	s.h3 = &h3Ingress{srv: h3, conn: conn, addr: conn.LocalAddr()}
+	// Alt-Svc tells browsers (on their initial TCP/HTTP-1.1 connection) that the
+	// same origin is reachable over HTTP/3 on this UDP port, so they upgrade
+	// subsequent requests. ma is the advertisement's lifetime in seconds.
+	altSvc := fmt.Sprintf(`h3=":%d"; ma=86400`, portOf(conn.LocalAddr()))
+	s.h3 = &h3Ingress{srv: h3, conn: conn, addr: conn.LocalAddr(), altSvc: altSvc}
 
 	s.log.Info("http/3 ingress up", "addr", conn.LocalAddr().String())
 	s.wg.Add(1)
@@ -167,6 +172,7 @@ func (s *Server) serveH3(w http.ResponseWriter, r *http.Request) {
 	// invalid over HTTP/3; strip them before relaying the response.
 	removeHopByHopHeaders(resp.Header)
 	copyHeader(w.Header(), resp.Header)
+	s.setAltSvc(w.Header())
 	w.WriteHeader(resp.StatusCode)
 	n, _ := io.Copy(w, resp.Body)
 
@@ -215,9 +221,19 @@ func (s *Server) proxyToUpstreamH3(w http.ResponseWriter, r *http.Request, schem
 	}
 	removeHopByHopHeaders(resp.Header)
 	copyHeader(w.Header(), resp.Header)
+	s.setAltSvc(w.Header())
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 	s.metrics.Requests.WithLabelValues(scheme).Inc()
+}
+
+// setAltSvc advertises the HTTP/3 endpoint on a response header when the h3
+// ingress is up; a no-op otherwise. Called on both h1.1 responses (so browsers
+// discover h3) and h3 responses (so the advertisement stays fresh).
+func (s *Server) setAltSvc(h http.Header) {
+	if s.h3 != nil && s.h3.altSvc != "" {
+		h.Set("Alt-Svc", s.h3.altSvc)
+	}
 }
 
 // copyHeader appends every value of src into dst.

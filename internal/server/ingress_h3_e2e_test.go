@@ -275,3 +275,51 @@ func TestReservedUpstreamProxyH3(t *testing.T) {
 		t.Fatalf("unexpected body: %q", body)
 	}
 }
+
+// h1TunnelResponse binds a tunnel on srv, drives one plain-HTTP/1.1 request
+// through it by Host, and returns the response headers.
+func h1TunnelResponse(t *testing.T, srv *server.Server) http.Header {
+	t.Helper()
+	fa := dialAgent(t, srv.AgentAddr().String())
+	fa.hello(t, "tq_test")
+	if r := fa.bind(t, &proto.BindTunnel{ClientTunnelId: "t1", Type: proto.TunnelType_HTTP, Subdomain: "demo"}); !r.Ok {
+		t.Fatalf("bind not ok: %v", r.Error)
+	}
+	cannedHTTPAgent(fa, "ok path=")
+
+	req, _ := http.NewRequest(http.MethodGet, "http://"+srv.HTTPAddr().String()+"/hi", nil)
+	req.Host = "demo.lvh.me"
+	client := &http.Client{Timeout: 5 * time.Second}
+	var resp *http.Response
+	var err error
+	for i := 0; i < 20; i++ {
+		if resp, err = client.Do(req); err == nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	_ = resp.Body.Close()
+	return resp.Header
+}
+
+// TestAltSvcAdvertisedWhenH3Enabled confirms an HTTP/1.1 tunnel response carries
+// the Alt-Svc header advertising h3 — the signal browsers use to upgrade off the
+// HOL-blocking TCP connection onto QUIC.
+func TestAltSvcAdvertisedWhenH3Enabled(t *testing.T) {
+	h := h1TunnelResponse(t, startEdgeH3(t))
+	if alt := h.Get("Alt-Svc"); !strings.Contains(alt, "h3=") {
+		t.Fatalf("Alt-Svc = %q, want it to advertise h3", alt)
+	}
+}
+
+// TestNoAltSvcWhenH3Disabled confirms Alt-Svc is absent when the h3 ingress is
+// off, so we never advertise an endpoint that isn't listening.
+func TestNoAltSvcWhenH3Disabled(t *testing.T) {
+	h := h1TunnelResponse(t, startEdge(t, 0, 0))
+	if alt := h.Get("Alt-Svc"); alt != "" {
+		t.Fatalf("Alt-Svc = %q, want empty when h3 disabled", alt)
+	}
+}

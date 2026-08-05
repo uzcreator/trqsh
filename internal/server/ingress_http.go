@@ -170,6 +170,9 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 			return
 		}
 		clientClose := req.Close || resp.Close
+		// Advertise HTTP/3 so the browser upgrades subsequent requests off this
+		// HOL-blocking HTTP/1.1 connection (no-op when h3 is disabled).
+		s.setAltSvc(resp.Header)
 		if err := resp.Write(conn); err != nil {
 			_ = resp.Body.Close()
 			_ = st.Close()
@@ -336,6 +339,7 @@ func (s *Server) proxyToUpstream(conn net.Conn, req *http.Request, scheme, upstr
 		resp.Header.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 	}
 	keepAlive := !req.Close && !resp.Close
+	s.setAltSvc(resp.Header)
 	if err := resp.Write(conn); err != nil {
 		return false
 	}
