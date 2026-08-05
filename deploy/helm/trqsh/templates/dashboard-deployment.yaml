@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "trqsh.fullname" . }}-dashboard
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "trqsh.labels" . | nindent 4 }}
     app.kubernetes.io/component: dashboard
@@ -19,10 +20,24 @@ spec:
       serviceAccountName: {{ include "trqsh.serviceAccountName" . }}
       securityContext:
         runAsNonRoot: true
+        # Dockerfile.dashboard creates its own "nextjs" user via `adduser -S` (an
+        # Alpine system UID, not a fixed/documented number) — pin an explicit
+        # high UID/GID here instead of trusting whatever Alpine happened to
+        # assign; files are copied in as root so they stay world-readable.
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
+        # trivy:ignore:AVD-KSV-0125 -- pulled exclusively from our own registry (values.yaml image.registry: ghcr.io/uzcreator)
         - name: dashboard
           image: {{ include "trqsh.image" (dict "root" . "repo" .Values.dashboard.repository) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: http
               containerPort: {{ .Values.dashboard.containerPort }}
@@ -44,6 +59,18 @@ spec:
             periodSeconds: 20
           resources:
             {{- toYaml .Values.dashboard.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # Next.js writes its fetch/route cache under .next/cache at runtime
+            # regardless of whether the app explicitly opts into ISR.
+            - name: next-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

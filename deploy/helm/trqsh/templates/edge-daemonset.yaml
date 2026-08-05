@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "trqsh.fullname" . }}-edge
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "trqsh.labels" . | nindent 4 }}
     app.kubernetes.io/component: edge
@@ -26,8 +27,16 @@ spec:
       serviceAccountName: {{ include "trqsh.serviceAccountName" . }}
       # Own :80/:443 (TCP+UDP) directly on each edge node; still resolve cluster
       # DNS (the api Service) via ClusterFirstWithHostNet.
+      # trivy:ignore:AVD-KSV-0009 -- required to own the host's :80/:443/QUIC directly (real client IPs, no Service/NAT hop); this DaemonSet is the optional self-hosted-k8s edge path, not the primary per-region-droplet deployment (see deploy/terraform/edge.tf)
       hostNetwork: {{ .Values.edge.hostNetwork }}
       dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsNonRoot: true
+        # gcr.io/distroless/static:nonroot's fixed UID/GID (Dockerfile.edge: USER nonroot:nonroot).
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       # SIGTERM triggers the edge's graceful drain (ShutdownMsg to agents).
       terminationGracePeriodSeconds: {{ add .Values.edge.drainTimeoutSeconds 5 }}
       {{- with .Values.edge.nodeSelector }}
@@ -39,9 +48,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
+        # trivy:ignore:AVD-KSV-0125 -- pulled exclusively from our own registry (values.yaml image.registry: ghcr.io/uzcreator)
         - name: edge
           image: {{ include "trqsh.image" (dict "root" . "repo" .Values.edge.repository) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # trivy:ignore:AVD-KSV-0117 -- binding :80/:443 is this component's job (public HTTP/HTTPS termination); scoped to CAP_NET_BIND_SERVICE only, not root, below
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+              add: ["NET_BIND_SERVICE"]
           ports:
             - name: http
               containerPort: {{ .Values.edge.ports.http }}
@@ -126,6 +143,20 @@ spec:
             periodSeconds: 20
           resources:
             {{- toYaml .Values.edge.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # ACME cert cache (TRQSH_TLS_STORAGE_DIR above) — only used as a
+            # fallback when TRQSH_REDIS_URL isn't set (Stage C shared cert
+            # store); still needs to be writable either way now that the root
+            # filesystem is read-only.
+            - name: certs
+              mountPath: {{ .Values.edge.acme.storageDir }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: certs
+          emptyDir: {}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
