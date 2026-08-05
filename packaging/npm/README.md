@@ -56,9 +56,10 @@ trqsh uninstall                 # remove local data (config, key, cache) + stop 
 npm rm -g @trqsh-uz/trqsh       # then remove the package itself
 ```
 
-Run `trqsh uninstall` first: `npm rm` deletes the package but leaves your saved key,
-control token, logs, and downloaded binary behind — `trqsh uninstall` clears those and
-stops any background daemon. Add `-y` to skip the confirmation.
+Run `trqsh uninstall` first: it stops any background daemon and clears your saved key,
+control token, and logs, none of which live inside the npm package so `npm rm` never
+touches them. (The downloaded binary itself lives in the package's own `vendor/` dir,
+so `npm rm` removes that automatically.) Add `-y` to skip the confirmation.
 
 ## Author
 
