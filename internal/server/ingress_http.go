@@ -181,7 +181,10 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		_ = resp.Body.Close()
 		_ = st.Close()
 
-		s.usage.record(bt.accountID, bt.clientTunnelID, req.ContentLength, max64(resp.ContentLength, 0), 1)
+		// Both lengths are -1 when unknown (e.g. a chunked request or response with
+		// no Content-Length); clamp to 0 so an unknown length never records negative
+		// bytes into usage/billing. resp was already guarded; req had been missed.
+		s.usage.record(bt.accountID, bt.clientTunnelID, max64(req.ContentLength, 0), max64(resp.ContentLength, 0), 1)
 		if clientClose {
 			return
 		}
