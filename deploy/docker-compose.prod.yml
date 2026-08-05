@@ -21,7 +21,9 @@
 #  * The edge image is distroless/nonroot, which cannot bind privileged ports
 #    (<1024). So it listens on :8080/:8443 inside the container and Docker maps
 #    the public :80/:443 onto them. ACME (TLS-ALPN on :443, HTTP on :80) still
-#    works because the mapping is transparent to Let's Encrypt.
+#    works because the mapping is transparent to Let's Encrypt. HTTP/3 adds a
+#    UDP 443 -> :8443 map — open UDP 443 in the firewall, and browsers learn the
+#    public 443 via TRQSH_H3_ADVERTISE_PORT (Alt-Svc).
 #  * Postgres/Redis/metrics have NO host ports — internal only (defence in depth;
 #    the firewall also blocks them).
 
@@ -232,6 +234,13 @@ services:
       # Public ports bound high inside the container (nonroot); Docker maps 80/443.
       TRQSH_HTTP_ADDR: ":8080"
       TRQSH_HTTPS_ADDR: ":8443"
+      # HTTP/3 (QUIC) ingress, same port as HTTPS. Docker publishes UDP 443 onto
+      # :8443 below; browsers are told the public 443 via TRQSH_H3_ADVERTISE_PORT
+      # (Alt-Svc). Requires UDP 443 open in the host firewall / cloud security
+      # group. Comment out both lines to disable h3 — the TCP HTTP/1.1 ingress
+      # keeps serving either way, so this is a safe, additive upgrade.
+      TRQSH_H3_ADDR: ":8443"
+      TRQSH_H3_ADVERTISE_PORT: "443"
       TRQSH_QUIC_ADDR: ":4443"
       TRQSH_TCP_ADDR: ":4443"
       # TLS / Let's Encrypt.
@@ -249,7 +258,8 @@ services:
       - trqsh_tls:/var/lib/trqsh/tls
     ports:
       - "80:8080"
-      - "443:8443"
+      - "443:8443/tcp"
+      - "443:8443/udp" # HTTP/3 (QUIC) ingress
       - "4443:4443/tcp"
       - "4443:4443/udp"
     depends_on:
