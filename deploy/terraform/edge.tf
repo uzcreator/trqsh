@@ -101,6 +101,8 @@ resource "digitalocean_firewall" "edge" {
     for_each = [
       { proto = "tcp", ports = "80" },
       { proto = "tcp", ports = "443" },
+      # HTTP/3 (QUIC) ingress shares :443 with HTTPS, over UDP.
+      { proto = "udp", ports = "443" },
       { proto = "tcp", ports = "4443" },
       { proto = "udp", ports = "4443" },
     ]
