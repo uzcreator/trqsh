@@ -48,7 +48,7 @@ func Listen(quicAddr, tcpAddr string, tlsConf *tls.Config) (Listener, error) {
 		if err != nil {
 			cancel()
 			if m.quicLn != nil {
-				m.quicLn.Close()
+				_ = m.quicLn.Close()
 			}
 			return nil, err
 		}
@@ -108,12 +108,12 @@ func (m *multiListener) acceptTCP(ln net.Listener) {
 func (m *multiListener) serveTCP(raw net.Conn) {
 	tlsConn := tls.Server(raw, m.conf)
 	if err := tlsConn.HandshakeContext(m.ctx); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return
 	}
 	sess, err := yamux.Server(tlsConn, yamuxConfig(defaultKeepAlive))
 	if err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return
 	}
 	m.push(acceptResult{sess: newYamuxSession(sess)})
@@ -125,7 +125,7 @@ func (m *multiListener) push(r acceptResult) {
 	case m.accepts <- r:
 	case <-m.ctx.Done():
 		if r.sess != nil {
-			r.sess.CloseWithError(0, "listener closed")
+			_ = r.sess.CloseWithError(0, "listener closed")
 		}
 	}
 }

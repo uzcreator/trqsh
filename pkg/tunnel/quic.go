@@ -67,6 +67,6 @@ type quicStream struct {
 	conn *quic.Conn
 }
 
-func (s *quicStream) ID() uint64           { return uint64(s.StreamID()) }
+func (s *quicStream) ID() uint64           { return uint64(s.StreamID()) } // #nosec G115 -- QUIC stream IDs are protocol-guaranteed non-negative (RFC 9000)
 func (s *quicStream) LocalAddr() net.Addr  { return s.conn.LocalAddr() }
 func (s *quicStream) RemoteAddr() net.Addr { return s.conn.RemoteAddr() }

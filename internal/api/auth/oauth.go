@@ -36,7 +36,7 @@ type OAuthProvider struct {
 
 // GitHubProvider builds a GitHub OAuth provider from credentials.
 func GitHubProvider(clientID, clientSecret, redirectURL string) OAuthProvider {
-	return OAuthProvider{
+	return OAuthProvider{ // #nosec G101 -- public OAuth endpoint URLs below; ClientSecret comes from a parameter, not a literal
 		Name: "github", ClientID: clientID, ClientSecret: clientSecret, RedirectURL: redirectURL,
 		AuthURL:  "https://github.com/login/oauth/authorize",
 		TokenURL: "https://github.com/login/oauth/access_token",
@@ -47,7 +47,7 @@ func GitHubProvider(clientID, clientSecret, redirectURL string) OAuthProvider {
 
 // GoogleProvider builds a Google OAuth provider from credentials.
 func GoogleProvider(clientID, clientSecret, redirectURL string) OAuthProvider {
-	return OAuthProvider{
+	return OAuthProvider{ // #nosec G101 -- public OAuth endpoint URLs below; ClientSecret comes from a parameter, not a literal
 		Name: "google", ClientID: clientID, ClientSecret: clientSecret, RedirectURL: redirectURL,
 		AuthURL:    "https://accounts.google.com/o/oauth2/v2/auth",
 		TokenURL:   "https://oauth2.googleapis.com/token",

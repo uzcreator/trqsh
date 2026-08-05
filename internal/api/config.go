@@ -10,8 +10,8 @@ import (
 // Dev-only sentinel secrets. In production these MUST be replaced; LoadConfig
 // refuses to start if they leak into a production deployment (see validate).
 const (
-	devJWTSecret     = "dev-insecure-secret-change-me"
-	devInternalToken = "dev-internal-token"
+	devJWTSecret     = "dev-insecure-secret-change-me" // #nosec G101 -- dev-only sentinel, rejected by validate() in production
+	devInternalToken = "dev-internal-token"            // #nosec G101 -- dev-only sentinel, rejected by validate() in production
 	minJWTSecretLen  = 32
 )
 

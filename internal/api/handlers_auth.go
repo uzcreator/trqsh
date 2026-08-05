@@ -174,7 +174,7 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	s.clearNextCookie(w)
 	s.setSessionCookies(w, tokens)
-	http.Redirect(w, r, dest, http.StatusFound)
+	http.Redirect(w, r, dest, http.StatusFound) // #nosec G710 -- dest is either appBase()+"/" or appBase()+safeNextPath(...), which rejects anything not a same-site absolute path
 }
 
 // appBase returns the public dashboard origin (no trailing slash).
@@ -195,6 +195,7 @@ func safeNextPath(p string) string {
 }
 
 func (s *Server) setNextCookie(w http.ResponseWriter, next string) {
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_oauth_next", Value: next, Path: "/v1/auth/oauth",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: 600,
@@ -202,6 +203,7 @@ func (s *Server) setNextCookie(w http.ResponseWriter, next string) {
 }
 
 func (s *Server) clearNextCookie(w http.ResponseWriter) {
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_oauth_next", Value: "", Path: "/v1/auth/oauth",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: -1,
@@ -213,10 +215,12 @@ func (s *Server) clearNextCookie(w http.ResponseWriter) {
 func (s *Server) setSessionCookies(w http.ResponseWriter, t auth.Tokens) {
 	domain := "." + s.cfg.BaseDomain
 	secure := s.cfg.IsProduction()
+	// #nosec G124 -- Secure: secure is set from s.cfg.IsProduction() just above; gosec's cookie check only recognizes a literal `true`, not a variable
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_access", Value: t.Access, Path: "/", Domain: domain,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: t.ExpiresIn,
 	})
+	// #nosec G124 -- Secure: secure is set from s.cfg.IsProduction() above; gosec's cookie check only recognizes a literal `true`, not a variable
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_refresh", Value: t.Refresh, Path: "/", Domain: domain,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: 30 * 24 * 60 * 60,
@@ -227,6 +231,7 @@ func (s *Server) setSessionCookies(w http.ResponseWriter, t auth.Tokens) {
 func (s *Server) clearSessionCookies(w http.ResponseWriter) {
 	domain := "." + s.cfg.BaseDomain
 	secure := s.cfg.IsProduction()
+	// #nosec G124 -- Secure: secure is set from s.cfg.IsProduction() just above; gosec's cookie check only recognizes a literal `true`, not a variable
 	for _, name := range []string{"trqsh_access", "trqsh_refresh"} {
 		http.SetCookie(w, &http.Cookie{
 			Name: name, Value: "", Path: "/", Domain: domain,
@@ -238,6 +243,7 @@ func (s *Server) clearSessionCookies(w http.ResponseWriter) {
 // setStateCookie binds the OAuth state to this browser (host-only on the API),
 // so a stolen or guessed state alone can't complete the flow.
 func (s *Server) setStateCookie(w http.ResponseWriter, state string) {
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_oauth_state", Value: state, Path: "/v1/auth/oauth",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: 600,
@@ -245,6 +251,7 @@ func (s *Server) setStateCookie(w http.ResponseWriter, state string) {
 }
 
 func (s *Server) clearStateCookie(w http.ResponseWriter) {
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: "trqsh_oauth_state", Value: "", Path: "/v1/auth/oauth",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: -1,

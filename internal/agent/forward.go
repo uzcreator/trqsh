@@ -123,7 +123,7 @@ func (a *Agent) forwardHTTP(st tunnel.Stream, at *activeTunnel, si *proto.Stream
 	respHeaders := hdrMap(resp.Header)
 
 	writeErr := resp.Write(st)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if writeErr != nil {
 		return
 	}
@@ -163,7 +163,7 @@ func (a *Agent) forwardUpgrade(st tunnel.Stream, clientRead io.Reader, at *activ
 		return
 	}
 	if err := req.Write(local); err != nil {
-		local.Close()
+		_ = local.Close()
 		return
 	}
 	fromPub, toPub := weld(local, st, clientRead)
@@ -186,13 +186,13 @@ func (a *Agent) forwardUDP(st tunnel.Stream, at *activeTunnel) {
 		var hdr [2]byte
 		for {
 			if _, err := io.ReadFull(st, hdr[:]); err != nil {
-				local.Close()
+				_ = local.Close()
 				return
 			}
 			n := binary.BigEndian.Uint16(hdr[:])
 			payload := make([]byte, n)
 			if _, err := io.ReadFull(st, payload); err != nil {
-				local.Close()
+				_ = local.Close()
 				return
 			}
 			if _, err := local.Write(payload); err != nil {
@@ -210,7 +210,7 @@ func (a *Agent) forwardUDP(st tunnel.Stream, at *activeTunnel) {
 			return
 		}
 		var hdr [2]byte
-		binary.BigEndian.PutUint16(hdr[:], uint16(n))
+		binary.BigEndian.PutUint16(hdr[:], uint16(n)) // #nosec G115 -- n <= len(buf) == 65535 (io.Reader's own contract)
 		if _, err := st.Write(hdr[:]); err != nil {
 			return
 		}
@@ -232,14 +232,14 @@ func weld(local net.Conn, st tunnel.Stream, fromEdge io.Reader) (fromPublic, toP
 	go func() {
 		defer wg.Done()
 		fromPublic, _ = io.Copy(local, fromEdge)
-		local.Close()
-		st.Close()
+		_ = local.Close()
+		_ = st.Close()
 	}()
 	go func() {
 		defer wg.Done()
 		toPublic, _ = io.Copy(st, local)
-		st.Close()
-		local.Close()
+		_ = st.Close()
+		_ = local.Close()
 	}()
 	wg.Wait()
 	return fromPublic, toPublic

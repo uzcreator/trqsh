@@ -282,7 +282,7 @@ func (s *RedisStorage) Lock(ctx context.Context, name string) error {
 			s.mu.Lock()
 			s.locks[name] = lk
 			s.mu.Unlock()
-			go s.refreshLock(key, lk)
+			go s.refreshLock(key, lk) // #nosec G118 -- deliberately decoupled from ctx: the lock must outlive this Lock() call and stay held until Unlock(); its lifecycle is lk.stop/lk.done, not the acquiring request's context
 			return nil
 		}
 		select {

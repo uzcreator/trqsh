@@ -81,13 +81,13 @@ func (pm *portManager) release(proto string, port int) {
 	delete(pm.used(proto), port)
 	if proto == "udp" {
 		if uc, ok := pm.udp[port]; ok {
-			uc.Close()
+			_ = uc.Close()
 			delete(pm.udp, port)
 		}
 		return
 	}
 	if ln, ok := pm.tcp[port]; ok {
-		ln.Close()
+		_ = ln.Close()
 		delete(pm.tcp, port)
 	}
 }
@@ -96,10 +96,10 @@ func (pm *portManager) closeAll() {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	for _, ln := range pm.tcp {
-		ln.Close()
+		_ = ln.Close()
 	}
 	for _, uc := range pm.udp {
-		uc.Close()
+		_ = uc.Close()
 	}
 	pm.tcp = make(map[int]net.Listener)
 	pm.udp = make(map[int]*net.UDPConn)
@@ -146,7 +146,7 @@ func (s *Server) acceptTCPTunnel(ln net.Listener, port int) {
 			// Cross-edge port tunnels need a distributed/global port allocator first
 			// (a future stage); until then a stray connection on an unbound port is
 			// dropped, exactly as before.
-			c.Close()
+			_ = c.Close()
 			continue
 		}
 		s.wg.Add(1)
@@ -164,7 +164,7 @@ func (s *Server) weldRawConn(c net.Conn, bt *boundTunnel, ptype string) {
 	st, err := bt.session.openDataStream(context.Background(), init)
 	if err != nil {
 		s.metrics.Errors.WithLabelValues("open_stream").Inc()
-		c.Close()
+		_ = c.Close()
 		return
 	}
 	s.metrics.StreamsOpened.WithLabelValues(ptype).Inc()

@@ -212,7 +212,7 @@ func (a *Agent) localTransport() http.RoundTripper {
 
 func (a *Agent) clientTLS() *tls.Config {
 	return &tls.Config{
-		InsecureSkipVerify: a.cfg.Insecure, //nolint:gosec // dev opt-in via TRQSH_INSECURE
+		InsecureSkipVerify: a.cfg.Insecure, // #nosec G402 -- dev opt-in via TRQSH_INSECURE, off by default
 		NextProtos:         []string{tunnel.ALPNProto},
 	}
 }

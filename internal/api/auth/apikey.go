@@ -96,6 +96,6 @@ func VerifyKey(full, encoded string) bool {
 	if err != nil {
 		return false
 	}
-	got := argon2.IDKey([]byte(full), salt, tCost, memory, threads, uint32(len(want)))
+	got := argon2.IDKey([]byte(full), salt, tCost, memory, threads, uint32(len(want))) // #nosec G115 -- want is a decoded hash digest (tens of bytes), never near uint32 max
 	return subtle.ConstantTimeCompare(got, want) == 1
 }

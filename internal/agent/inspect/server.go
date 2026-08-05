@@ -67,6 +67,7 @@ func (s *Server) Serve(ctx context.Context, addr string) error {
 		IdleTimeout:       120 * time.Second,
 		// No WriteTimeout: /api/stream serves long-lived SSE.
 	}
+	// #nosec G118 -- ctx is already Done() by the time this fires; a fresh context.Background() timeout is required for Shutdown's own grace period (standard graceful-shutdown pattern)
 	go func() {
 		<-ctx.Done()
 		sc, cancel := context.WithTimeout(context.Background(), 2*time.Second)

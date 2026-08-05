@@ -19,7 +19,7 @@ import (
 )
 
 // Internal auth header carrying the shared token between edge and API.
-const HeaderToken = "X-trqsh-Internal-Token"
+const HeaderToken = "X-trqsh-Internal-Token" // #nosec G101 -- HTTP header name, not a secret value
 
 // Route paths for the internal entitlements endpoints.
 const (

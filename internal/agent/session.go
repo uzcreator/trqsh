@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/trqsh-uz/trqsh/pkg/proto"
@@ -13,6 +14,13 @@ import (
 )
 
 var errEdgeDraining = errors.New("edge draining")
+
+// sanitizeLog escapes newlines/carriage-returns in a value before it's
+// written to a log line, so a user-chosen tunnel name (or anything else
+// crossing a trust boundary) can't forge fake log entries.
+var logEscaper = strings.NewReplacer("\n", "\\n", "\r", "\\r")
+
+func sanitizeLog(s string) string { return logEscaper.Replace(s) }
 
 // ensureConnected dials and authenticates if not already connected.
 func (a *Agent) ensureConnected(ctx context.Context) error {
@@ -39,7 +47,7 @@ func (a *Agent) connect(ctx context.Context) error {
 
 	apiKey := a.cfg.APIKey
 	if apiKey == "" {
-		apiKey = "tq_dev_local" // dev fallback; a real edge requires a valid key
+		apiKey = "tq_dev_local" // #nosec G101 -- dev fallback constant, not a real credential; a real edge requires a valid key
 	}
 	hello := &proto.Hello{
 		ProtocolVersion: "1",
@@ -156,7 +164,7 @@ func (a *Agent) bind(ctx context.Context, spec TunnelSpec) (Tunnel, error) {
 		Type:           ttype,
 		Subdomain:      spec.Subdomain,
 		CustomDomain:   spec.CustomDomain,
-		RemotePort:     uint32(spec.RemotePort),
+		RemotePort:     uint32(spec.RemotePort), // #nosec G115 -- a real TCP/UDP port (0-65535)
 		Options:        options,
 	}
 	if err := a.writeControl(&proto.Envelope{Msg: &proto.Envelope_Bind{Bind: bind}}); err != nil {
@@ -180,7 +188,7 @@ func (a *Agent) bind(ctx context.Context, spec TunnelSpec) (Tunnel, error) {
 		a.mu.Lock()
 		a.tunnels[clientTunnelID] = at
 		a.mu.Unlock()
-		a.log.Info("tunnel online", "name", spec.Name, "url", br.PublicUrl)
+		a.log.Info("tunnel online", "name", sanitizeLog(spec.Name), "url", sanitizeLog(br.PublicUrl))
 		a.emit(Event{Type: "tunnel", Tunnel: ptr(at.view())})
 		return at.view(), nil
 	case <-time.After(20 * time.Second):

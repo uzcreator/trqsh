@@ -109,6 +109,7 @@ func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: adminCookie, Value: s.signAdmin(time.Now().Add(adminTTL)), Path: "/",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode,
@@ -118,6 +119,7 @@ func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminLogout(w http.ResponseWriter, r *http.Request) {
+	// #nosec G124 -- Secure is set below (s.cfg.IsProduction()); gosec's cookie check only recognizes a literal `true`, not a conditional
 	http.SetCookie(w, &http.Cookie{
 		Name: adminCookie, Value: "", Path: "/",
 		HttpOnly: true, Secure: s.cfg.IsProduction(), SameSite: http.SameSiteLaxMode, MaxAge: -1,
@@ -192,7 +194,7 @@ func (s *Server) handleAdminGrant(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	s.log.Info("admin granted plan", "email", u.Email, "org", o.ID, "plan", plan, "months", req.Months)
+	s.log.Info("admin granted plan", "email", sanitizeLog(u.Email), "org", o.ID, "plan", plan, "months", req.Months)
 	o.Plan, o.PlanExpiresAt = plan, &expires
 	writeJSON(w, http.StatusOK, adminOrgView(u, o))
 }

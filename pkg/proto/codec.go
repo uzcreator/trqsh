@@ -51,7 +51,7 @@ func writeFramed(w io.Writer, m proto.Message) error {
 		return ErrFrameTooLarge
 	}
 	var hdr [4]byte
-	binary.BigEndian.PutUint32(hdr[:], uint32(len(b)))
+	binary.BigEndian.PutUint32(hdr[:], uint32(len(b))) // #nosec G115 -- len(b) <= MaxFrameSize (1 MiB), checked above
 	if _, err := w.Write(hdr[:]); err != nil {
 		return err
 	}

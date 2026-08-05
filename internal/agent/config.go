@@ -79,7 +79,7 @@ func Load(path string) (Config, error) {
 	if path == "" {
 		path = DefaultConfigPath()
 	}
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { // #nosec G304 -- path is DefaultConfigPath() or the caller's own --config/TRQSH_CONFIG, never remote/attacker input
 		if err := yaml.Unmarshal(data, &c); err != nil {
 			return c, fmt.Errorf("agent: parse %s: %w", path, err)
 		}
@@ -115,7 +115,7 @@ func (c Config) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("agent: mkdir config dir: %w", err)
 	}
-	data, err := yaml.Marshal(c)
+	data, err := yaml.Marshal(c) // #nosec G117 -- the API key belongs in this config file by design (it's how the CLI persists a signed-in session)
 	if err != nil {
 		return fmt.Errorf("agent: marshal config: %w", err)
 	}

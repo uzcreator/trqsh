@@ -68,7 +68,7 @@ func (s *redisDeviceStore) Create() *auth.DeviceRequest {
 	defer cancel()
 
 	ttl := auth.DeviceTTL + redisDeviceSafetyMargin
-	buf, err := json.Marshal(req)
+	buf, err := json.Marshal(req) // #nosec G117 -- persisted to our own Redis store by design; this is how Approve later hands the key back to Poll
 	if err != nil {
 		s.warn(err)
 		return req
@@ -116,7 +116,7 @@ func (s *redisDeviceStore) Approve(userCode, orgID, apiKey string) error {
 	req.Approved = true
 	req.OrgID = orgID
 	req.APIKey = apiKey
-	buf, err := json.Marshal(req)
+	buf, err := json.Marshal(req) // #nosec G117 -- persisted to our own Redis store by design, same as Create above
 	if err != nil {
 		s.warn(err)
 		return auth.ErrDeviceUnknown

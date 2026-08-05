@@ -121,12 +121,12 @@ func (d *Dialer) dialTCP(ctx context.Context, addr string) (Session, error) {
 	}
 	tlsConn := tls.Client(raw, d.tlsClone())
 	if err := tlsConn.HandshakeContext(dctx); err != nil {
-		raw.Close()
+		_ = raw.Close()
 		return nil, err
 	}
 	sess, err := yamux.Client(tlsConn, yamuxConfig(d.keepAlive()))
 	if err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, err
 	}
 	return newYamuxSession(sess), nil
