@@ -11,8 +11,10 @@ const nextConfig = {
     TRQSH_DASHBOARD_URL: process.env.TRQSH_DASHBOARD_URL || "https://app.trqsh.uz",
     // Control API (Part 05) — used for the OAuth deep-links on signup.
     TRQSH_API_URL: process.env.TRQSH_API_URL || "https://api.trqsh.uz",
-    // GitHub repo that hosts releases (Part 08 goreleaser output).
+    // Source repo (also hosts the desktop GUI's desktop-v* releases).
     TRQSH_GITHUB_REPO: process.env.TRQSH_GITHUB_REPO || "uzcreator/trqsh",
+    // CLI releases (Part 08 goreleaser output) publish to their own repo.
+    TRQSH_CLI_GITHUB_REPO: process.env.TRQSH_CLI_GITHUB_REPO || "uzcreator/trqshcli",
     // Canonical public origin (sitemap, robots, Open Graph, docs links).
     TRQSH_SITE_URL: process.env.TRQSH_SITE_URL || "https://trqsh.uz",
     // Latest published version — drives download filenames (matches goreleaser

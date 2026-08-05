@@ -21,7 +21,9 @@ from pathlib import Path
 
 from . import __version__
 
-REPO = os.environ.get("TRQSH_REPO", "uzcreator/trqsh")
+# CLI releases publish to their own dedicated repo (source stays in
+# uzcreator/trqsh; see .goreleaser.yaml).
+REPO = os.environ.get("TRQSH_REPO", "uzcreator/trqshcli")
 VERSION = os.environ.get("TRQSH_VERSION", __version__)
 
 

@@ -1,6 +1,11 @@
 # GoReleaser — cross-compile + package the CLI (trqsh) and edge (trqshd).
 # The desktop app (Tauri) is built separately in desktop-build.yml; goreleaser
 # only packages the Go binaries here. Run locally: `goreleaser release --clean --snapshot`.
+#
+# Source lives in uzcreator/trqsh, but the release itself publishes to the
+# dedicated uzcreator/trqshcli repo (see release.github below) — needs a
+# cross-repo token (RELEASE_REPO_TOKEN) in the workflow since the default
+# GITHUB_TOKEN is scoped to the repo the workflow runs in.
 version: 2
 
 before:
@@ -100,10 +105,15 @@ nfpms:
     bindir: /usr/bin
 
 release:
-  # Binaries ship as GitHub Releases on this same repo (uzcreator/trqsh); the
-  # package managers (npm/pypi/scoop) and the website point their downloads here.
+  # Binaries ship as GitHub Releases on the dedicated uzcreator/trqshcli repo
+  # (source stays in this monorepo — only the release/download surface moved,
+  # so CLI users get a clean, download-only release list with no desktop-v*/
+  # backend releases mixed in). The package managers (npm/pypi/scoop) and the
+  # website point their downloads there too. The desktop GUI keeps releasing
+  # to this repo (uzcreator/trqsh) under desktop-v* tags, unchanged.
   github:
     owner: uzcreator
-    name: trqsh
+    name: trqshcli
+  name_template: "trqsh CLI v{{ .Version }}"
   draft: false
   prerelease: auto

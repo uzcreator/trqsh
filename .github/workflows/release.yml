@@ -25,9 +25,14 @@ jobs:
           version: "~> 2"
           args: release --clean
         env:
-          # Same-repo release now: the workflow's default token (permissions:
-          # contents: write, above) suffices — no cross-repo PAT needed.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Cross-repo release: .goreleaser.yaml publishes to uzcreator/trqshcli,
+          # not this (uzcreator/trqsh) repo, so the workflow's own GITHUB_TOKEN
+          # (scoped only to the repo it runs in) can't create the release or
+          # upload assets there. RELEASE_REPO_TOKEN is a classic PAT with repo
+          # scope on trqshcli — set it in this repo's Settings > Secrets >
+          # Actions. Until it's set, this step fails with a 404/403 creating
+          # the release (everything else in this workflow is unaffected).
+          GITHUB_TOKEN: ${{ secrets.RELEASE_REPO_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   # Publish the npm wrapper (npx trqsh / npm i -g trqsh). Runs after the release

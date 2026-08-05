@@ -1,18 +1,20 @@
 import { site } from "./site";
 
-// CLI archives and desktop installers both ship as GitHub Releases on the main
-// uzcreator/trqsh repo (`.goreleaser.yaml` for the CLI, `desktop-build.yml` for the
-// app). CLI releases are tagged `v<version>`, desktop releases `desktop-v<version>`.
+// CLI archives ship as GitHub Releases on the dedicated uzcreator/trqshcli repo
+// (`.goreleaser.yaml`); desktop installers ship on the main uzcreator/trqsh repo
+// (`desktop-build.yml`), tagged `desktop-v<version>` there. CLI releases are
+// tagged `v<version>` on trqshcli.
 
 const v = site.version;
-const base = `${site.githubUrl}/releases/download/v${v}`;
+const base = `${site.cliGithubUrl}/releases/download/v${v}`;
 
 // The desktop app (Tauri) versions independently of the CLI; its assets live under
-// the `desktop-v<version>` tag. Asset names follow Tauri's bundler convention.
+// the `desktop-v<version>` tag on the main repo. Asset names follow Tauri's
+// bundler convention.
 const dv = process.env.TRQSH_DESKTOP_VERSION || "0.3.1";
 const guiBase = `${site.githubUrl}/releases/download/desktop-v${dv}`;
 
-export const releasesUrl = `${site.githubUrl}/releases/latest`;
+export const releasesUrl = `${site.cliGithubUrl}/releases/latest`;
 export const checksumsUrl = `${base}/checksums.txt`;
 export const installShCommand = `curl -fsSL ${site.installShUrl} | sh`;
 

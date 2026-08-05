@@ -35,7 +35,12 @@ import (
 )
 
 const (
-	updateRepo     = "uzcreator/trqsh"
+	// CLI releases publish to their own repo (source stays in uzcreator/trqsh;
+	// see .goreleaser.yaml). Desktop GUI releases (desktop-v* tags) live in the
+	// source repo instead, so unlike before, this repo's releases are always
+	// CLI-only — the desktop-v* skip in latestCLIVersion is now just a
+	// defensive no-op, not load-bearing.
+	updateRepo     = "uzcreator/trqshcli"
 	updateMaxBytes = 200 << 20 // generous cap; real archives are a few tens of MB
 )
 
@@ -107,8 +112,8 @@ func runUpdate(cmd *cobra.Command, g *globalFlags, checkOnly bool) error {
 }
 
 // latestCLIVersion returns the newest published CLI release's version (no
-// leading "v"). Releases come back newest-first; the GUI's desktop-v* tags
-// share this repo so they're explicitly skipped.
+// leading "v"). Releases come back newest-first; the desktop-v* skip is
+// defensive (this repo is CLI-only) rather than load-bearing.
 func latestCLIVersion(ctx context.Context) (string, error) {
 	data, err := fetchURL(ctx, updateReleasesAPIURL, "application/vnd.github+json")
 	if err != nil {

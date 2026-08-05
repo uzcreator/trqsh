@@ -7,7 +7,9 @@
 const path = require("path");
 const pkg = require("../package.json");
 
-const REPO = process.env.TRQSH_REPO || "uzcreator/trqsh";
+// CLI releases publish to their own dedicated repo (source stays in
+// uzcreator/trqsh; see .goreleaser.yaml).
+const REPO = process.env.TRQSH_REPO || "uzcreator/trqshcli";
 const VERSION = process.env.TRQSH_VERSION || pkg.version;
 
 /** Map Node's platform/arch onto goreleaser's os/arch + archive extension. */

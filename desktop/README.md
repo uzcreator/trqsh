@@ -36,7 +36,8 @@ Windows). Two ways to get it:
 
 - **CI** — [`.github/workflows/desktop-build.yml`](../.github/workflows/desktop-build.yml)
   downloads the released `trqsh` CLI for each platform from the public
-  [uzcreator/trqsh](https://github.com/uzcreator/trqsh) releases, verifies its checksum, and drops
+  [uzcreator/trqshcli](https://github.com/uzcreator/trqshcli) releases (the CLI's own dedicated
+  release repo — source stays in this monorepo), verifies its checksum, and drops
   it in under the host-triple name. A packaged build therefore bundles the **most recently
   released** CLI, not backend tip-of-main — deliberate, so installers always ship a stable
   agent.

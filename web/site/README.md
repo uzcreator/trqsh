@@ -49,7 +49,8 @@ Docs pages render from Markdown in [`docs/content/`](../../docs/content).
 |---|---|---|
 | `TRQSH_DASHBOARD_URL` | `https://app.trqsh.uz` | Sign-up / login CTAs |
 | `TRQSH_API_URL` | `https://api.trqsh.uz` | OAuth deep-links + build-time content fetch |
-| `TRQSH_GITHUB_REPO` | `uzcreator/trqsh` | Release / download links |
+| `TRQSH_GITHUB_REPO` | `uzcreator/trqsh` | Source code / desktop GUI release links |
+| `TRQSH_CLI_GITHUB_REPO` | `uzcreator/trqshcli` | CLI release / download links |
 | `TRQSH_SITE_URL` | `https://trqsh.uz` | Canonical origin, sitemap, OG |
 | `TRQSH_LATEST_VERSION` | see `lib/site.ts` | Download artifact filenames |
 

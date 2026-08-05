@@ -4,7 +4,12 @@
 
 const dashboardUrl = process.env.TRQSH_DASHBOARD_URL || "https://app.trqsh.uz";
 const apiUrl = process.env.TRQSH_API_URL || "https://api.trqsh.uz";
+// Source (and the desktop GUI's own desktop-v* releases) live in the main
+// monorepo; CLI releases publish to their own dedicated repo so CLI download
+// links / changelog / checksums point users at a clean, CLI-only release list
+// instead of one mixed with desktop and other release types.
 const githubRepo = process.env.TRQSH_GITHUB_REPO || "uzcreator/trqsh";
+const cliGithubRepo = process.env.TRQSH_CLI_GITHUB_REPO || "uzcreator/trqshcli";
 const siteUrl = process.env.TRQSH_SITE_URL || "https://trqsh.uz";
 const version = process.env.TRQSH_LATEST_VERSION || "0.1.2";
 // Telegram handle (without @) users message to buy/upgrade a plan. There is no
@@ -22,6 +27,8 @@ export const site = {
   apiUrl,
   githubRepo,
   githubUrl: `https://github.com/${githubRepo}`,
+  cliGithubRepo,
+  cliGithubUrl: `https://github.com/${cliGithubRepo}`,
   // Public wildcard where tunnels appear (Part 00 §1); shown in examples.
   tunnelDomain: "trqsh.uz",
   // curl|sh installer served from the marketing origin (Part 08 release/install.sh).
@@ -50,7 +57,7 @@ export const footerNav: { title: string; links: { label: string; href: string; e
       { label: "Pricing", href: "/pricing" },
       { label: "Download", href: "/download" },
       { label: "Quickstart", href: "/docs/quickstart" },
-      { label: "Changelog", href: `${site.githubUrl}/releases`, external: true },
+      { label: "Changelog", href: `${site.cliGithubUrl}/releases`, external: true },
     ],
   },
   {

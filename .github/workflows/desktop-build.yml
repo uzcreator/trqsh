@@ -9,11 +9,14 @@ name: desktop-build
 # (src-tauri/binaries/trqsh-<target-triple>). Rather than compiling it from this
 # repo's own Go source (desktop/ doesn't carry backend source), each runner
 # downloads the matching platform/arch archive from the latest CLI (v<version>)
-# release on uzcreator/trqsh and renames the binary inside it to the Rust host
-# triple Tauri resolves at bundle time. This means a desktop build bundles
-# whichever CLI version was most recently released there, not this repo's
-# tip-of-main — a deliberate tradeoff: no Go toolchain needed in this
-# workflow, and just the default same-repo GITHUB_TOKEN.
+# release on uzcreator/trqshcli — the CLI's own dedicated release repo, separate
+# from where this workflow runs and publishes desktop installers — and renames
+# the binary inside it to the Rust host triple Tauri resolves at bundle time.
+# This means a desktop build bundles whichever CLI version was most recently
+# released there, not this repo's tip-of-main — a deliberate tradeoff: no Go
+# toolchain needed in this workflow. Fetching from trqshcli needs no special
+# token (it's a public repo); only this workflow's own desktop-v* publish
+# step uses the default same-repo GITHUB_TOKEN.
 
 on:
   workflow_dispatch:
@@ -72,10 +75,13 @@ jobs:
             libayatana-appindicator3-dev rpm
 
       # Download the trqsh CLI/agent release archive matching this runner's
-      # OS+arch from the latest v<version> release on uzcreator/trqsh, verify its checksum
-      # (same checksums.txt mechanism packaging/install.sh uses), and drop the
+      # OS+arch from the latest v<version> release on uzcreator/trqshcli (the
+      # CLI's own dedicated release repo), verify its checksum (same
+      # checksums.txt mechanism packaging/install.sh uses), and drop the
       # extracted binary in as the Tauri sidecar under the Rust host triple
-      # (e.g. trqsh-x86_64-pc-windows-msvc.exe).
+      # (e.g. trqsh-x86_64-pc-windows-msvc.exe). trqshcli is public, so the
+      # default same-repo GITHUB_TOKEN can still read it — only *writing* a
+      # release to a different repo needs a cross-repo PAT, not reading one.
       - name: Download trqsh agent sidecar
         shell: bash
         env:
@@ -97,12 +103,12 @@ jobs:
             *) echo "::error::unsupported arch $(uname -m)"; exit 1 ;;
           esac
 
-          version="$(gh release list --repo uzcreator/trqsh --json tagName --jq '.[].tagName' | grep -E '^v[0-9]' | head -1 | sed 's/^v//')"
+          version="$(gh release list --repo uzcreator/trqshcli --json tagName --jq '.[].tagName' | grep -E '^v[0-9]' | head -1 | sed 's/^v//')"
           archive="trqsh_${version}_${goos}_${goarch}.${fmt}"
-          echo "downloading ${archive} (uzcreator/trqsh v${version}) for triple ${triple}"
+          echo "downloading ${archive} (uzcreator/trqshcli v${version}) for triple ${triple}"
 
           tmp="$(mktemp -d)"
-          gh release download "v${version}" --repo uzcreator/trqsh \
+          gh release download "v${version}" --repo uzcreator/trqshcli \
             --pattern "$archive" --pattern checksums.txt --dir "$tmp"
 
           checksum() { command -v sha256sum >/dev/null 2>&1 && sha256sum "$1" || shasum -a 256 "$1"; }

@@ -7,7 +7,9 @@
 # Overrides: TRQSH_VERSION, TRQSH_REPO, TRQSH_BINDIR.
 set -eu
 
-REPO="${TRQSH_REPO:-uzcreator/trqsh}"
+# CLI releases publish to their own dedicated repo (source stays in
+# uzcreator/trqsh; see .goreleaser.yaml).
+REPO="${TRQSH_REPO:-uzcreator/trqshcli}"
 BINDIR="${TRQSH_BINDIR:-}"
 # Fallback only if the version can't be resolved dynamically below (offline,
 # API rate-limited, etc.) — bump occasionally, but going stale here just
