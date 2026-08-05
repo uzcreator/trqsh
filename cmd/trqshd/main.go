@@ -8,14 +8,21 @@ import (
 	"context"
 	"flag"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/trqsh-uz/trqsh/internal/server"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck())
+	}
+
 	var (
 		logJSON    bool
 		baseDomain string
@@ -74,4 +81,30 @@ func overrideStr(dst *string, v string) {
 	if v != "" {
 		*dst = v
 	}
+}
+
+// healthcheck lets `trqshd healthcheck` serve as the container's HEALTHCHECK
+// CMD: the distroless runtime image has no shell/curl to run a normal probe
+// command, so this gives Docker an exec-form check that hits the
+// already-running server's own /healthz on the metrics port (reading the
+// same TRQSH_METRICS_ADDR it bound, not a hardcoded port). Returns a process
+// exit code, not an error.
+func healthcheck() int {
+	addr := os.Getenv("TRQSH_METRICS_ADDR")
+	if addr == "" {
+		addr = ":9090"
+	}
+	if strings.HasPrefix(addr, ":") {
+		addr = "localhost" + addr
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://" + addr + "/healthz") // #nosec G704 -- addr is our own TRQSH_METRICS_ADDR env var (operator/deployment-controlled), not request input; this checks the process's own local port
+	if err != nil {
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
 }

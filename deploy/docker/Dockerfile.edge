@@ -28,4 +28,7 @@ COPY --from=build /out/trqshd /usr/local/bin/trqshd
 EXPOSE 80/tcp 443/tcp 4443/tcp 4443/udp 9090/tcp
 
 USER nonroot:nonroot
+# distroless has no shell/curl; the binary checks its own /healthz on the metrics port (see cmd/trqshd/main.go).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/trqshd", "healthcheck"]
 ENTRYPOINT ["/usr/local/bin/trqshd"]
