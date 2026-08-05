@@ -23,5 +23,8 @@ ENV GOOSE_DRIVER=postgres \
     GOOSE_MIGRATION_DIR=/migrations
 
 USER nonroot
+# One-shot migration job (runs to completion, then exits) — no persistent
+# process to health-probe, unlike the long-running services.
+HEALTHCHECK NONE
 ENTRYPOINT ["goose"]
 CMD ["up"]

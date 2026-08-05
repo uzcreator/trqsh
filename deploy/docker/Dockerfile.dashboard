@@ -43,4 +43,6 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.mjs ./next.config.mjs
 USER nextjs
 EXPOSE 3000/tcp
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://localhost:3000/login || exit 1
 CMD ["pnpm", "start"]

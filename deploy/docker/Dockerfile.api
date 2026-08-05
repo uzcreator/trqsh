@@ -22,4 +22,7 @@ COPY --from=build /out/trqshapi /usr/local/bin/trqshapi
 
 EXPOSE 8080/tcp
 USER nonroot:nonroot
+# distroless has no shell/curl; the binary checks its own /healthz (see cmd/trqshapi/main.go).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/trqshapi", "healthcheck"]
 ENTRYPOINT ["/usr/local/bin/trqshapi"]
