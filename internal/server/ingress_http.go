@@ -109,7 +109,7 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 			return
 		}
 		if !checkBasicAuth(req, bt.options) {
-			writeHTTPResponse(conn, http.StatusUnauthorized, "Unauthorized", "text/plain", "401 unauthorized\n")
+			writeUnauthorized(conn)
 			// keep the connection open for a retry with credentials
 			continue
 		}
@@ -364,6 +364,22 @@ func checkBasicAuth(req *http.Request, options map[string]string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(dec, []byte(want)) == 1
+}
+
+// writeUnauthorized sends the 401 challenge for a --basic-auth protected
+// tunnel. Unlike writeHTTPResponse, it sets WWW-Authenticate so browsers
+// actually show their native credential prompt (without it, a 401 with no
+// challenge header is just an error page — the user has no way to enter
+// credentials), and it keeps the connection alive so the caller's retry loop
+// can read the follow-up request with credentials on the same connection
+// instead of forcing a fresh TCP/TLS handshake.
+func writeUnauthorized(conn net.Conn) {
+	const body = "401 unauthorized\n"
+	_, _ = fmt.Fprintf(conn, "HTTP/1.1 401 Unauthorized\r\n"+
+		"WWW-Authenticate: Basic realm=\"trqsh\"\r\n"+
+		"Content-Type: text/plain\r\n"+
+		"Content-Length: %d\r\n"+
+		"Connection: keep-alive\r\n\r\n%s", len(body), body)
 }
 
 func newRequestID() string {
