@@ -83,9 +83,11 @@ resource "cloudflare_load_balancer" "wildcard" {
   default_pool_ids = [cloudflare_load_balancer_pool.edge[0].id]
   fallback_pool_id = cloudflare_load_balancer_pool.edge[0].id
 
+  # ttl is intentionally omitted (defaults to "automatic") — it conflicts
+  # with proxied in the provider schema, and proxied=false is the setting
+  # that actually matters here (see the file header).
   proxied         = false
   steering_policy = var.cloudflare_lb_steering_policy
-  ttl             = 60
 
   description = "trqsh wildcard edge steering (DNS-only)"
 }

@@ -16,8 +16,8 @@ resource "digitalocean_kubernetes_cluster" "control" {
   # upgrade replaces nodes with extra capacity first so upgrades are
   # zero-downtime instead of draining in place. Window picked for low
   # traffic (Sunday pre-dawn UTC) so an upgrade never lands mid-peak.
-  auto_upgrade    = true
-  surge_upgrade   = true
+  auto_upgrade  = true
+  surge_upgrade = true
   maintenance_policy {
     start_time = "04:00"
     day        = "sunday"

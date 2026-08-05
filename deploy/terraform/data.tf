@@ -1,11 +1,11 @@
 # Managed Postgres (control-plane state) and Redis (routing registry + pub/sub).
 resource "digitalocean_database_cluster" "postgres" {
-  name       = "${var.project_name}-pg"
-  engine     = "pg"
-  version    = "16"
-  size       = var.postgres_size
-  region     = var.primary_region
-  node_count = 1
+  name                 = "${var.project_name}-pg"
+  engine               = "pg"
+  version              = "16"
+  size                 = var.postgres_size
+  region               = var.primary_region
+  node_count           = 1
   private_network_uuid = digitalocean_vpc.control.id
 }
 
@@ -15,12 +15,12 @@ resource "digitalocean_database_db" "trqsh" {
 }
 
 resource "digitalocean_database_cluster" "redis" {
-  name       = "${var.project_name}-redis"
-  engine     = "redis"
-  version    = "7"
-  size       = var.redis_size
-  region     = var.primary_region
-  node_count = 1
+  name                 = "${var.project_name}-redis"
+  engine               = "redis"
+  version              = "7"
+  size                 = var.redis_size
+  region               = var.primary_region
+  node_count           = 1
   private_network_uuid = digitalocean_vpc.control.id
 }
 
