@@ -53,6 +53,7 @@ spec:
           image: {{ include "trqsh.image" (dict "root" . "repo" .Values.edge.repository) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           # trivy:ignore:AVD-KSV-0117 -- binding :80/:443 is this component's job (public HTTP/HTTPS termination); scoped to CAP_NET_BIND_SERVICE only, not root, below
+          # trivy:ignore:AVD-KSV-0022 -- the one added capability (NET_BIND_SERVICE) is exactly what's needed to bind :80/:443 as non-root; ALL others are dropped above
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
