@@ -65,12 +65,21 @@ jobs:
       # web/site's pricing catalog and OpenAPI copy are fetched from the live
       # control API at TRQSH_API_URL (default api.trqsh.uz) rather than built
       # from local backend source — see lib/paths.ts and scripts/genplans.mjs.
-      # This step requires that API to be reachable; if it's down, this check
-      # (not the rest of CI) fails until it's back.
+      # The check therefore needs that API reachable. When it isn't (transient
+      # outage or runner egress block), failing CI would be a false negative
+      # unrelated to the change under test — so probe the API first and skip
+      # with a warning if it's down. Only genuine, verifiable drift (API
+      # reachable and returning data that differs from the committed files)
+      # fails the build.
       - name: Check generated plan catalog + OpenAPI copy are current
         if: matrix.app == 'web/site'
         working-directory: web/site
         run: |
+          api="${TRQSH_API_URL:-https://api.trqsh.uz}"
+          if ! curl -fsS --retry 2 --retry-all-errors --max-time 20 -o /dev/null "$api/v1/plans/public"; then
+            echo "::warning::Control API $api unreachable — skipping generated-file drift check."
+            exit 0
+          fi
           node scripts/genplans.mjs
           node scripts/gen-openapi.mjs
           git diff --exit-code lib/catalog.generated.ts lib/openapi.generated.yaml \
