@@ -1,0 +1,34 @@
+# Publish the PyPI wrapper (trqsh) on its own. The wrapper only fetches the
+# prebuilt binary from the CLI release at install time, so it can ship
+# independently of the full goreleaser release (Actions → pypi-publish → Run).
+# Mirrors npm-publish.yml for the same reason: a way to retry/re-publish this
+# one channel without re-running the whole release pipeline.
+name: pypi-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (must match a trqshcli release, e.g. 0.1.7)"
+        required: true
+        default: "0.1.7"
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build & publish to PyPI
+        working-directory: packaging/pypi
+        run: |
+          VER="${{ inputs.version }}"
+          python -m pip install --upgrade build twine
+          sed -i -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
+          sed -i -E "s/^__version__ = \".*\"/__version__ = \"$VER\"/" src/trqsh/__init__.py
+          python -m build
+          python -m twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
