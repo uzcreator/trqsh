@@ -67,6 +67,10 @@ spec:
             - name: https
               containerPort: {{ .Values.edge.ports.https }}
               protocol: TCP
+            # HTTP/3 (QUIC) shares the HTTPS port over UDP.
+            - name: https-udp
+              containerPort: {{ .Values.edge.ports.https }}
+              protocol: UDP
             - name: agent-tcp
               containerPort: {{ .Values.edge.ports.agent }}
               protocol: TCP
@@ -80,6 +84,11 @@ spec:
             - name: TRQSH_HTTP_ADDR
               value: ":{{ .Values.edge.ports.http }}"
             - name: TRQSH_HTTPS_ADDR
+              value: ":{{ .Values.edge.ports.https }}"
+            # HTTP/3 (QUIC) ingress on the same UDP port as HTTPS. hostNetwork
+            # means the bound port is the public port, so no advertise-port
+            # override is needed. Open the HTTPS UDP port on the node firewall.
+            - name: TRQSH_H3_ADDR
               value: ":{{ .Values.edge.ports.https }}"
             - name: TRQSH_QUIC_ADDR
               value: ":{{ .Values.edge.ports.agent }}"
