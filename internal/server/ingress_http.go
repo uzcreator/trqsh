@@ -141,7 +141,7 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		if isUpgrade(req) {
 			// Forward the request head, then weld raw bytes both ways.
 			if err := req.Write(st); err != nil {
-				st.Close()
+				_ = st.Close()
 				return
 			}
 			up, down := rawJoin(conn, br, st)
@@ -159,24 +159,24 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		}
 
 		if err := req.Write(st); err != nil {
-			st.Close()
+			_ = st.Close()
 			return
 		}
 		resp, err := http.ReadResponse(bufio.NewReader(st), req)
 		if err != nil {
-			st.Close()
+			_ = st.Close()
 			s.metrics.Errors.WithLabelValues("bad_response").Inc()
 			writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 bad upstream response\n")
 			return
 		}
 		clientClose := req.Close || resp.Close
 		if err := resp.Write(conn); err != nil {
-			resp.Body.Close()
-			st.Close()
+			_ = resp.Body.Close()
+			_ = st.Close()
 			return
 		}
-		resp.Body.Close()
-		st.Close()
+		_ = resp.Body.Close()
+		_ = st.Close()
 
 		s.usage.record(bt.accountID, bt.clientTunnelID, req.ContentLength, max64(resp.ContentLength, 0), 1)
 		if clientClose {

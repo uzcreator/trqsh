@@ -79,9 +79,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error: start local server: %v\n", err)
 			os.Exit(1)
 		}
-		localSrv = &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = io.WriteString(w, "trqsh-loadtest-ok\n")
-		})}
+		localSrv = &http.Server{
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(w, "trqsh-loadtest-ok\n")
+			}),
+			ReadHeaderTimeout: 5 * time.Second, // slowloris guard (gosec G112)
+		}
 		go func() { _ = localSrv.Serve(ln) }()
 		target = ln.Addr().String()
 	}
@@ -195,7 +198,7 @@ func main() {
 	}
 
 	if *urlsOut != "" && len(urls) > 0 {
-		if err := os.WriteFile(*urlsOut, []byte(joinLines(urls)), 0o644); err != nil {
+		if err := os.WriteFile(*urlsOut, []byte(joinLines(urls)), 0o600); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: write -urls-out: %v\n", err)
 		} else {
 			fmt.Printf("\nwrote %d public URLs to %s\n", len(urls), *urlsOut)

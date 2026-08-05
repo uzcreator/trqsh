@@ -56,7 +56,7 @@ func (a *agentSession) openDataStream(ctx context.Context, init *proto.StreamIni
 		return nil, fmt.Errorf("open data stream: %w", err)
 	}
 	if err := proto.WriteStreamInit(st, init); err != nil {
-		st.Close()
+		_ = st.Close()
 		return nil, fmt.Errorf("write stream init: %w", err)
 	}
 	return st, nil

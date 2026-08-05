@@ -340,7 +340,7 @@ func (s *Server) bindPortTunnel(ctx context.Context, a *agentSession, b *proto.B
 		Ok:             true,
 		PublicUrl:      fmt.Sprintf("%s://%s:%d", typ, s.cfg.BaseDomain, port),
 		AssignedHost:   s.cfg.BaseDomain,
-		AssignedPort:   uint32(port),
+		AssignedPort:   uint32(port), // #nosec G115 -- port is a real TCP/UDP port (0-65535)
 	}
 }
 

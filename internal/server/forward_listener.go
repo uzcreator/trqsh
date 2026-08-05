@@ -63,7 +63,7 @@ func (s *Server) serveForward(peer net.Conn) {
 	_ = peer.SetReadDeadline(time.Now().Add(forwardHandshakeTimeout))
 	hdr, err := proto.ReadStreamInit(peer)
 	if err != nil {
-		peer.Close()
+		_ = peer.Close()
 		return
 	}
 	_ = peer.SetReadDeadline(time.Time{})
@@ -74,7 +74,7 @@ func (s *Server) serveForward(peer net.Conn) {
 	}
 	if s.cfg.InternalToken == "" || subtle.ConstantTimeCompare([]byte(token), []byte(s.cfg.InternalToken)) != 1 {
 		s.metrics.Errors.WithLabelValues("forward_auth").Inc()
-		peer.Close()
+		_ = peer.Close()
 		return
 	}
 
@@ -91,7 +91,7 @@ func (s *Server) serveForward(peer net.Conn) {
 		// Port (tcp/udp) forwarding is intentionally not offered yet — see the note
 		// in ingress_tcp.go / ingress_udp.go. Reject anything unexpected.
 		s.metrics.Errors.WithLabelValues("forward_proto").Inc()
-		peer.Close()
+		_ = peer.Close()
 	}
 }
 

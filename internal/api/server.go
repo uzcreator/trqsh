@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -272,6 +273,7 @@ func (s *Server) Run(ctx context.Context) error {
 			IdleTimeout:       60 * time.Second,
 			MaxHeaderBytes:    1 << 16,
 		}
+		// #nosec G118 -- ctx is already Done() by the time this fires; a fresh context.Background() timeout is required for Shutdown's own grace period (standard graceful-shutdown pattern)
 		go func() {
 			<-ctx.Done()
 			sc, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -295,6 +297,7 @@ func (s *Server) Run(ctx context.Context) error {
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    1 << 20, // 1 MiB
 	}
+	// #nosec G118 -- ctx is already Done() by the time this fires; a fresh context.Background() timeout is required for Shutdown's own grace period (standard graceful-shutdown pattern)
 	go func() {
 		<-ctx.Done()
 		sc, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -326,6 +329,13 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
+
+// logEscaper escapes newlines/carriage-returns in a value before it's written
+// to a log line, so user-controlled input (an email, a plan name) can't forge
+// fake log entries.
+var logEscaper = strings.NewReplacer("\n", "\\n", "\r", "\\r")
+
+func sanitizeLog(s string) string { return logEscaper.Replace(s) }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(v); err != nil {

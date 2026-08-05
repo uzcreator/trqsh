@@ -59,7 +59,7 @@ func (s *Server) serveUDPTunnel(uc *net.UDPConn, port int) {
 				mu.Lock()
 				for k, f := range flows {
 					if now.Sub(f.lastSeen) > udpIdleTimeout {
-						f.stream.Close()
+						_ = f.stream.Close()
 						delete(flows, k)
 					}
 				}
@@ -112,7 +112,7 @@ func (s *Server) serveUDPTunnel(uc *net.UDPConn, port int) {
 			mu.Lock()
 			delete(flows, key)
 			mu.Unlock()
-			f.stream.Close()
+			_ = f.stream.Close()
 			continue
 		}
 		s.usage.record(bt.accountID, bt.clientTunnelID, int64(n), 0, 1)
@@ -121,7 +121,7 @@ func (s *Server) serveUDPTunnel(uc *net.UDPConn, port int) {
 
 func writeUDPFrame(f *udpFlow, payload []byte) error {
 	var hdr [2]byte
-	binary.BigEndian.PutUint16(hdr[:], uint16(len(payload)))
+	binary.BigEndian.PutUint16(hdr[:], uint16(len(payload))) // #nosec G115 -- payload was copied from a 65535-byte buffer (ReadFromUDP's own contract bounds n <= len(buf))
 	f.writeMu.Lock()
 	defer f.writeMu.Unlock()
 	if _, err := f.stream.Write(hdr[:]); err != nil {

@@ -90,7 +90,7 @@ func (f *dialForwarder) Dial(ctx context.Context, edgeID string, route Route, sc
 	}
 	_ = peer.SetWriteDeadline(time.Now().Add(f.timeout))
 	if err := proto.WriteStreamInit(peer, hdr); err != nil {
-		peer.Close()
+		_ = peer.Close()
 		return nil, fmt.Errorf("server: forward %s: write header to %s: %w", route.Key(), addr, err)
 	}
 	_ = peer.SetWriteDeadline(time.Time{})
@@ -141,7 +141,7 @@ func (s *Server) forwardHTTP(conn net.Conn, br *bufio.Reader, req *http.Request,
 		return true
 	}
 	if err := req.Write(peer); err != nil {
-		peer.Close()
+		_ = peer.Close()
 		s.metrics.Errors.WithLabelValues("forward_write").Inc()
 		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", "502 tunnel unreachable\n")
 		return true

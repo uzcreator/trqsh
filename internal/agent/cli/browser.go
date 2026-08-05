@@ -8,6 +8,10 @@ import (
 // openBrowser opens url in the user's default browser. It returns the error from
 // launching the opener; callers that can proceed without a browser (device-flow
 // sign-in prints the URL as a fallback) may ignore it.
+// #nosec G204 -- url is our own device-flow verification URL (or user-supplied
+// via the CLI, same trust level as any argument they pass themselves); it's
+// passed as a single argv element to a fixed program name, never through a
+// shell, so it cannot inject additional commands.
 func openBrowser(url string) error {
 	switch runtime.GOOS {
 	case "windows":

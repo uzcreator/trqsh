@@ -61,7 +61,7 @@ func (a *Agent) reconnect(prev []*activeTunnel) {
 			return
 		}
 
-		sleep := backoff + time.Duration(rand.Int63n(int64(backoff/2+1)))
+		sleep := backoff + time.Duration(rand.Int63n(int64(backoff/2+1))) // #nosec G404 -- reconnect jitter, not security-sensitive
 		if sleep > reconnectMax {
 			sleep = reconnectMax
 		}

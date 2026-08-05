@@ -18,14 +18,14 @@ func rawJoin(clientConn net.Conn, clientRead io.Reader, agent net.Conn) (up, dow
 	go func() {
 		defer wg.Done()
 		up, _ = io.Copy(agent, clientRead) // public -> agent
-		agent.Close()
-		clientConn.Close()
+		_ = agent.Close()
+		_ = clientConn.Close()
 	}()
 	go func() {
 		defer wg.Done()
 		down, _ = io.Copy(clientConn, agent) // agent -> public
-		clientConn.Close()
-		agent.Close()
+		_ = clientConn.Close()
+		_ = agent.Close()
 	}()
 	wg.Wait()
 	return up, down
@@ -51,5 +51,5 @@ func writeHTTPResponse(conn net.Conn, status int, reason, contentType, body stri
 	fmt.Fprintf(conn, "Content-Type: %s\r\n", contentType)
 	fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
 	fmt.Fprintf(conn, "Connection: close\r\n\r\n")
-	io.WriteString(conn, body)
+	_, _ = io.WriteString(conn, body)
 }

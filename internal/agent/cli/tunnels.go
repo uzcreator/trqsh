@@ -90,15 +90,15 @@ func ensureDaemon(cmd *cobra.Command, g *globalFlags, addr string) error {
 		return err
 	}
 	args := append([]string{"daemon"}, daemonPassthroughFlags(g, cmd)...)
-	c := exec.Command(exe, args...)
+	c := exec.Command(exe, args...) // #nosec G204 -- exe is our own os.Executable() path, re-exec'ing ourselves as a detached daemon; args are our own passthrough flags
 	c.SysProcAttr = detachSysProcAttr()
 	c.Stdin = nil
 	// Send the daemon's logs to a file so a background failure is diagnosable.
 	logPath := filepath.Join(filepath.Dir(agent.DefaultConfigPath()), "daemon.log")
-	if f, ferr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); ferr == nil {
+	if f, ferr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); ferr == nil { // #nosec G304 -- logPath is derived from our own DefaultConfigPath(), not attacker input
 		c.Stdout = f
 		c.Stderr = f
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 	}
 	if err := c.Start(); err != nil {
 		return fmt.Errorf("start daemon: %w", err)

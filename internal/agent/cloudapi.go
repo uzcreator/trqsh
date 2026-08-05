@@ -49,6 +49,7 @@ func (l *LocalAPI) cloudProxy(w http.ResponseWriter, r *http.Request, method, up
 		}
 	}
 
+	// #nosec G704 -- upstreamPath is always a fixed literal from the route registration in localapi.go (any variable segment is a url.PathEscape'd ID, never the host); cloudBase() is our own config, not request-derived
 	req, err := http.NewRequestWithContext(r.Context(), method, cloudBase()+upstreamPath, body)
 	if err != nil {
 		apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
@@ -60,7 +61,7 @@ func (l *LocalAPI) cloudProxy(w http.ResponseWriter, r *http.Request, method, up
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := cloudHTTP.Do(req)
+	resp, err := cloudHTTP.Do(req) // #nosec G704 -- req's URL was already validated above (fixed host + registered path)
 	if err != nil {
 		apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": "cloud unreachable: " + err.Error()})
 		return

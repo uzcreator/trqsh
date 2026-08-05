@@ -40,7 +40,7 @@ func (s *Service) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Idempotency: Stripe redelivers events; process each at most once.
 	first, err := s.store.MarkEventProcessed(r.Context(), event.ID, event.Type)
 	if err != nil {
-		s.log.Error("webhook: dedupe", "event", event.ID, "err", err)
+		s.log.Error("webhook: dedupe", "event", sanitizeLog(event.ID), "err", err)
 		writeError(w, http.StatusInternalServerError, "dedupe failed")
 		return
 	}
@@ -51,7 +51,7 @@ func (s *Service) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.dispatch(r.Context(), event); err != nil {
 		// Return 500 so Stripe retries transient failures.
-		s.log.Error("webhook: handler failed", "type", event.Type, "event", event.ID, "err", err)
+		s.log.Error("webhook: handler failed", "type", sanitizeLog(event.Type), "event", sanitizeLog(event.ID), "err", err)
 		writeError(w, http.StatusInternalServerError, "handler error")
 		return
 	}
@@ -73,7 +73,7 @@ func (s *Service) dispatch(ctx context.Context, e stripe.Event) error {
 	case "invoice.payment_failed":
 		return s.onInvoicePaymentFailed(ctx, e)
 	default:
-		s.log.Debug("webhook: ignoring event", "type", e.Type)
+		s.log.Debug("webhook: ignoring event", "type", sanitizeLog(e.Type))
 		return nil
 	}
 }

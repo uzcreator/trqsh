@@ -4,10 +4,17 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/trqsh-uz/trqsh/internal/api/store"
 	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
 )
+
+// logEscaper escapes newlines/carriage-returns in a value before it's written
+// to a log line, so a Stripe-supplied field can't forge fake log entries.
+var logEscaper = strings.NewReplacer("\n", "\\n", "\r", "\\r")
+
+func sanitizeLog(s string) string { return logEscaper.Replace(s) }
 
 // Metric names for metered usage (match the store's metered_usage.metric).
 const (
