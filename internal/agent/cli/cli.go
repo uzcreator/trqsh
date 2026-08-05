@@ -44,9 +44,11 @@ func newRootCmd() *cobra.Command {
 		Use:           "trqsh",
 		Short:         "trqsh — expose your localhost to the internet, fast.",
 		Long:          "trqsh tunnels local services to a public URL over a QUIC-first, TCP-fallback transport.",
+		Version:       versionString(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.SetVersionTemplate("trqsh {{.Version}}\n")
 	pf := root.PersistentFlags()
 	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.trqsh/trqsh.yml)")
 	pf.StringVar(&g.server, "server", "", "edge server address (host:port)")

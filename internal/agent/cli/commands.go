@@ -147,19 +147,26 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
+// versionString formats the build metadata that newVersionCmd and the root
+// command's --version flag (wired up in cli.go) both print, so the two never
+// drift apart.
+func versionString() string {
+	s := agent.Version
+	if agent.Commit != "" {
+		s += " (" + agent.Commit + ")"
+	}
+	if agent.BuildDate != "" {
+		s += " " + agent.BuildDate
+	}
+	return s
+}
+
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Printf("trqsh %s", agent.Version)
-			if agent.Commit != "" {
-				fmt.Printf(" (%s)", agent.Commit)
-			}
-			if agent.BuildDate != "" {
-				fmt.Printf(" %s", agent.BuildDate)
-			}
-			fmt.Println()
+			fmt.Println("trqsh " + versionString())
 		},
 	}
 }
