@@ -87,15 +87,32 @@ def _verify(data: bytes, archive: str, base: str) -> None:
         raise SystemExit(f"trqsh: checksum mismatch for {archive}\n  expected {want}\n  got      {got}")
 
 
+def _check_member_path(name: str, dest: Path) -> None:
+    """Reject an archive member whose path would land outside dest (zip-slip /
+    path traversal via ``../`` or an absolute path). zipfile.extractall() has
+    no such guard at all, and tarfile's own guard (``filter="data"``) only
+    exists on Python 3.12+, so this is applied explicitly to both formats
+    rather than relying on either library's default behavior.
+    """
+    target = os.path.realpath(os.path.join(dest, name))
+    dest_real = os.path.realpath(dest)
+    if os.path.commonpath([dest_real, target]) != dest_real:
+        raise SystemExit(f"trqsh: refusing to extract {name!r} outside {dest}")
+
+
 def _extract(archive_path: Path, ext: str, dest: Path) -> None:
     if ext == "zip":
         with zipfile.ZipFile(archive_path) as zf:
+            for member in zf.namelist():
+                _check_member_path(member, dest)
             zf.extractall(dest)
     else:
         with tarfile.open(archive_path) as tf:
             try:
                 tf.extractall(dest, filter="data")  # py3.12+ safe extraction
             except TypeError:
+                for member in tf.getmembers():
+                    _check_member_path(member.name, dest)
                 tf.extractall(dest)
 
 
