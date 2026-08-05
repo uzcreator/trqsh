@@ -24,7 +24,7 @@ func tcpConnPair(t *testing.T) (client, server net.Conn) {
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	type accepted struct {
 		c   net.Conn
 		err error
@@ -75,7 +75,7 @@ func TestReservedUpstreamProxyPoolsConnections(t *testing.T) {
 	}
 
 	client, srvConn := tcpConnPair(t)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	go s.serveHTTPConn(srvConn, "https")
 
 	br := bufio.NewReader(client)
@@ -91,7 +91,7 @@ func TestReservedUpstreamProxyPoolsConnections(t *testing.T) {
 			t.Fatalf("read response %d: %v", i, err)
 		}
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("request %d: status %d, want 200", i, resp.StatusCode)
@@ -136,7 +136,7 @@ func TestReservedUpstreamProxyPassesRedirectThrough(t *testing.T) {
 	}
 
 	client, srvConn := tcpConnPair(t)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	go s.serveHTTPConn(srvConn, "https")
 
 	req, _ := http.NewRequest(http.MethodGet, "http://lvh.me/", nil)
@@ -148,7 +148,7 @@ func TestReservedUpstreamProxyPassesRedirectThrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusFound {
 		t.Fatalf("status %d, want 302 (redirect must pass through, not be followed)", resp.StatusCode)
 	}
@@ -169,20 +169,20 @@ func TestReservedUpstreamProxyUnreachable(t *testing.T) {
 	}
 
 	client, srvConn := tcpConnPair(t)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	// 127.0.0.1:1 refuses connections -> dial error -> upstream_unreachable.
 	go func() {
 		req, _ := http.NewRequest(http.MethodGet, "http://lvh.me/", nil)
 		req.Host = "lvh.me"
 		s.proxyToUpstream(srvConn, req, "https", "http://127.0.0.1:1")
-		srvConn.Close()
+		_ = srvConn.Close()
 	}()
 
 	resp, err := http.ReadResponse(bufio.NewReader(client), nil)
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Fatalf("status %d, want 502", resp.StatusCode)
 	}

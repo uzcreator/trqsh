@@ -105,7 +105,7 @@ func (s *Server) replay(ctx context.Context, c CapturedRequest) (CapturedRequest
 	if err != nil {
 		return CapturedRequest{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, MaxBodyCapture))
 
 	out := CapturedRequest{
@@ -144,7 +144,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			return
 		case c := <-ch:
 			b, _ := json.Marshal(c)
-			fmt.Fprintf(w, "data: %s\n\n", b)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
 			flusher.Flush()
 		}
 	}

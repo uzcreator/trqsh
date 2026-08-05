@@ -49,6 +49,17 @@ func TestRedisBucketConcurrentBurst(t *testing.T) {
 	store := newRedisBucketStore(rdb, "auth", 5, burst, discardLogger())
 	frozen := time.Now()
 	store.now = func() time.Time { return frozen }
+	// miniredis serializes every Lua script execution behind one global lock
+	// (by design — it's what makes the atomicity this test checks for
+	// meaningful), so 600 concurrent calls queue up rather than run in
+	// parallel. Under -race, gopher-lua's per-call VM bootstrap is slow
+	// enough that a goroutine queued near the back can outlive the
+	// production-tuned 200ms redisAllowTimeout waiting for its turn — which
+	// trips the fail-open fallback onto a *second, independent* local bucket
+	// and admits up to 2x burst, not because the refill-decide-write cycle
+	// raced. A real Redis server executes this script in microseconds, so
+	// widening the timeout here doesn't hide a production issue.
+	store.timeout = 10 * time.Second
 
 	const workers = 600
 	var admitted int64
@@ -105,14 +116,16 @@ func TestRedisBucketNamespaceIsolation(t *testing.T) {
 	api.now = func() time.Time { return frozen }
 	ip := "9.9.9.9"
 	// Exhaust the auth bucket.
-	if !auth.allow(ip) || !auth.allow(ip) {
+	authFirst, authSecond := auth.allow(ip), auth.allow(ip)
+	if !authFirst || !authSecond {
 		t.Fatal("auth burst should admit 2")
 	}
 	if auth.allow(ip) {
 		t.Fatal("auth admitted beyond burst")
 	}
 	// The api bucket for the same IP must be untouched.
-	if !api.allow(ip) || !api.allow(ip) {
+	apiFirst, apiSecond := api.allow(ip), api.allow(ip)
+	if !apiFirst || !apiSecond {
 		t.Fatal("api bucket wrongly shares state with auth for the same IP")
 	}
 }

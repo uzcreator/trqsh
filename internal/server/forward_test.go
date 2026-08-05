@@ -68,7 +68,7 @@ func startForwardEdge(t *testing.T, edgeID, redisURL, token string) (*server.Ser
 // test proves the request reached a REAL agent on the owning edge.
 func cannedAgent(fa *fakeAgent, body string) {
 	fa.acceptStreams(func(st tunnel.Stream) {
-		defer st.Close()
+		defer func() { _ = st.Close() }()
 		if _, err := proto.ReadStreamInit(st); err != nil {
 			return
 		}
@@ -178,7 +178,7 @@ func TestCrossEdgeUnknownHost404(t *testing.T) {
 			t.Fatalf("%s request: %v", e.name, err)
 		}
 		body, _ := io.ReadAll(r.Body)
-		r.Body.Close()
+		_ = r.Body.Close()
 		if r.StatusCode != http.StatusNotFound {
 			t.Fatalf("%s status = %d, want 404", e.name, r.StatusCode)
 		}
@@ -245,7 +245,7 @@ func TestCrossEdgeDrainStopsForwarding(t *testing.T) {
 		}
 		status := r.StatusCode
 		_, _ = io.Copy(io.Discard, r.Body)
-		r.Body.Close()
+		_ = r.Body.Close()
 		if status >= 400 {
 			return // clean failure (502 unreachable, or 404 once the route lapses)
 		}
@@ -291,7 +291,7 @@ func TestCrossEdgeWebSocketUpgradeForward(t *testing.T) {
 	// "parse head, then go raw" shape serveHTTPConn's isUpgrade branch expects on
 	// both hops.
 	fa.acceptStreams(func(st tunnel.Stream) {
-		defer st.Close()
+		defer func() { _ = st.Close() }()
 		if _, err := proto.ReadStreamInit(st); err != nil {
 			return
 		}
@@ -302,14 +302,14 @@ func TestCrossEdgeWebSocketUpgradeForward(t *testing.T) {
 		if _, err := io.WriteString(st, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n"); err != nil {
 			return
 		}
-		io.Copy(st, br)
+		_, _ = io.Copy(st, br)
 	})
 
 	conn, err := net.Dial("tcp", edgeB.HTTPAddr().String())
 	if err != nil {
 		t.Fatalf("dial edge-b: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 
 	const reqLine = "GET /socket HTTP/1.1\r\n" +

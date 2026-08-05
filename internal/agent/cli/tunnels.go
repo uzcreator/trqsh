@@ -155,7 +155,7 @@ func daemonAlive(addr string) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -184,7 +184,7 @@ func controlPOST(addr, path string, in, out any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode/100 != 2 {
 		var e struct {
 			Error string `json:"error"`
@@ -223,9 +223,9 @@ func newLsCmd(g *globalFlags) *cobra.Command {
 				return nil
 			}
 			tw := newTab()
-			fmt.Fprintln(tw, "ID\tURL\tLOCAL\tSTATUS\tUPTIME\tREQ")
+			_, _ = fmt.Fprintln(tw, "ID\tURL\tLOCAL\tSTATUS\tUPTIME\tREQ")
 			for _, t := range tunnels {
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%d\n",
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%d\n",
 					shortID(t.ID), t.PublicURL, t.LocalAddr, t.Status, uptime(t.CreatedAt), t.Metrics.Requests)
 			}
 			return tw.Flush()

@@ -70,7 +70,7 @@ func (c *cloudClient) do(ctx context.Context, method, path string, in, out any, 
 	if err != nil {
 		return fmt.Errorf("cloud unreachable: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode/100 != 2 {
 		if resp.StatusCode == http.StatusUnauthorized {
@@ -128,7 +128,7 @@ func (c *cloudClient) pollDevice(ctx context.Context, deviceCode string) (apiKey
 	if err != nil {
 		return "", false, fmt.Errorf("cloud unreachable: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var out struct {
 		APIKey string `json:"api_key"`
 		Error  string `json:"error"`

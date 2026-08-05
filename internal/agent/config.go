@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -150,13 +149,4 @@ func truthy(v string) bool {
 	default:
 		return false
 	}
-}
-
-// atoiPort parses a port-only or host:port addr's port; used by the CLI.
-func atoiPort(s string) (int, bool) {
-	n, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil || n <= 0 || n > 65535 {
-		return 0, false
-	}
-	return n, true
 }

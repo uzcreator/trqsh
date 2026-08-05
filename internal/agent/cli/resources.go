@@ -30,9 +30,9 @@ func newSubdomainsCmd(g *globalFlags) *cobra.Command {
 			}
 			base := baseDomainOf(cfg)
 			tw := newTab()
-			fmt.Fprintln(tw, "SUBDOMAIN\tHOST\tRESERVED")
+			_, _ = fmt.Fprintln(tw, "SUBDOMAIN\tHOST\tRESERVED")
 			for _, s := range subs {
-				fmt.Fprintf(tw, "%s\t%s.%s\t%s\n", s.Subdomain, s.Subdomain, base, s.CreatedAt.Format("2006-01-02"))
+				_, _ = fmt.Fprintf(tw, "%s\t%s.%s\t%s\n", s.Subdomain, s.Subdomain, base, s.CreatedAt.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		},
@@ -106,13 +106,13 @@ func newDomainsCmd(g *globalFlags) *cobra.Command {
 				return nil
 			}
 			tw := newTab()
-			fmt.Fprintln(tw, "DOMAIN\tSTATUS\tCERT\tADDED")
+			_, _ = fmt.Fprintln(tw, "DOMAIN\tSTATUS\tCERT\tADDED")
 			for _, d := range domains {
 				status := "pending"
 				if d.VerifiedAt != nil {
 					status = "verified"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", d.Domain, status, firstNonEmpty(d.CertStatus, "—"), d.CreatedAt.Format("2006-01-02"))
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", d.Domain, status, firstNonEmpty(d.CertStatus, "—"), d.CreatedAt.Format("2006-01-02"))
 			}
 			return tw.Flush()
 		},
@@ -134,12 +134,12 @@ func newDomainsCmd(g *globalFlags) *cobra.Command {
 				}
 				fmt.Printf("added %s\n\n  Add these DNS records, then run `trqsh domains verify %s`:\n\n", res.Domain.Domain, res.Domain.Domain)
 				tw := newTab()
-				fmt.Fprintln(tw, "  TYPE\tNAME\tVALUE")
+				_, _ = fmt.Fprintln(tw, "  TYPE\tNAME\tVALUE")
 				if res.DNSInstructions["txt_name"] != "" {
-					fmt.Fprintf(tw, "  TXT\t%s\t%s\n", res.DNSInstructions["txt_name"], res.DNSInstructions["txt_value"])
+					_, _ = fmt.Fprintf(tw, "  TXT\t%s\t%s\n", res.DNSInstructions["txt_name"], res.DNSInstructions["txt_value"])
 				}
 				if res.DNSInstructions["cname_name"] != "" {
-					fmt.Fprintf(tw, "  CNAME\t%s\t%s\n", res.DNSInstructions["cname_name"], res.DNSInstructions["cname_value"])
+					_, _ = fmt.Fprintf(tw, "  CNAME\t%s\t%s\n", res.DNSInstructions["cname_name"], res.DNSInstructions["cname_value"])
 				}
 				_ = tw.Flush()
 				fmt.Println()

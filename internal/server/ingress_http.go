@@ -61,7 +61,7 @@ func (s *Server) acceptHTTP(ctx context.Context, ln net.Listener, scheme string)
 // routes by Host, opens a fresh data stream to the owning agent, and forwards
 // the request/response. Upgrades (websockets) switch to a raw bidirectional weld.
 func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	br := bufio.NewReader(conn)
 
 	for {
@@ -189,7 +189,7 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 func redirectToHTTPS(conn net.Conn, host string, req *http.Request) {
 	target := "https://" + host + req.URL.RequestURI()
 	body := "Redirecting to " + target + "\n"
-	fmt.Fprintf(conn, "HTTP/1.1 301 Moved Permanently\r\n"+
+	_, _ = fmt.Fprintf(conn, "HTTP/1.1 301 Moved Permanently\r\n"+
 		"Location: %s\r\n"+
 		"Content-Type: text/plain; charset=utf-8\r\n"+
 		"Content-Length: %d\r\n"+
@@ -329,7 +329,7 @@ func (s *Server) proxyToUpstream(conn net.Conn, req *http.Request, scheme, upstr
 		writeHTTPResponse(conn, http.StatusBadGateway, "Bad Gateway", "text/plain", msg)
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if scheme == "https" {
 		// Reserved control-plane hosts (site/dashboard/api) are always served
 		// over TLS; tell browsers to remember that for a year.

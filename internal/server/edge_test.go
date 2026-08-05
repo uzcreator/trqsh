@@ -70,7 +70,7 @@ func dialAgent(t *testing.T, addr string) *fakeAgent {
 	if err != nil {
 		t.Fatalf("agent dial: %v", err)
 	}
-	t.Cleanup(func() { sess.CloseWithError(0, "test done") })
+	t.Cleanup(func() { _ = sess.CloseWithError(0, "test done") })
 
 	ctrl, err := sess.OpenStream(context.Background())
 	if err != nil {
@@ -148,7 +148,7 @@ func TestEdgeHTTPWeld(t *testing.T) {
 
 	// Agent serves each request stream with a canned response.
 	fa.acceptStreams(func(st tunnel.Stream) {
-		defer st.Close()
+		defer func() { _ = st.Close() }()
 		if _, err := proto.ReadStreamInit(st); err != nil {
 			return
 		}
@@ -189,7 +189,7 @@ func TestEdgeUnknownHost404(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", r.StatusCode)
 	}
@@ -241,7 +241,7 @@ func TestReservedHostHTTPSRedirect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	if r.StatusCode != http.StatusMovedPermanently {
 		t.Fatalf("status = %d, want 301", r.StatusCode)
 	}
@@ -270,11 +270,11 @@ func TestEdgeTCPWeld(t *testing.T) {
 
 	// Agent echoes raw bytes on each stream.
 	fa.acceptStreams(func(st tunnel.Stream) {
-		defer st.Close()
+		defer func() { _ = st.Close() }()
 		if _, err := proto.ReadStreamInit(st); err != nil {
 			return
 		}
-		io.Copy(st, st)
+		_, _ = io.Copy(st, st)
 	})
 
 	// Public TCP client through the assigned port.
@@ -290,14 +290,14 @@ func TestEdgeTCPWeld(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial tcp tunnel: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	msg := []byte("ping-through-tunnel")
 	if _, err := conn.Write(msg); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	buf := make([]byte, len(msg))
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		t.Fatalf("read echo: %v", err)
 	}
@@ -314,7 +314,7 @@ func doWithRetry(t *testing.T, client *http.Client, req *http.Request) string {
 		r, err := client.Do(req)
 		if err == nil {
 			body, _ := io.ReadAll(r.Body)
-			r.Body.Close()
+			_ = r.Body.Close()
 			return string(body)
 		}
 		lastErr = err
@@ -330,6 +330,6 @@ func freePort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("reserve port: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	return ln.Addr().(*net.TCPAddr).Port
 }

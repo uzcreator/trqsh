@@ -182,7 +182,7 @@ func (c *Client) post(ctx context.Context, path string, form url.Values, idempot
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return &Error{Status: resp.StatusCode, Body: string(body)}

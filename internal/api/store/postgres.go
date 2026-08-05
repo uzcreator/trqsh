@@ -132,7 +132,7 @@ func (p *PostgresStore) OrgsByPlan(ctx context.Context, plan string) ([]Org, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Org
 	for rows.Next() {
 		var o Org
@@ -182,7 +182,7 @@ func (p *PostgresStore) ListOrgMembers(ctx context.Context, orgID string) ([]Org
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []OrgMember
 	for rows.Next() {
 		var m OrgMember
@@ -201,7 +201,7 @@ func (p *PostgresStore) OrgsForUser(ctx context.Context, userID string) ([]Org, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Org
 	for rows.Next() {
 		var o Org
@@ -245,7 +245,7 @@ func (p *PostgresStore) ListAPIKeys(ctx context.Context, orgID string) ([]APIKey
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []APIKey
 	for rows.Next() {
 		var k APIKey
@@ -290,7 +290,7 @@ func (p *PostgresStore) ListSubdomains(ctx context.Context, orgID string) ([]Res
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []ReservedSubdomain
 	for rows.Next() {
 		var s ReservedSubdomain
@@ -372,7 +372,7 @@ func (p *PostgresStore) ListCustomDomains(ctx context.Context, orgID string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []CustomDomain
 	for rows.Next() {
 		var d CustomDomain
@@ -520,7 +520,7 @@ func (p *PostgresStore) PendingMeteredUsage(ctx context.Context, limit int) ([]M
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []MeteredUsage
 	for rows.Next() {
 		var u MeteredUsage

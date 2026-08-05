@@ -17,7 +17,7 @@ const protocolVersion = "1"
 // serveSession runs the full lifecycle of one agent session: control-stream
 // handshake, authentication, then the control loop until the session dies.
 func (s *Server) serveSession(ctx context.Context, sess tunnel.Session) {
-	defer sess.CloseWithError(0, "session closed")
+	defer func() { _ = sess.CloseWithError(0, "session closed") }()
 
 	// The agent opens the control stream first.
 	hsCtx, cancel := context.WithTimeout(ctx, 10*time.Second)

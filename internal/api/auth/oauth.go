@@ -104,7 +104,7 @@ func (p OAuthProvider) exchangeToken(ctx context.Context, code string) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("oauth token exchange: status %d", resp.StatusCode)
@@ -130,7 +130,7 @@ func (p OAuthProvider) fetchUser(ctx context.Context, accessToken string) (OAuth
 	if err != nil {
 		return OAuthUser{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return OAuthUser{}, fmt.Errorf("oauth userinfo: status %d", resp.StatusCode)
 	}
@@ -180,7 +180,7 @@ func (p OAuthProvider) fetchGitHubEmail(ctx context.Context, accessToken string)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("oauth userinfo: emails status %d", resp.StatusCode)
 	}

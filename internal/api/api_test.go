@@ -45,7 +45,7 @@ func postJSON(t *testing.T, url, bearer string, body any, out any) *http.Respons
 	}
 	if out != nil {
 		b, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err := json.Unmarshal(b, out); err != nil {
 			t.Fatalf("decode %s: %v (body: %s)", url, err, b)
 		}
@@ -84,7 +84,7 @@ func TestSignupAndAPIKeyLifecycle(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+access)
 	resp, _ := http.DefaultClient.Do(req)
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if !strings.Contains(string(body), "tq_live_") || strings.Contains(string(body), apiKey) {
 		t.Fatalf("list should show prefix but not the full key: %s", body)
 	}
@@ -94,7 +94,7 @@ func TestSignupAndAPIKeyLifecycle(t *testing.T) {
 	if r2.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", r2.StatusCode)
 	}
-	r2.Body.Close()
+	_ = r2.Body.Close()
 }
 
 func TestEntitlementsOverInternalRPC(t *testing.T) {
@@ -161,7 +161,7 @@ func TestMeWithAPIKey(t *testing.T) {
 		t.Fatalf("GET /v1/me: %v", err)
 	}
 	b, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("/v1/me status %d: %s", resp.StatusCode, b)
 	}
@@ -216,7 +216,7 @@ func TestAdminGrantAndRevoke(t *testing.T) {
 		}
 		if out != nil {
 			b, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			_ = json.Unmarshal(b, out)
 		}
 		return resp
@@ -251,7 +251,7 @@ func TestAdminGrantAndRevoke(t *testing.T) {
 	}
 
 	// Revoke → back to Free (UDP denied).
-	req("POST", ts.URL+"/v1/admin/revoke", map[string]string{"email": "cust@example.com"}, nil).Body.Close()
+	_ = req("POST", ts.URL+"/v1/admin/revoke", map[string]string{"email": "cust@example.com"}, nil).Body.Close()
 	if dec, _ := rpc.CheckBind(context.Background(), authz.BindRequest{APIKey: apiKey, Type: "udp"}); dec.Allow {
 		t.Fatal("revoked plan should deny UDP")
 	}

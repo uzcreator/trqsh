@@ -36,7 +36,7 @@ var hopHeaders = []string{
 // handleDataStream services one edge-initiated data stream: read its StreamInit,
 // find the tunnel, and forward to the local service (teeing HTTP to the inspector).
 func (a *Agent) handleDataStream(st tunnel.Stream) {
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 	si, err := proto.ReadStreamInit(st)
 	if err != nil {
 		return
@@ -179,7 +179,7 @@ func (a *Agent) forwardUDP(st tunnel.Stream, at *activeTunnel) {
 		a.emit(Event{Type: "error", Err: "dial local udp " + at.spec.Addr + ": " + err.Error()})
 		return
 	}
-	defer local.Close()
+	defer func() { _ = local.Close() }()
 
 	// stream -> local
 	go func() {
@@ -276,7 +276,7 @@ func (t *teeReadCloser) Read(p []byte) (int, error) { return t.r.Read(p) }
 func (t *teeReadCloser) Close() error               { return t.c.Close() }
 
 func writeHTTPError(w io.Writer, status int, msg string) {
-	fmt.Fprintf(w, "HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+	_, _ = fmt.Fprintf(w, "HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
 		status, http.StatusText(status), len(msg)+1, msg+"\n")
 }
 

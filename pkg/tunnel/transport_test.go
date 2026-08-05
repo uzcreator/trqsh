@@ -64,7 +64,7 @@ func echoServer(t *testing.T, l Listener) {
 					}
 					go func(st Stream) {
 						_, _ = io.Copy(st, st)
-						st.Close()
+						_ = st.Close()
 					}(st)
 				}
 			}(sess)
@@ -89,7 +89,7 @@ func exerciseStreams(t *testing.T, sess Session, n int) {
 				errCh <- fmt.Errorf("open %d: %w", i, err)
 				return
 			}
-			defer st.Close()
+			defer func() { _ = st.Close() }()
 			msg := []byte(fmt.Sprintf("stream-%d-payload-%d", i, i*7+1))
 			if _, err := st.Write(msg); err != nil {
 				errCh <- fmt.Errorf("write %d: %w", i, err)
@@ -118,7 +118,7 @@ func TestQUICEchoConcurrentStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	echoServer(t, l)
 
 	addr := l.(*multiListener).quicLn.Addr().String()
@@ -127,7 +127,7 @@ func TestQUICEchoConcurrentStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	defer sess.CloseWithError(0, "done")
+	defer func() { _ = sess.CloseWithError(0, "done") }()
 
 	if sess.Kind() != KindQUIC {
 		t.Fatalf("expected KindQUIC, got %s", sess.Kind())
@@ -141,7 +141,7 @@ func TestTCPEchoConcurrentStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	echoServer(t, l)
 
 	addr := l.(*multiListener).tcpLn.Addr().String()
@@ -150,7 +150,7 @@ func TestTCPEchoConcurrentStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	defer sess.CloseWithError(0, "done")
+	defer func() { _ = sess.CloseWithError(0, "done") }()
 
 	if sess.Kind() != KindTCP {
 		t.Fatalf("expected KindTCP, got %s", sess.Kind())
@@ -171,7 +171,7 @@ func TestQUICToTCPFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	echoServer(t, l)
 
 	d := &Dialer{TLSConfig: cliTLS, DialTimeout: 800 * time.Millisecond} // QUIC-first, fallback allowed
@@ -179,7 +179,7 @@ func TestQUICToTCPFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial (expected fallback): %v", err)
 	}
-	defer sess.CloseWithError(0, "done")
+	defer func() { _ = sess.CloseWithError(0, "done") }()
 
 	if sess.Kind() != KindTCP {
 		t.Fatalf("expected fallback to KindTCP, got %s", sess.Kind())
@@ -195,7 +195,7 @@ func TestPingPongOverControlStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	// Server: read a Ping, echo a Pong with the same timestamp.
 	go func() {
@@ -224,7 +224,7 @@ func TestPingPongOverControlStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	defer sess.CloseWithError(0, "done")
+	defer func() { _ = sess.CloseWithError(0, "done") }()
 
 	st, err := sess.OpenStream(context.Background())
 	if err != nil {
@@ -254,6 +254,6 @@ func freePort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("reserve port: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	return ln.Addr().(*net.TCPAddr).Port
 }

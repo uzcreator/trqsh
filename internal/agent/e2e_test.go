@@ -122,7 +122,7 @@ func TestLocalControlAPIDrivesCore(t *testing.T) {
 		t.Fatalf("POST /tunnels: %v", err)
 	}
 	tbody, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST /tunnels status %d: %s", resp.StatusCode, tbody)
 	}
@@ -153,7 +153,7 @@ func doGET(t *testing.T, req *http.Request) string {
 		r, err := client.Do(req.Clone(context.Background()))
 		if err == nil {
 			b, _ := io.ReadAll(r.Body)
-			r.Body.Close()
+			_ = r.Body.Close()
 			return string(b)
 		}
 		lastErr = err
@@ -176,7 +176,7 @@ func waitHTTP(t *testing.T, url string) {
 	t.Helper()
 	for i := 0; i < 40; i++ {
 		if r, err := http.Get(url); err == nil {
-			r.Body.Close()
+			_ = r.Body.Close()
 			return
 		}
 		time.Sleep(25 * time.Millisecond)
@@ -190,6 +190,6 @@ func freePort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("reserve port: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	return ln.Addr().(*net.TCPAddr).Port
 }

@@ -47,9 +47,9 @@ trqsh agent is running and connected.</p>
 
 // writeHTTPResponse writes a minimal HTTP/1.1 response with a body to a raw conn.
 func writeHTTPResponse(conn net.Conn, status int, reason, contentType, body string) {
-	fmt.Fprintf(conn, "HTTP/1.1 %d %s\r\n", status, reason)
-	fmt.Fprintf(conn, "Content-Type: %s\r\n", contentType)
-	fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
-	fmt.Fprintf(conn, "Connection: close\r\n\r\n")
+	_, _ = fmt.Fprintf(conn, "HTTP/1.1 %d %s\r\n", status, reason)
+	_, _ = fmt.Fprintf(conn, "Content-Type: %s\r\n", contentType)
+	_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
+	_, _ = fmt.Fprintf(conn, "Connection: close\r\n\r\n")
 	_, _ = io.WriteString(conn, body)
 }

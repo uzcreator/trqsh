@@ -184,7 +184,7 @@ func (c *Client) post(ctx context.Context, path string, in, out any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 		return fmt.Errorf("entitlements: %s: status %d: %s", path, resp.StatusCode, b)

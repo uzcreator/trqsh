@@ -66,7 +66,7 @@ func (l *LocalAPI) cloudProxy(w http.ResponseWriter, r *http.Request, method, up
 		apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": "cloud unreachable: " + err.Error()})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
@@ -82,7 +82,7 @@ func (l *LocalAPI) oauthStart(w http.ResponseWriter, r *http.Request) {
 		apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": "cloud unreachable: " + err.Error()})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 1<<16))
@@ -108,7 +108,7 @@ func (l *LocalAPI) oauthPoll(w http.ResponseWriter, r *http.Request) {
 		apiWriteJSON(w, http.StatusBadGateway, map[string]string{"error": "cloud unreachable: " + err.Error()})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var tok struct {
 		APIKey string `json:"api_key"`
