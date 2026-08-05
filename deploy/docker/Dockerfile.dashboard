@@ -6,14 +6,14 @@
 # Uses pnpm 9 (runs dependency build scripts like sharp; pnpm 10 ignores them).
 
 # --- deps ---
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 RUN npm install -g pnpm@9
 WORKDIR /app
 COPY web/dashboard/package.json web/dashboard/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # --- build ---
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 RUN npm install -g pnpm@9
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -32,7 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN pnpm build
 
 # --- runtime ---
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 RUN npm install -g pnpm@9 && addgroup -S nodejs && adduser -S nextjs -G nodejs
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
