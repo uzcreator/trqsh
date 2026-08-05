@@ -26,7 +26,7 @@ type InspectorConfig struct {
 	Addr    string `yaml:"addr"`
 }
 
-// Config is the agent configuration, matching ~/.trqsh-uz/trqsh.yml (§10).
+// Config is the agent configuration, matching ~/.trqsh/trqsh.yml (§10).
 // Precedence when loaded by the CLI: flags > env (TRQSH_*) > file > defaults.
 type Config struct {
 	Version   int                     `yaml:"version"`
@@ -59,7 +59,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// DefaultConfigPath is ~/.trqsh-uz/trqsh.yml (override with TRQSH_CONFIG).
+// DefaultConfigPath is ~/.trqsh/trqsh.yml (override with TRQSH_CONFIG).
 func DefaultConfigPath() string {
 	if p := os.Getenv("TRQSH_CONFIG"); p != "" {
 		return p

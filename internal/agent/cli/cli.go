@@ -48,7 +48,7 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	pf := root.PersistentFlags()
-	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.trqsh-uz/trqsh.yml)")
+	pf.StringVar(&g.configPath, "config", "", "config file path (default ~/.trqsh/trqsh.yml)")
 	pf.StringVar(&g.server, "server", "", "edge server address (host:port)")
 	pf.StringVar(&g.region, "region", "", "preferred region (auto|us|eu|ap)")
 	pf.StringVar(&g.transport, "transport", "", "transport (auto|quic|tcp)")
