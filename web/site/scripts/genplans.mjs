@@ -21,7 +21,14 @@ async function main() {
   if (!res.ok) {
     throw new Error(`fetch ${url}: HTTP ${res.status}`);
   }
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("json")) {
+    throw new Error(`fetch ${url}: unexpected content-type ${contentType || "(none)"}`);
+  }
   const plans = await res.json();
+  if (!Array.isArray(plans) || plans.length === 0) {
+    throw new Error(`fetch ${url}: expected a non-empty plan array, got ${JSON.stringify(plans).slice(0, 200)}`);
+  }
   plans.sort((a, b) => (rank[a.code] ?? 99) - (rank[b.code] ?? 99));
 
   const out = `// Code generated from the control API (GET /v1/plans/public) by

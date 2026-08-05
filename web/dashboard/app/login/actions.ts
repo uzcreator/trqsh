@@ -15,7 +15,6 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
   const name = String(formData.get("name") || "").trim();
   if (!email.includes("@")) return { error: "Enter a valid email address." };
 
-  let ok = false;
   try {
     let res;
     try {
@@ -24,10 +23,8 @@ export async function authenticate(_prev: LoginState, formData: FormData): Promi
       res = await signup(email, name || email.split("@")[0]);
     }
     await setTokens(res.tokens);
-    ok = true;
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not sign in." };
   }
-  if (ok) redirect("/");
-  return { error: "Could not sign in." };
+  redirect("/");
 }

@@ -20,7 +20,14 @@ async function main() {
   if (!res.ok) {
     throw new Error(`fetch ${url}: HTTP ${res.status}`);
   }
+  const contentType = res.headers.get("content-type") || "";
+  if (!/yaml|text\/plain|octet-stream/.test(contentType)) {
+    throw new Error(`fetch ${url}: unexpected content-type ${contentType || "(none)"}`);
+  }
   const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(`fetch ${url}: empty response body`);
+  }
 
   const dest = new URL("../lib/openapi.generated.yaml", import.meta.url);
   await writeFile(dest, text);

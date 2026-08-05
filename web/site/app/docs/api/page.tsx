@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Lock, Unlock } from "lucide-react";
 import { loadOpenApi, type ApiOperation } from "@/lib/openapi";
-import { CodeBlock } from "@/components/code-block";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {

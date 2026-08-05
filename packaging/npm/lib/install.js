@@ -86,7 +86,10 @@ async function install() {
   }
 
   fs.mkdirSync(C.vendorDir, { recursive: true });
-  const tmp = path.join(os.tmpdir(), `trqsh-${process.pid}-${archive}`);
+  // mkdtempSync (not a predictable pid-based name) avoids a symlink/TOCTOU race
+  // in the shared, world-writable system temp dir.
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trqsh-"));
+  const tmp = path.join(tmpDir, archive);
   fs.writeFileSync(tmp, buf);
   try {
     if (process.platform === "win32") {
@@ -100,7 +103,7 @@ async function install() {
       execFileSync("tar", ["-xzf", tmp, "-C", C.vendorDir], { stdio: "ignore" });
     }
   } finally {
-    fs.rmSync(tmp, { force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
   if (!fs.existsSync(C.binPath)) {

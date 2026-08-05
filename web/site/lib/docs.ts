@@ -15,6 +15,18 @@ export interface RenderedDoc {
   toc: TocItem[];
 }
 
+// Strips tags to a fixed point (not a single pass) so a crafted nested/split
+// tag like "<scr<script>ipt>" can't survive by reforming after one pass.
+function stripTags(html: string): string {
+  let prev: string;
+  let cur = html;
+  do {
+    prev = cur;
+    cur = cur.replace(/<[^>]+>/g, "");
+  } while (cur !== prev);
+  return cur;
+}
+
 function makeSlugger() {
   const seen = new Map<string, number>();
   return (text: string): string => {
@@ -36,7 +48,7 @@ export function renderMarkdown(md: string): RenderedDoc {
   const slug = makeSlugger();
   const toc: TocItem[] = [];
   const html = raw.replace(/<(h[23])>([\s\S]*?)<\/\1>/g, (_m, tag: string, inner: string) => {
-    const text = inner.replace(/<[^>]+>/g, "").trim();
+    const text = stripTags(inner).trim();
     const id = slug(text);
     toc.push({ level: tag === "h2" ? 2 : 3, text, id });
     return `<${tag} id="${id}">${inner}<a class="anchor" href="#${id}" aria-hidden="true">#</a></${tag}>`;
