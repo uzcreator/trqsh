@@ -117,3 +117,11 @@ release:
   name_template: "trqsh CLI v{{ .Version }}"
   draft: false
   prerelease: auto
+  # Every GitHub release is created as a draft, has its assets uploaded, then
+  # gets a final PATCH that un-drafts it and creates the real tag ref pointing
+  # at target_commitish (defaults to trqshcli's own default branch HEAD). That
+  # PATCH fails with a 422 "Repository is empty" if trqshcli has no commits to
+  # point at yet — bit us on the very first cross-repo release, since a repo
+  # created only to host releases starts with zero commits. Pinning this to
+  # "main" removes the dependency on that implicit fallback ever resolving.
+  target_commitish: main
