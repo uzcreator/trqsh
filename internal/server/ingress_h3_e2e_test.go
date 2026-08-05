@@ -323,3 +323,37 @@ func TestNoAltSvcWhenH3Disabled(t *testing.T) {
 		t.Fatalf("Alt-Svc = %q, want empty when h3 disabled", alt)
 	}
 }
+
+// TestAltSvcAdvertisesConfiguredPort confirms TRQSH_H3_ADVERTISE_PORT overrides
+// the bound port in Alt-Svc — the case that makes h3 work behind a Docker/L4
+// port map, where the edge binds one UDP port but browsers must dial another.
+func TestAltSvcAdvertisesConfiguredPort(t *testing.T) {
+	cfg := server.DefaultConfig()
+	cfg.BaseDomain = "lvh.me"
+	cfg.QUICAddr = "127.0.0.1:0"
+	cfg.TCPAddr = "127.0.0.1:0"
+	cfg.HTTPAddr = "127.0.0.1:0"
+	cfg.HTTPSAddr = "127.0.0.1:0"
+	cfg.H3Addr = "127.0.0.1:0"  // binds an ephemeral UDP port
+	cfg.H3AdvertisePort = 44344 // but browsers must be told this public port
+	cfg.MetricsAddr = "127.0.0.1:0"
+	cfg.HeartbeatInterval = 0
+
+	srv, err := server.New(cfg, testLogger())
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go func() { _ = srv.Run(ctx) }()
+	select {
+	case <-srv.Ready():
+	case <-time.After(5 * time.Second):
+		t.Fatal("edge did not become ready")
+	}
+
+	h := h1TunnelResponse(t, srv)
+	if alt := h.Get("Alt-Svc"); !strings.Contains(alt, `h3=":44344"`) {
+		t.Fatalf("Alt-Svc = %q, want it to advertise configured port 44344", alt)
+	}
+}

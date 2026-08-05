@@ -74,17 +74,24 @@ func (s *Server) startH3(ctx context.Context) error {
 		GetCertificate: s.certs.GetCertificate,
 		MinVersion:     tls.VersionTLS13,
 	})
+	// The port browsers must actually dial for h3 — the bound port, unless a
+	// public port is configured because an L4 map (Docker/firewall) redirects a
+	// different public UDP port onto the bound one.
+	advPort := portOf(conn.LocalAddr())
+	if s.cfg.H3AdvertisePort > 0 {
+		advPort = s.cfg.H3AdvertisePort
+	}
 	h3 := &http3.Server{
 		TLSConfig:      tlsConf,
 		Handler:        http.HandlerFunc(s.serveH3),
-		Port:           portOf(conn.LocalAddr()), // used in Alt-Svc via SetQUICHeaders
+		Port:           advPort,
 		IdleTimeout:    httpIdleTimeout,
 		MaxHeaderBytes: 1 << 20,
 	}
 	// Alt-Svc tells browsers (on their initial TCP/HTTP-1.1 connection) that the
 	// same origin is reachable over HTTP/3 on this UDP port, so they upgrade
 	// subsequent requests. ma is the advertisement's lifetime in seconds.
-	altSvc := fmt.Sprintf(`h3=":%d"; ma=86400`, portOf(conn.LocalAddr()))
+	altSvc := fmt.Sprintf(`h3=":%d"; ma=86400`, advPort)
 	s.h3 = &h3Ingress{srv: h3, conn: conn, addr: conn.LocalAddr(), altSvc: altSvc}
 
 	s.log.Info("http/3 ingress up", "addr", conn.LocalAddr().String())

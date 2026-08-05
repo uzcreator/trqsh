@@ -32,6 +32,12 @@ type Config struct {
 	// HTTP/1.1 ingress is unchanged). Set it to the same port as HTTPSAddr, e.g.
 	// ":443", so the advertised h3 endpoint matches the TLS origin.
 	H3Addr string // TRQSH_H3_ADDR, e.g. ":443" (UDP)
+	// Public UDP port to advertise in the Alt-Svc header when it differs from the
+	// port H3Addr binds. Needed behind an L4 port map / firewall redirect — e.g.
+	// the distroless edge binds :8443 inside its container while Docker publishes
+	// UDP 443, so browsers must be told 443, not 8443. 0 => advertise the bound
+	// port (correct when the edge binds the public port directly).
+	H3AdvertisePort int // TRQSH_H3_ADVERTISE_PORT, e.g. 443
 
 	// Routing / identity.
 	BaseDomain string // TRQSH_BASE_DOMAIN, e.g. "lvh.me" (dev) / "trqsh.uz" (prod)
@@ -129,6 +135,7 @@ func LoadConfig() (Config, error) {
 	envStr(&c.HTTPAddr, "TRQSH_HTTP_ADDR")
 	envStr(&c.HTTPSAddr, "TRQSH_HTTPS_ADDR")
 	envStr(&c.H3Addr, "TRQSH_H3_ADDR")
+	envInt(&c.H3AdvertisePort, "TRQSH_H3_ADVERTISE_PORT")
 	envStr(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
 	envStr(&c.Region, "TRQSH_REGION")
 	envStr(&c.EdgeID, "TRQSH_EDGE_ID")
