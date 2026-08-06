@@ -21,9 +21,9 @@ var (
 
 	// Surfaces: subtle backgrounds so the pinned panels and the input box read as
 	// distinct raised surfaces rather than blending into the terminal.
-	colBorder  = lipgloss.Color("#33524d") // muted teal frame
-	colPanelBg = lipgloss.Color("#0e1b19") // pinned-panel background
-	colInputBg = lipgloss.Color("#13211f") // input-box background
+	colBorder  = lipgloss.Color("#3d635d") // muted teal frame
+	colPanelBg = lipgloss.Color("#16302b") // pinned-panel background (raised surface)
+	colInputBg = lipgloss.Color("#1a2b28") // input-box background
 )
 
 var (
