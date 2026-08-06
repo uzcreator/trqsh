@@ -34,6 +34,13 @@ func SetEnabled(v bool) { enabled = v }
 // know whether they're driving a real terminal (spinners, progress) can ask.
 func Enabled() bool { return enabled }
 
+// IsInteractive reports whether both stdin and stdout are terminals — the
+// precondition for launching the full-screen TUI. When either is redirected
+// (a pipe, a file, CI), the caller should fall back to plain output/help.
+func IsInteractive() bool {
+	return isTerminal(os.Stdin) && isTerminal(os.Stdout)
+}
+
 // decideColor resolves the color decision from the standard signals used by
 // well-behaved CLIs: NO_COLOR (any value disables), TERM=dumb, and an explicit
 // FORCE_COLOR / CLICOLOR_FORCE override, otherwise on iff f is a terminal.

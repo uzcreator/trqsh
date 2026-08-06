@@ -23,6 +23,7 @@ var helpGroups = []struct {
 	title string
 	names []string
 }{
+	{"CONSOLE", []string{"ui"}},
 	{"TUNNELS", []string{"http", "tcp", "udp", "start", "ls", "open", "stop", "down"}},
 	{"ACCOUNT", []string{"login", "logout", "whoami", "subdomains", "domains"}},
 	{"SYSTEM", []string{"status", "config", "update", "version", "uninstall"}},
@@ -93,6 +94,7 @@ func printRootHelp(root *cobra.Command) {
 	}
 	fmt.Fprintln(out)
 
+	fmt.Fprintf(out, "  Run %s to open the interactive console.\n", ui.Accent("trqsh"))
 	fmt.Fprintf(out, "  Per-command help: %s\n", ui.Accent("trqsh <command> --help"))
 	fmt.Fprintf(out, "  Docs: %s\n\n", ui.Link("https://trqsh.uz/docs"))
 }

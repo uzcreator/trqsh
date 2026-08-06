@@ -61,6 +61,8 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&g.controlA, "control-addr", "", "local control API listen address")
 
 	root.AddCommand(
+		// Interactive console (also what bare `trqsh` runs on a terminal).
+		newUICmd(g),
 		// Tunnels (foreground + background).
 		newHTTPCmd(g),
 		newTCPCmd(g),
