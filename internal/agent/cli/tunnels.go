@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent/cli/ui"
 )
 
 // This file implements the background-tunnel surface: `-d/--detach` spawns (or
@@ -62,13 +63,19 @@ func runDetached(cmd *cobra.Command, g *globalFlags, specs []agent.TunnelSpec) e
 		if err := controlPOST(addr, "/tunnels", spec, &t); err != nil {
 			return fmt.Errorf("start tunnel: %w", err)
 		}
-		fmt.Printf("\n  ✓ %s  →  %s   (background)\n", bold(t.PublicURL), t.LocalAddr)
+		fmt.Printf("\n  %s %s  %s  %s   %s\n",
+			ui.Green(ui.IconOK), ui.AccentBold(t.PublicURL), ui.Gray("→"), t.LocalAddr, ui.Gray("(background)"))
 	}
-	fmt.Printf("\n  Running in the background. Manage with:\n" +
-		"    trqsh ls          list tunnels\n" +
-		"    trqsh open <id>   open in browser\n" +
-		"    trqsh stop <id>   stop one  (or: trqsh stop all)\n" +
-		"    trqsh down        stop the daemon\n\n")
+	fmt.Printf("\n  %s\n", ui.Gray("Running in the background. Manage with:"))
+	for _, row := range [][2]string{
+		{"trqsh ls", "list tunnels"},
+		{"trqsh open <id>", "open in browser"},
+		{"trqsh stop <id>", "stop one (or: trqsh stop all)"},
+		{"trqsh down", "stop the daemon"},
+	} {
+		fmt.Printf("    %s  %s\n", ui.Accent(ui.Pad(row[0], 16)), ui.Gray(row[1]))
+	}
+	fmt.Println()
 	return nil
 }
 
@@ -215,11 +222,11 @@ func newLsCmd(g *globalFlags) *cobra.Command {
 			addr := controlAddr(cfg)
 			var tunnels []agent.Tunnel
 			if err := controlGET(addr, "/tunnels", &tunnels); err != nil {
-				fmt.Println("no background daemon running — start one with `trqsh http <port> -d`")
+				ui.Info("no background daemon running — start one with `trqsh http <port> -d`")
 				return nil
 			}
 			if len(tunnels) == 0 {
-				fmt.Println("no running tunnels")
+				ui.Info("no running tunnels")
 				return nil
 			}
 			tw := newTab()
@@ -254,7 +261,7 @@ func newOpenCmd(g *globalFlags) *cobra.Command {
 			if t == nil {
 				return fmt.Errorf("no tunnel matched %q (see `trqsh ls`)", args[0])
 			}
-			fmt.Printf("opening %s\n", t.PublicURL)
+			ui.Step("opening %s", ui.Cyan(t.PublicURL))
 			return openBrowser(t.PublicURL)
 		},
 	}
@@ -279,7 +286,7 @@ func newStopCmd(g *globalFlags) *cobra.Command {
 				return fmt.Errorf("no background daemon running at %s", addr)
 			}
 			if len(tunnels) == 0 {
-				fmt.Println("no running tunnels")
+				ui.Info("no running tunnels")
 				return nil
 			}
 			target := "all"
@@ -291,7 +298,7 @@ func newStopCmd(g *globalFlags) *cobra.Command {
 				t := &tunnels[i]
 				if target == "all" || matchesTunnel(t, target) {
 					if err := controlDelete(addr, "/tunnels/"+t.ID); err == nil {
-						fmt.Printf("stopped %s (%s)\n", firstNonEmpty(t.Name, shortID(t.ID)), t.PublicURL)
+						ui.Success("stopped %s %s", firstNonEmpty(t.Name, shortID(t.ID)), ui.Gray(t.PublicURL))
 						stopped++
 					}
 				}
@@ -317,13 +324,13 @@ func newDownCmd(g *globalFlags) *cobra.Command {
 			}
 			addr := controlAddr(cfg)
 			if !daemonAlive(addr) {
-				fmt.Println("no background daemon running")
+				ui.Info("no background daemon running")
 				return nil
 			}
 			// The daemon replies 204 then exits shortly after; a dropped connection
 			// here just means it already went down, which is the goal.
 			_ = controlPOST(addr, "/shutdown", nil, nil)
-			fmt.Println("background daemon stopped")
+			ui.Success("background daemon stopped")
 			return nil
 		},
 	}

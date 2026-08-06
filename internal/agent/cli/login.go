@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent/cli/ui"
 )
 
 // newLoginCmd signs the CLI in. By default it runs the browser device-flow: it
@@ -106,7 +107,7 @@ func saveAndConfirm(ctx context.Context, cfg agent.Config, key string) error {
 	if err := cfg.Save(agent.DefaultConfigPath()); err != nil {
 		return err
 	}
-	fmt.Printf("\n  ✓ Signed in — key saved to %s\n", agent.DefaultConfigPath())
+	ui.Success("Signed in — key saved to %s", ui.Gray(agent.DefaultConfigPath()))
 	cc := newCloudClient(cfg)
 	if me, err := cc.me(ctx); err == nil {
 		printAccount(me)
@@ -125,7 +126,7 @@ func newLogoutCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if strings.TrimSpace(cfg.APIKey) == "" {
-				fmt.Println("already signed out")
+				ui.Info("already signed out")
 				return nil
 			}
 			// Best-effort: tear down background tunnels so nothing keeps serving
@@ -143,7 +144,7 @@ func newLogoutCmd(g *globalFlags) *cobra.Command {
 			if err := cfg.Save(agent.DefaultConfigPath()); err != nil {
 				return err
 			}
-			fmt.Println("signed out")
+			ui.Success("signed out")
 			return nil
 		},
 	}
