@@ -514,6 +514,9 @@ func (m model) headerMeta() string {
 func (m model) renderPinned() []string {
 	var out []string
 	for _, p := range m.pins {
+		if len(out) > 0 {
+			out = append(out, "") // a blank line between stacked panels
+		}
 		switch p {
 		case "tunnels":
 			out = append(out, m.pinTunnels()...)
@@ -566,7 +569,7 @@ func (m model) pinStatus() []string {
 }
 
 func (m model) renderReq(r reqRow) string {
-	method := methodStyle(r.method).Render(pad(r.method, 5))
+	method := methodStyle(r.method).Render(pad(r.method, 6)) // widest common verb is DELETE
 	status := statusStyle(r.status).Render(fmt.Sprintf("%3d", r.status))
 	dur := stDim.Render(fmt.Sprintf("%5dms", r.ms))
 	pathW := max(10, m.width-24)
