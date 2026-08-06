@@ -60,33 +60,21 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&g.inspectorA, "inspector-addr", "", "inspector listen address")
 	pf.StringVar(&g.controlA, "control-addr", "", "local control API listen address")
 
-	root.AddCommand(
-		// Interactive console (also what bare `trqsh` runs on a terminal).
-		newUICmd(g),
-		// Tunnels (foreground + background).
-		newHTTPCmd(g),
-		newTCPCmd(g),
-		newUDPCmd(g),
-		newStartCmd(g),
-		newLsCmd(g),
-		newOpenCmd(g),
-		newStatusCmd(g),
-		newStopCmd(g),
-		newDownCmd(g),
-		newDaemonCmd(g),
-		// Auth + account.
-		newLoginCmd(g),
-		newLogoutCmd(g),
-		newWhoamiCmd(g),
-		// Account resources.
-		newSubdomainsCmd(g),
-		newDomainsCmd(g),
-		// Misc.
-		newConfigCmd(g),
-		newVersionCmd(),
-		newUpdateCmd(g),
-		newUninstallCmd(g),
-	)
+	// TUI-only: the interactive console is the whole interface, so no user-facing
+	// subcommands are registered. Only `daemon` stays — it's the headless agent
+	// the console spawns for itself (see ensureDaemon), never run by hand.
+	root.AddCommand(newDaemonCmd(g))
+
+	// Every invocation opens the console. Bare `trqsh` opens it empty; `trqsh
+	// http 3000` opens it and runs that as the first slash command. Flags after
+	// the first positional pass through verbatim (SetInterspersed(false)) so
+	// per-command flags like `--subdomain` reach the console instead of erroring
+	// as unknown root flags.
+	root.Args = cobra.ArbitraryArgs
+	root.Flags().SetInterspersed(false)
+	root.RunE = func(cmd *cobra.Command, args []string) error {
+		return runTUI(cmd, g, strings.Join(args, " "))
+	}
 	applyBranding(root)
 	return root
 }

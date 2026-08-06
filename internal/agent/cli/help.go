@@ -29,13 +29,13 @@ var helpGroups = []struct {
 	{"SYSTEM", []string{"status", "config", "update", "version", "uninstall"}},
 }
 
-// rootExamples are the handful of invocations that cover most real usage.
+// rootExamples are the handful of invocations that cover most real usage. Each
+// opens the console; the ones with arguments run that as the first command.
 var rootExamples = []string{
-	"trqsh http 3000",
+	"trqsh                        open the console",
+	"trqsh http 3000              expose port 3000, then keep working",
 	"trqsh http 8080 --subdomain myapp",
-	"trqsh tcp 5432 --detach",
-	"trqsh login",
-	"trqsh ls",
+	"trqsh login                  sign in",
 }
 
 // nameColWidth is the padded width of the command-name column in help listings.
@@ -64,9 +64,10 @@ func printRootHelp(root *cobra.Command) {
 	byName := commandIndex(root)
 
 	fmt.Fprintf(out, "\n  %s %s\n", ui.AccentBold("trqsh"), ui.Gray(versionString()))
-	fmt.Fprintf(out, "  %s\n\n", root.Short)
+	fmt.Fprintf(out, "  %s\n", root.Short)
+	fmt.Fprintf(out, "  %s\n\n", ui.Gray("An interactive console — run trqsh to open it; everything happens inside."))
 
-	fmt.Fprintf(out, "  %s\n    %s %s\n\n", ui.Title("USAGE"), ui.Bold("trqsh"), ui.Gray("<command> [flags]"))
+	fmt.Fprintf(out, "  %s\n    %s %s\n\n", ui.Title("USAGE"), ui.Bold("trqsh"), ui.Gray("[command …]   (opens the console, running any command you pass)"))
 
 	shown := map[string]bool{}
 	for _, g := range helpGroups {
@@ -94,8 +95,7 @@ func printRootHelp(root *cobra.Command) {
 	}
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "  Run %s to open the interactive console.\n", ui.Accent("trqsh"))
-	fmt.Fprintf(out, "  Per-command help: %s\n", ui.Accent("trqsh <command> --help"))
+	fmt.Fprintf(out, "  Inside the console, type %s for all commands (%s to autocomplete).\n", ui.Accent("/help"), ui.Accent("/"))
 	fmt.Fprintf(out, "  Docs: %s\n\n", ui.Link("https://trqsh.uz/docs"))
 }
 
