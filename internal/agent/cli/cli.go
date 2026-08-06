@@ -165,17 +165,18 @@ func runTunnels(cmd *cobra.Command, g *globalFlags, specs []agent.TunnelSpec) er
 			_ = core.Shutdown(context.Background())
 			return err
 		}
-		fmt.Printf("\n  %s  →  %s\n", bold(t.PublicURL), t.LocalAddr)
+		fmt.Printf("\n  %s  %s  %s  %s\n",
+			ui.Green(ui.IconOK), ui.AccentBold(t.PublicURL), ui.Gray("→"), t.LocalAddr)
 	}
 	if cfg.Inspector.Enabled {
-		fmt.Printf("  inspector: http://%s\n", cfg.Inspector.Addr)
+		fmt.Printf("  %s http://%s\n", ui.Gray("inspector"), cfg.Inspector.Addr)
 	}
-	fmt.Printf("\n  Press Ctrl+C to stop.\n\n")
+	fmt.Printf("\n  %s\n\n", ui.Gray("Press Ctrl+C to stop."))
 
 	go streamEvents(ctx, core)
 
 	<-ctx.Done()
-	fmt.Println("\nshutting down…")
+	fmt.Printf("\n  %s\n", ui.Gray("shutting down…"))
 	sc, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return core.Shutdown(sc)
@@ -190,17 +191,41 @@ func streamEvents(ctx context.Context, core *agent.Agent) {
 			switch ev.Type {
 			case "request":
 				if ev.Request != nil {
-					fmt.Printf("  %-6s %-40s %d  %dms\n",
-						ev.Request.Method, truncate(ev.Request.Path, 40), ev.Request.Status, ev.Request.DurationMs)
+					fmt.Printf("  %s %-40s %s  %s\n",
+						methodField(ev.Request.Method), truncate(ev.Request.Path, 40),
+						statusField(ev.Request.Status), ui.Gray(fmt.Sprintf("%dms", ev.Request.DurationMs)))
 				}
 			case "status":
 				if ev.Status != nil && !ev.Status.Connected {
-					fmt.Println("  ⚠ disconnected — reconnecting…")
+					ui.Warn("disconnected — reconnecting…")
 				}
 			case "error":
-				fmt.Printf("  ⚠ %s\n", ev.Err)
+				ui.Warn("%s", ev.Err)
 			}
 		}
+	}
+}
+
+// methodField renders a request's HTTP method in a fixed-width, colored column
+// (padding is applied before coloring so the ANSI codes don't skew alignment).
+func methodField(method string) string {
+	return ui.Cyan(fmt.Sprintf("%-6s", method))
+}
+
+// statusField colors an HTTP status code by class for the live request log.
+func statusField(code int) string {
+	s := fmt.Sprintf("%3d", code)
+	switch {
+	case code >= 500:
+		return ui.Red(s)
+	case code >= 400:
+		return ui.Yellow(s)
+	case code >= 300:
+		return ui.Cyan(s)
+	case code >= 200:
+		return ui.Green(s)
+	default:
+		return ui.Gray(s)
 	}
 }
 
@@ -214,13 +239,14 @@ func truncate(s string, n int) string {
 func bold(s string) string { return ui.Bold(s) }
 
 func printErr(err error) {
+	fmt.Fprintln(ui.Stderr)
 	var re *agent.Error
 	if errors.As(err, &re) {
-		fmt.Fprintf(os.Stderr, "\n  ✗ %s\n", re.Message)
+		ui.Fail("%s", re.Message)
 		if h := re.Hint(); h != "" {
-			fmt.Fprintf(os.Stderr, "    %s\n", h)
+			fmt.Fprintf(ui.Stderr, "    %s\n", ui.Gray(h))
 		}
 		return
 	}
-	fmt.Fprintf(os.Stderr, "\n  ✗ %v\n", err)
+	ui.Fail("%v", err)
 }

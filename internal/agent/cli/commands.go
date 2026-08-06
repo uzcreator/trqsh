@@ -125,17 +125,28 @@ func newStatusCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			addr := controlAddr(cfg)
 			var st agent.Status
-			if err := controlGET(cfg.ControlAddr, "/status", &st); err != nil {
-				return fmt.Errorf("no running agent at %s (%w)", cfg.ControlAddr, err)
+			if err := controlGET(addr, "/status", &st); err != nil {
+				// No daemon is the normal case, not an error — mirror `ls`.
+				ui.Info("no background agent running — start one with `trqsh http <port> -d`, or open the console with `trqsh`")
+				return nil
 			}
-			fmt.Printf("connected: %v  plan: %s  edge: %s  transport: %s\n", st.Connected, st.Plan, st.Edge, st.Kind)
+			state := ui.Gray("○ idle")
+			if st.Connected {
+				state = ui.Green("● connected")
+			}
+			fmt.Printf("\n  %s   %s\n", state, ui.Gray(fmt.Sprintf("plan %s · edge %s · %s",
+				firstNonEmpty(st.Plan, "—"), firstNonEmpty(st.Edge, "—"), firstNonEmpty(st.Kind, "—"))))
 			var tunnels []agent.Tunnel
-			if err := controlGET(cfg.ControlAddr, "/tunnels", &tunnels); err == nil {
+			if controlGET(addr, "/tunnels", &tunnels) == nil && len(tunnels) > 0 {
+				fmt.Println()
 				for _, t := range tunnels {
-					fmt.Printf("  %-16s %-24s → %s  (req=%d)\n", t.Name, t.PublicURL, t.LocalAddr, t.Metrics.Requests)
+					fmt.Printf("  %s  %s  %s  %s\n", ui.Cyan(t.PublicURL), ui.Gray("→"), t.LocalAddr,
+						ui.Gray(fmt.Sprintf("(%d req)", t.Metrics.Requests)))
 				}
 			}
+			fmt.Println()
 			return nil
 		},
 	}
@@ -150,9 +161,25 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("path: %s\n", firstNonEmpty(g.configPath, agent.DefaultConfigPath()))
-			fmt.Printf("server: %s\nregion: %s\ntransport: %s\ninspector: %s (enabled=%v)\ncontrol: %s\ntunnels: %d\n",
-				cfg.Server, cfg.Region, cfg.Transport, cfg.Inspector.Addr, cfg.Inspector.Enabled, cfg.ControlAddr, len(cfg.Tunnels))
+			signedIn := ui.Gray("no")
+			if strings.TrimSpace(cfg.APIKey) != "" {
+				signedIn = ui.Green("yes")
+			}
+			rows := [][2]string{
+				{"file", firstNonEmpty(g.configPath, agent.DefaultConfigPath())},
+				{"server", cfg.Server},
+				{"region", cfg.Region},
+				{"transport", cfg.Transport},
+				{"signed in", signedIn},
+				{"inspector", fmt.Sprintf("%s (enabled=%v)", cfg.Inspector.Addr, cfg.Inspector.Enabled)},
+				{"control", cfg.ControlAddr},
+				{"tunnels", fmt.Sprintf("%d defined", len(cfg.Tunnels))},
+			}
+			fmt.Println()
+			for _, r := range rows {
+				fmt.Printf("  %s  %s\n", ui.Gray(ui.Pad(r[0], 10)), r[1])
+			}
+			fmt.Println()
 			return nil
 		},
 	}
