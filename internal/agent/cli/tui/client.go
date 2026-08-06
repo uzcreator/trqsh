@@ -99,6 +99,70 @@ func (c *client) login(ctx context.Context, key string) error {
 	return c.do(ctx, http.MethodPost, "/login", map[string]string{"token": key}, nil)
 }
 
+func (c *client) logout(ctx context.Context) error {
+	return c.do(ctx, http.MethodPost, "/logout", nil, nil)
+}
+
+// shutdown stops the background daemon (POST /shutdown).
+func (c *client) shutdown(ctx context.Context) error {
+	return c.do(ctx, http.MethodPost, "/shutdown", nil, nil)
+}
+
+// --- cloud resources, proxied through the daemon (/cloud/*) ---
+
+type subdomain struct {
+	ID        string `json:"id"`
+	Subdomain string `json:"subdomain"`
+}
+
+func (c *client) listSubdomains(ctx context.Context) ([]subdomain, error) {
+	var out []subdomain
+	err := c.do(ctx, http.MethodGet, "/cloud/subdomains", nil, &out)
+	return out, err
+}
+
+func (c *client) reserveSubdomain(ctx context.Context, name string) (*subdomain, error) {
+	var out subdomain
+	err := c.do(ctx, http.MethodPost, "/cloud/subdomains", map[string]string{"subdomain": name}, &out)
+	return &out, err
+}
+
+func (c *client) releaseSubdomain(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/cloud/subdomains/"+id, nil, nil)
+}
+
+type domain struct {
+	ID         string `json:"id"`
+	Domain     string `json:"domain"`
+	VerifiedAt *struct{} `json:"verified_at"` // presence ⇒ verified; body unused here
+	CertStatus string `json:"cert_status"`
+}
+
+func (c *client) listDomains(ctx context.Context) ([]domain, error) {
+	var out []domain
+	err := c.do(ctx, http.MethodGet, "/cloud/domains", nil, &out)
+	return out, err
+}
+
+// addDomainResp mirrors the create-domain response: the record plus the DNS
+// records the user must set to verify ownership.
+type addDomainResp struct {
+	Domain          domain            `json:"domain"`
+	DNSInstructions map[string]string `json:"dns_instructions"`
+}
+
+func (c *client) addDomain(ctx context.Context, name string) (*addDomainResp, error) {
+	var out addDomainResp
+	err := c.do(ctx, http.MethodPost, "/cloud/domains", map[string]string{"domain": name}, &out)
+	return &out, err
+}
+
+func (c *client) verifyDomain(ctx context.Context, id string) (*domain, error) {
+	var out domain
+	err := c.do(ctx, http.MethodPost, "/cloud/domains/"+id+"/verify", nil, &out)
+	return &out, err
+}
+
 // account is the slice of GET /cloud/me the header and /whoami care about.
 type account struct {
 	User struct {

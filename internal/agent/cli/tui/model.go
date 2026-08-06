@@ -29,6 +29,21 @@ type Options struct {
 	APIKey     string // stored API key, pushed into the daemon so /cloud/me works
 	BaseDomain string // e.g. trqsh.uz (for display)
 	Version    string // agent.Version, shown in the header
+
+	// InitialCommand is the slash command to run on startup — the args the user
+	// passed to `trqsh` (e.g. `trqsh http 3000` opens the console and runs it).
+	InitialCommand string
+	// StartSpecs are the tunnels defined in the config file, used by /start.
+	StartSpecs []agent.TunnelSpec
+	// ConfigRows are pre-rendered key/value pairs shown by /config, built by cli
+	// so the tui package needn't know the config's internals.
+	ConfigRows [][2]string
+
+	// OnUpdate and OnUninstall bridge to package cli for the two operations that
+	// touch the binary/filesystem (self-replace, local-data removal). They return
+	// a summary line to print in the transcript. Nil disables the command.
+	OnUpdate    func(context.Context) (string, error)
+	OnUninstall func(context.Context) (string, error)
 }
 
 // reqRow is one line in the live traffic feed.
@@ -66,6 +81,7 @@ type model struct {
 	menuIdx   int
 
 	loginActive bool // a device-flow sign-in is polling
+	initialRan  bool // the InitialCommand (if any) has been dispatched
 	quitting    bool
 }
 
@@ -186,6 +202,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.ready = true
 		m.relayout()
+		// Run the command the user typed after `trqsh` (e.g. `trqsh http 3000`),
+		// now that the viewport is sized so its output lands in the transcript.
+		if !m.initialRan && strings.TrimSpace(m.opts.InitialCommand) != "" {
+			m.initialRan = true
+			return m.run(m.opts.InitialCommand)
+		}
 		return m, nil
 
 	case tea.KeyMsg:

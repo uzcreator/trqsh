@@ -36,15 +36,22 @@ func init() {
 		{"http", "<port>", "Expose a local HTTP port", cmdHTTP},
 		{"tcp", "<port>", "Expose a local TCP port", cmdTCP},
 		{"udp", "<port>", "Expose a local UDP port", cmdUDP},
+		{"start", "", "Start tunnels from your config", cmdStart},
 		{"ls", "", "List running tunnels", cmdLs},
 		{"open", "<id>", "Open a tunnel URL in your browser", cmdOpen},
 		{"stop", "<id|all>", "Stop a tunnel (or all)", cmdStop},
+		{"down", "", "Stop the background daemon and quit", cmdDown},
 		{"pin", "<traffic|tunnels|status>", "Keep a live panel on screen", cmdPin},
 		{"unpin", "<name|all>", "Remove a pinned panel", cmdUnpin},
 		{"status", "", "Show connection status", cmdStatus},
 		{"whoami", "", "Show account, plan and usage", cmdWhoami},
 		{"login", "[key]", "Sign in via browser (or paste a key)", cmdLogin},
-		{"update", "", "Check for a newer trqsh", cmdUpdate},
+		{"logout", "", "Sign out", cmdLogout},
+		{"subdomains", "[reserve|release <name>]", "Manage reserved subdomains", cmdSubdomains},
+		{"domains", "[add|verify <domain>]", "Manage custom domains", cmdDomains},
+		{"config", "", "Show configuration", cmdConfig},
+		{"update", "[check]", "Check for / install a newer trqsh", cmdUpdate},
+		{"uninstall", "", "Remove trqsh's local data", cmdUninstall},
 		{"version", "", "Show version", cmdVersion},
 		{"clear", "", "Clear the transcript", cmdClear},
 		{"help", "", "Show all commands", cmdHelp},
@@ -67,6 +74,10 @@ func lookupCommand(name string) (slashCmd, bool) {
 		return lookupCommand("ls")
 	case "account", "me":
 		return lookupCommand("whoami")
+	case "subs", "subdomain":
+		return lookupCommand("subdomains")
+	case "domain":
+		return lookupCommand("domains")
 	case "?":
 		return lookupCommand("help")
 	}
@@ -286,13 +297,14 @@ func cmdLogin(m *model, args []string) tea.Cmd {
 	}
 }
 
-func cmdUpdate(m *model, _ []string) tea.Cmd {
-	cur, cl := m.opts.Version, m.cl
+func cmdUpdate(m *model, args []string) tea.Cmd {
+	checkOnly := len(args) > 0 && strings.EqualFold(args[0], "check")
+	cur, cl, onUpdate := m.opts.Version, m.cl, m.opts.OnUpdate
 	m.appendLines(stDim.Render("  checking for updates…"))
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
-		latest, url, err := cl.latestVersion(ctx)
+		latest, _, err := cl.latestVersion(ctx)
 		switch {
 		case err != nil:
 			return printMsg{[]string{stErr.Render("  ✗ couldn't check: " + err.Error())}}
@@ -303,14 +315,241 @@ func cmdUpdate(m *model, _ []string) tea.Cmd {
 		case latest == cur:
 			return printMsg{[]string{stOK.Render("  ✓ trqsh " + cur + " is up to date")}}
 		}
-		lines := []string{
-			stWarn.Render("  ▲ update available: ") + stKey.Render(cur+" → "+latest),
-			stDim.Render("  run ") + stKey.Render("trqsh update") + stDim.Render(" in your shell to install"),
+		if checkOnly || onUpdate == nil {
+			return printMsg{[]string{
+				stWarn.Render("  ▲ update available: ") + stKey.Render(cur+" → "+latest),
+				stDim.Render("  run ") + stKey.Render("/update") + stDim.Render(" to install it"),
+			}}
 		}
-		if url != "" {
-			lines = append(lines, stDim.Render("  "+url))
+		summary, err := onUpdate(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ update failed: " + err.Error())}}
 		}
-		return printMsg{lines}
+		return printMsg{[]string{stOK.Render("  ✓ " + summary), stDim.Render("  restart the console to run the new version")}}
+	}
+}
+
+func cmdStart(m *model, _ []string) tea.Cmd {
+	specs := m.opts.StartSpecs
+	if len(specs) == 0 {
+		m.appendLines(stDim.Render("  no tunnels in your config — add some, or use ") + stKey.Render("/http <port>"))
+		return nil
+	}
+	cl := m.cl
+	m.appendLines(stDim.Render(fmt.Sprintf("  starting %d tunnel(s) from config…", len(specs))))
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+		defer cancel()
+		var out []string
+		for _, spec := range specs {
+			t, err := cl.startTunnel(ctx, spec)
+			if err != nil {
+				out = append(out, stErr.Render("  ✗ "+firstNonEmpty(spec.Name, spec.Addr)+": "+err.Error()))
+			} else {
+				out = append(out, stOK.Render("  ✓ ")+stURL.Render(t.PublicURL)+stDim.Render("  → "+t.LocalAddr))
+			}
+		}
+		return printMsg{out}
+	}
+}
+
+func cmdDown(m *model, _ []string) tea.Cmd {
+	cl := m.cl
+	m.appendLines(stDim.Render("  stopping the background daemon…"))
+	// Stop the daemon, then quit — there's nothing left to show once it's gone.
+	return tea.Sequence(
+		func() tea.Msg {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = cl.shutdown(ctx)
+			return nil
+		},
+		tea.Quit,
+	)
+}
+
+func cmdLogout(m *model, _ []string) tea.Cmd {
+	cl := m.cl
+	m.acct, m.authed = nil, false
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		if err := cl.logout(ctx); err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		return printMsg{[]string{stOK.Render("  ✓ signed out")}}
+	}
+}
+
+func cmdConfig(m *model, _ []string) tea.Cmd {
+	if len(m.opts.ConfigRows) == 0 {
+		m.appendLines(stDim.Render("  (no configuration to show)"))
+		return nil
+	}
+	m.appendLines("  " + stTitle.Render("CONFIG"))
+	for _, r := range m.opts.ConfigRows {
+		m.appendLines("  " + stDim.Render(pad(r[0], 12)) + r[1])
+	}
+	return nil
+}
+
+func cmdSubdomains(m *model, args []string) tea.Cmd {
+	cl, base := m.cl, firstNonEmpty(m.opts.BaseDomain, "trqsh.uz")
+	if len(args) >= 2 {
+		switch strings.ToLower(args[0]) {
+		case "reserve", "add":
+			name := strings.ToLower(args[1])
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				s, err := cl.reserveSubdomain(ctx, name)
+				if err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				return printMsg{[]string{stOK.Render("  ✓ reserved ") + stURL.Render(s.Subdomain+"."+base)}}
+			}
+		case "release", "remove", "rm":
+			name := args[1]
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				subs, err := cl.listSubdomains(ctx)
+				if err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				id := ""
+				for _, s := range subs {
+					if s.ID == name || strings.EqualFold(s.Subdomain, name) {
+						id = s.ID
+						break
+					}
+				}
+				if id == "" {
+					return printMsg{[]string{stErr.Render("  ✗ no reserved subdomain matched " + name)}}
+				}
+				if err := cl.releaseSubdomain(ctx, id); err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				return printMsg{[]string{stOK.Render("  ✓ released " + name)}}
+			}
+		}
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		subs, err := cl.listSubdomains(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		if len(subs) == 0 {
+			return printMsg{[]string{stDim.Render("  no reserved subdomains — ") + stKey.Render("/subdomains reserve <name>")}}
+		}
+		out := []string{"  " + stTitle.Render("SUBDOMAINS")}
+		for _, s := range subs {
+			out = append(out, "  "+stURL.Render(s.Subdomain+"."+base))
+		}
+		return printMsg{out}
+	}
+}
+
+func cmdDomains(m *model, args []string) tea.Cmd {
+	cl := m.cl
+	if len(args) >= 2 {
+		switch strings.ToLower(args[0]) {
+		case "add":
+			name := strings.ToLower(args[1])
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+				defer cancel()
+				res, err := cl.addDomain(ctx, name)
+				if err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				out := []string{
+					stOK.Render("  ✓ added ") + stURL.Render(res.Domain.Domain),
+					stDim.Render("  set these DNS records, then ") + stKey.Render("/domains verify "+res.Domain.Domain) + stDim.Render(":"),
+				}
+				if res.DNSInstructions["txt_name"] != "" {
+					out = append(out, stDim.Render("    TXT   "+res.DNSInstructions["txt_name"]+"  "+res.DNSInstructions["txt_value"]))
+				}
+				if res.DNSInstructions["cname_name"] != "" {
+					out = append(out, stDim.Render("    CNAME "+res.DNSInstructions["cname_name"]+"  "+res.DNSInstructions["cname_value"]))
+				}
+				return printMsg{out}
+			}
+		case "verify":
+			name := args[1]
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+				defer cancel()
+				doms, err := cl.listDomains(ctx)
+				if err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				id := ""
+				for _, d := range doms {
+					if d.ID == name || strings.EqualFold(d.Domain, name) {
+						id = d.ID
+						break
+					}
+				}
+				if id == "" {
+					return printMsg{[]string{stErr.Render("  ✗ no domain matched " + name)}}
+				}
+				d, err := cl.verifyDomain(ctx, id)
+				if err != nil {
+					return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+				}
+				if d.VerifiedAt != nil {
+					return printMsg{[]string{stOK.Render("  ✓ verified " + d.Domain)}}
+				}
+				return printMsg{[]string{stWarn.Render("  " + d.Domain + " is not verified yet")}}
+			}
+		}
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		doms, err := cl.listDomains(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		if len(doms) == 0 {
+			return printMsg{[]string{stDim.Render("  no custom domains — ") + stKey.Render("/domains add <domain>")}}
+		}
+		out := []string{"  " + stTitle.Render("DOMAINS")}
+		for _, d := range doms {
+			status := "pending"
+			if d.VerifiedAt != nil {
+				status = "verified"
+			}
+			out = append(out, "  "+stURL.Render(d.Domain)+stDim.Render("  "+status+" · "+firstNonEmpty(d.CertStatus, "—")))
+		}
+		return printMsg{out}
+	}
+}
+
+func cmdUninstall(m *model, args []string) tea.Cmd {
+	onUninstall := m.opts.OnUninstall
+	if onUninstall == nil {
+		m.appendLines(stDim.Render("  uninstall isn't available in this build"))
+		return nil
+	}
+	if len(args) == 0 || !strings.EqualFold(args[0], "yes") {
+		m.appendLines(
+			stWarn.Render("  ⚠ this removes trqsh's local data (config, credentials, cached binaries) and stops tunnels"),
+			stDim.Render("  type ")+stKey.Render("/uninstall yes")+stDim.Render(" to confirm"),
+		)
+		return nil
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		msg, err := onUninstall(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		return printMsg{[]string{stOK.Render("  ✓ " + msg)}}
 	}
 }
 
