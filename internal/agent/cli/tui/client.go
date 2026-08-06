@@ -97,6 +97,22 @@ func (c *client) stopTunnel(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/tunnels/"+id, nil, nil)
 }
 
+// capturedRequest is the slice of the daemon's inspected requests (GET
+// /requests) the console shows — defined here so tui needn't import inspect.
+type capturedRequest struct {
+	Method     string `json:"method"`
+	Host       string `json:"host"`
+	Path       string `json:"path"`
+	Status     int    `json:"status"`
+	DurationMs int64  `json:"duration_ms"`
+}
+
+func (c *client) requests(ctx context.Context) ([]capturedRequest, error) {
+	var out []capturedRequest
+	err := c.do(ctx, http.MethodGet, "/requests", nil, &out)
+	return out, err
+}
+
 func (c *client) login(ctx context.Context, key string) error {
 	return c.do(ctx, http.MethodPost, "/login", map[string]string{"token": key}, nil)
 }

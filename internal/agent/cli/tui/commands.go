@@ -7,6 +7,7 @@ package tui
 // transcript synchronously and/or return a tea.Cmd for async work (API calls).
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"slices"
@@ -14,7 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mdp/qrterminal/v3"
 	"github.com/trqsh-uz/trqsh/internal/agent"
 )
 
@@ -39,8 +42,11 @@ func init() {
 		{"start", "", "Start tunnels from your config", cmdStart},
 		{"ls", "", "List running tunnels", cmdLs},
 		{"open", "<id>", "Open a tunnel URL in your browser", cmdOpen},
+		{"qr", "[id]", "Show a QR code for a tunnel URL", cmdQR},
+		{"copy", "[id]", "Copy a tunnel URL to the clipboard", cmdCopy},
 		{"stop", "<id|all>", "Stop a tunnel (or all)", cmdStop},
 		{"down", "", "Stop the background daemon and quit", cmdDown},
+		{"requests", "", "Show recently captured requests", cmdRequests},
 		{"pin", "<traffic|tunnels|status>", "Keep a live panel on screen", cmdPin},
 		{"unpin", "<name|all>", "Remove a pinned panel", cmdUnpin},
 		{"status", "", "Show connection status", cmdStatus},
@@ -156,6 +162,57 @@ func cmdOpen(m *model, args []string) tea.Cmd {
 	}
 	m.appendLines(stOK.Render("  ✓ opened ") + stURL.Render(t.PublicURL))
 	return nil
+}
+
+func cmdQR(m *model, args []string) tea.Cmd {
+	t := m.pickTunnel(args)
+	if t == nil {
+		m.appendLines(stErr.Render("  ✗ no tunnel to show — ") + stKey.Render("/http <port>") + stDim.Render(" first"))
+		return nil
+	}
+	var buf bytes.Buffer
+	qrterminal.GenerateHalfBlock(t.PublicURL, qrterminal.L, &buf)
+	m.appendLines(stDim.Render("  scan to open ") + stURL.Render(t.PublicURL) + stDim.Render(" on your phone:"))
+	for line := range strings.SplitSeq(strings.TrimRight(buf.String(), "\n"), "\n") {
+		m.appendLines("  " + line)
+	}
+	return nil
+}
+
+func cmdCopy(m *model, args []string) tea.Cmd {
+	t := m.pickTunnel(args)
+	if t == nil {
+		m.appendLines(stErr.Render("  ✗ no tunnel to copy"))
+		return nil
+	}
+	if err := clipboard.WriteAll(t.PublicURL); err != nil {
+		m.appendLines(stErr.Render("  ✗ couldn't copy: " + err.Error()))
+		return nil
+	}
+	m.appendLines(stOK.Render("  ✓ copied ") + stURL.Render(t.PublicURL) + stDim.Render(" to the clipboard"))
+	return nil
+}
+
+func cmdRequests(m *model, _ []string) tea.Cmd {
+	cl := m.cl
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		reqs, err := cl.requests(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		if len(reqs) == 0 {
+			return printMsg{[]string{stDim.Render("  no requests captured yet — expose an HTTP service with /http")}}
+		}
+		out := []string{"  " + stTitle.Render("RECENT REQUESTS")}
+		for _, r := range reqs[max(0, len(reqs)-20):] {
+			out = append(out, "  "+methodStyle(r.Method).Render(pad(r.Method, 6))+" "+
+				statusStyle(r.Status).Render(fmt.Sprintf("%3d", r.Status))+" "+
+				stDim.Render(r.Host)+r.Path+stDim.Render(fmt.Sprintf("  %dms", r.DurationMs)))
+		}
+		return printMsg{out}
+	}
 }
 
 func cmdStop(m *model, args []string) tea.Cmd {
