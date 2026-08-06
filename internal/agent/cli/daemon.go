@@ -19,8 +19,9 @@ import (
 // until signaled, letting the UI open and close tunnels on demand.
 func newDaemonCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "daemon",
-		Short: "Run the agent in the background, serving the local control API (for the desktop app)",
+		Use:    "daemon",
+		Short:  "Run the background agent (control API for the desktop app)",
+		Hidden: true, // implementation detail: spawned by -d and the desktop app, not run by hand
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {

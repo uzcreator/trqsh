@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
+	"github.com/trqsh-uz/trqsh/internal/agent/cli/ui"
 	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
 )
 
@@ -84,6 +85,7 @@ func newRootCmd() *cobra.Command {
 		newUpdateCmd(g),
 		newUninstallCmd(g),
 	)
+	applyBranding(root)
 	return root
 }
 
@@ -207,7 +209,7 @@ func truncate(s string, n int) string {
 	return s[:n-1] + "…"
 }
 
-func bold(s string) string { return "\033[1m" + s + "\033[0m" }
+func bold(s string) string { return ui.Bold(s) }
 
 func printErr(err error) {
 	var re *agent.Error

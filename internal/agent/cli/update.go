@@ -54,8 +54,9 @@ var (
 func newUpdateCmd(g *globalFlags) *cobra.Command {
 	var checkOnly bool
 	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "Check for and install the latest trqsh release",
+		Use:     "update",
+		Short:   "Update trqsh to the latest release",
+		Example: "trqsh update\ntrqsh update --check",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runUpdate(cmd, g, checkOnly)
 		},

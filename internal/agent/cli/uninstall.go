@@ -24,7 +24,7 @@ func newUninstallCmd(g *globalFlags) *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "uninstall",
-		Short: "Remove trqsh's local data (config, token, cache) and show how to remove the package",
+		Short: "Remove trqsh's local data",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, _ := g.loadConfig(cmd)
 			cfgDir := filepath.Dir(agent.DefaultConfigPath())

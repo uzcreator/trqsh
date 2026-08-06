@@ -206,7 +206,7 @@ func newLsCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:     "ls",
 		Aliases: []string{"list", "ps"},
-		Short:   "List running (background) tunnels",
+		Short:   "List running background tunnels",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {
@@ -236,9 +236,10 @@ func newLsCmd(g *globalFlags) *cobra.Command {
 // newOpenCmd opens a running tunnel's public URL in the browser.
 func newOpenCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "open <id|name|subdomain>",
-		Short: "Open a running tunnel's public URL in your browser",
-		Args:  cobra.ExactArgs(1),
+		Use:     "open <id|name|subdomain>",
+		Short:   "Open a tunnel's URL in your browser",
+		Example: "trqsh open myapp",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {
@@ -264,7 +265,8 @@ func newStopCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:     "stop [id|name|all]",
 		Aliases: []string{"kill", "rm"},
-		Short:   "Stop a background tunnel (or all with `stop all`)",
+		Short:   "Stop a background tunnel (or all)",
+		Example: "trqsh stop myapp\ntrqsh stop all",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := g.loadConfig(cmd)
@@ -307,7 +309,7 @@ func newDownCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:     "down",
 		Aliases: []string{"quit", "shutdown"},
-		Short:   "Stop the background daemon and all its tunnels",
+		Short:   "Stop the background daemon",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {

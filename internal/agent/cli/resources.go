@@ -13,7 +13,10 @@ func newSubdomainsCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "subdomains",
 		Aliases: []string{"subs", "subdomain"},
-		Short:   "List reserved subdomains",
+		Short:   "Manage reserved subdomains",
+		Example: "trqsh subdomains\n" +
+			"trqsh subdomains reserve myapp\n" +
+			"trqsh subdomains release myapp",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := requireAuth(g, cmd)
 			if err != nil {
@@ -90,7 +93,10 @@ func newDomainsCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "domains",
 		Aliases: []string{"domain"},
-		Short:   "List your custom domains",
+		Short:   "Manage custom domains",
+		Example: "trqsh domains\n" +
+			"trqsh domains add example.com\n" +
+			"trqsh domains verify example.com",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := requireAuth(g, cmd)
 			if err != nil {

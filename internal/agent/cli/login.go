@@ -22,11 +22,14 @@ func newLoginCmd(g *globalFlags) *cobra.Command {
 	var noBrowser bool
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Sign in through your browser (or paste a key with --token)",
+		Short: "Sign in through your browser",
 		Long: "Sign in to trqsh.\n\n" +
 			"With no flags this opens your browser: sign in with GitHub or Google and\n" +
 			"approve the request, and the CLI stores the API key automatically.\n" +
 			"For CI or headless machines, pass an existing key with --token.",
+		Example: "trqsh login\n" +
+			"trqsh login --token tq_xxx\n" +
+			"trqsh login --no-browser",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := g.loadConfig(cmd)
@@ -115,7 +118,7 @@ func saveAndConfirm(ctx context.Context, cfg agent.Config, key string) error {
 func newLogoutCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Sign out (remove the saved API key)",
+		Short: "Sign out",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {
@@ -151,7 +154,7 @@ func newWhoamiCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:     "whoami",
 		Aliases: []string{"account", "me"},
-		Short:   "Show the signed-in account, plan and usage",
+		Short:   "Show account, plan and usage",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := g.loadConfig(cmd)
 			if err != nil {
