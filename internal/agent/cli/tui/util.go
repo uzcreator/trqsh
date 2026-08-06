@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 )
 
 // normalizeAddr turns "3000" into "localhost:3000", leaving host:port as-is —
@@ -52,22 +51,6 @@ func shortID(id string) string {
 		return id[:8]
 	}
 	return id
-}
-
-// uptime renders how long ago t was, at a coarseness that suits a live view.
-func uptime(t time.Time) string {
-	if t.IsZero() {
-		return "-"
-	}
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
-		return d.Round(time.Second).String()
-	case d < time.Hour:
-		return d.Round(time.Minute).String()
-	default:
-		return d.Round(time.Hour).String()
-	}
 }
 
 // humanBytes renders a byte count compactly (used by /whoami usage).

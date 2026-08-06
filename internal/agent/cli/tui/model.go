@@ -76,13 +76,29 @@ type model struct {
 
 	pins []string // ordered, unique: "traffic" | "tunnels" | "status"
 
-	// slash-command autocomplete menu
-	menuItems []slashCmd
+	// autocomplete menu (command names, or argument options for /pin, /unpin)
+	menuItems []menuEntry
 	menuIdx   int
 
-	loginActive bool // a device-flow sign-in is polling
-	initialRan  bool // the InitialCommand (if any) has been dispatched
-	quitting    bool
+	// command history: up/down recalls previously entered lines to edit.
+	history    []string
+	historyIdx int // cursor into history; == len(history) means "not browsing"
+
+	welcomeShown bool // the welcome banner has been placed in the transcript
+	loginActive  bool // a device-flow sign-in is polling
+	initialRan   bool // the InitialCommand (if any) has been dispatched
+	quitting     bool
+}
+
+// menuEntry is one row of the autocomplete popup. insert is what replaces the
+// input when it's accepted; run means Enter should execute it immediately
+// (no-argument commands and fully-chosen argument values) rather than just
+// completing the text so the user can keep typing.
+type menuEntry struct {
+	insert string
+	label  string
+	desc   string
+	run    bool
 }
 
 // --- messages ---
@@ -131,13 +147,9 @@ func newModel(opts Options, cl *client) model {
 	ti.CharLimit = 240
 	ti.Focus()
 
-	m := model{opts: opts, cl: cl, input: ti, vp: viewport.New(0, 0)}
-	m.transcript = []string{
-		"  " + stBrand.Render("trqsh") + " " + stDim.Render(opts.Version) + stDim.Render("  — interactive console"),
-		"  " + stDim.Render("Type ") + stKey.Render("/help") + stDim.Render(" for commands, or ") + stKey.Render("/") + stDim.Render(" to browse. ") + stKey.Render("/pin traffic") + stDim.Render(" keeps requests on screen."),
-		"",
-	}
-	return m
+	// The welcome banner is placed on the first WindowSizeMsg, once the width is
+	// known to size its box to.
+	return model{opts: opts, cl: cl, input: ti, vp: viewport.New(0, 0)}
 }
 
 func (m model) Init() tea.Cmd {
@@ -201,6 +213,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.ready = true
+		if !m.welcomeShown {
+			m.welcomeShown = true
+			m.transcript = append(m.renderWelcome(), m.transcript...)
+		}
 		m.relayout()
 		// Run the command the user typed after `trqsh` (e.g. `trqsh http 3000`),
 		// now that the viewport is sized so its output lands in the transcript.
@@ -282,6 +298,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyPgDown:
 		m.vp.HalfPageDown()
 		return m, nil
+	case tea.KeyEnd: // jump to the latest output (the "scroll to bottom" affordance)
+		m.vp.GotoBottom()
+		return m, nil
 	}
 
 	switch msg.String() {
@@ -290,18 +309,20 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.menuIdx > 0 {
 				m.menuIdx--
 			}
-		} else {
-			m.vp.ScrollUp(1)
+			return m, nil
 		}
+		m.historyPrev() // recall an earlier command to edit
+		m.relayout()
 		return m, nil
 	case "down", "ctrl+n":
 		if menuOpen {
 			if m.menuIdx < len(m.menuItems)-1 {
 				m.menuIdx++
 			}
-		} else {
-			m.vp.ScrollDown(1)
+			return m, nil
 		}
+		m.historyNext()
+		m.relayout()
 		return m, nil
 	case "tab":
 		if menuOpen {
@@ -320,13 +341,43 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.submit()
 	}
 
-	// Ordinary editing: let the text input handle the key, then recompute the
-	// autocomplete menu from the new value and re-flow the layout.
+	// Ordinary editing: let the text input handle the key, reset the history
+	// browse cursor to the end, recompute the menu, and re-flow the layout.
 	var c tea.Cmd
 	m.input, c = m.input.Update(msg)
+	m.historyIdx = len(m.history)
 	m.refreshMenu()
 	m.relayout()
 	return m, c
+}
+
+// historyPrev recalls the previous command into the input (older).
+func (m *model) historyPrev() {
+	if len(m.history) == 0 {
+		return
+	}
+	if m.historyIdx > 0 {
+		m.historyIdx--
+	}
+	m.input.SetValue(m.history[m.historyIdx])
+	m.input.CursorEnd()
+	m.refreshMenu()
+}
+
+// historyNext moves toward newer commands, clearing the input past the newest.
+func (m *model) historyNext() {
+	if len(m.history) == 0 {
+		return
+	}
+	if m.historyIdx < len(m.history)-1 {
+		m.historyIdx++
+		m.input.SetValue(m.history[m.historyIdx])
+	} else {
+		m.historyIdx = len(m.history)
+		m.input.SetValue("")
+	}
+	m.input.CursorEnd()
+	m.refreshMenu()
 }
 
 // submit runs the current input line, or — when the command menu is open —
@@ -335,14 +386,13 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) submit() (tea.Model, tea.Cmd) {
 	if m.menuOpen() {
 		sel := m.menuItems[m.menuIdx]
-		if sel.args != "" {
-			m.input.SetValue("/" + sel.name + " ")
-			m.input.CursorEnd()
+		m.input.SetValue(sel.insert)
+		m.input.CursorEnd()
+		if !sel.run { // a command that still needs arguments: complete, keep editing
 			m.refreshMenu()
 			m.relayout()
 			return m, nil
 		}
-		m.input.SetValue("/" + sel.name)
 	}
 	line := strings.TrimSpace(m.input.Value())
 	m.input.SetValue("")
@@ -351,7 +401,17 @@ func (m model) submit() (tea.Model, tea.Cmd) {
 		m.relayout()
 		return m, nil
 	}
+	m.pushHistory(line)
 	return m.run(line)
+}
+
+// pushHistory records a submitted line for up/down recall, skipping consecutive
+// duplicates, and resets the browse cursor to the end.
+func (m *model) pushHistory(line string) {
+	if n := len(m.history); n == 0 || m.history[n-1] != line {
+		m.history = append(m.history, line)
+	}
+	m.historyIdx = len(m.history)
 }
 
 func (m model) run(line string) (tea.Model, tea.Cmd) {
@@ -376,22 +436,63 @@ func (m *model) refreshMenu() {
 	m.menuItems = nil
 	m.menuIdx = 0
 	v := m.input.Value()
-	if !strings.HasPrefix(v, "/") || strings.Contains(v, " ") {
+	if !strings.HasPrefix(v, "/") {
 		return
 	}
-	prefix := strings.ToLower(strings.TrimPrefix(v, "/"))
-	for _, c := range slashCommands {
-		if strings.HasPrefix(c.name, prefix) {
-			m.menuItems = append(m.menuItems, c)
+	fields := strings.Fields(v[1:])
+	trailingSpace := strings.HasSuffix(v, " ")
+
+	// Still choosing the command name (one partial token, no space yet).
+	if len(fields) <= 1 && !trailingSpace {
+		prefix := ""
+		if len(fields) == 1 {
+			prefix = strings.ToLower(fields[0])
+		}
+		for _, c := range slashCommands {
+			if strings.HasPrefix(c.name, prefix) {
+				insert, run := "/"+c.name, c.args == ""
+				label := "/" + c.name
+				if c.args != "" {
+					insert += " "
+					label += " " + c.args
+				}
+				m.menuItems = append(m.menuItems, menuEntry{insert: insert, label: label, desc: c.desc, run: run})
+			}
+		}
+		return
+	}
+
+	// Choosing an argument value for a command that offers fixed choices, so the
+	// user can arrow-select "traffic" instead of typing it.
+	name := strings.ToLower(fields[0])
+	argPrefix := ""
+	if !trailingSpace && len(fields) >= 2 {
+		argPrefix = strings.ToLower(fields[len(fields)-1])
+	}
+	for _, opt := range m.argOptions(name) {
+		if strings.HasPrefix(opt, argPrefix) {
+			m.menuItems = append(m.menuItems, menuEntry{insert: "/" + name + " " + opt, label: "/" + name + " " + opt, run: true})
 		}
 	}
+}
+
+// argOptions returns the selectable argument values for a command (empty for
+// commands whose arguments are free-form, like a port number).
+func (m *model) argOptions(name string) []string {
+	switch name {
+	case "pin":
+		return []string{"traffic", "tunnels", "status"}
+	case "unpin":
+		return append(append([]string{}, m.pins...), "all")
+	}
+	return nil
 }
 
 func (m *model) acceptMenu() {
 	if !m.menuOpen() {
 		return
 	}
-	m.input.SetValue("/" + m.menuItems[m.menuIdx].name + " ")
+	m.input.SetValue(m.menuItems[m.menuIdx].insert)
 	m.input.CursorEnd()
 	m.refreshMenu()
 }
@@ -437,13 +538,13 @@ func (m *model) relayout() {
 	if m.width == 0 {
 		return
 	}
-	pinnedH := 0
-	if ph := len(m.renderPinned()); ph > 0 {
-		pinnedH = ph + 1 // panels + a divider under them
-	}
+	// Fixed chrome around the scrolling transcript: header(1)+rule(1), the pinned
+	// panels, a scroll-hint line, the autocomplete menu, the 3-line input box, a
+	// hint line, and a bottom gap so the box isn't glued to the terminal edge.
+	pinnedH := len(m.renderPinnedBlock())
 	menuH := len(m.renderMenu())
-	const headerH, inputH = 2, 2
-	vpH := max(m.height-headerH-inputH-pinnedH-menuH, 1)
+	chrome := 2 + pinnedH + 1 + menuH + 3 + 1 + 1
+	vpH := max(m.height-chrome, 1)
 	atBottom := m.vp.AtBottom()
 	m.vp.Width = m.width
 	m.vp.Height = vpH
@@ -463,15 +564,13 @@ func (m model) View() string {
 	var lines []string
 	lines = append(lines, m.renderHeader())
 	lines = append(lines, stDim.Render(m.rule()))
-	if pinned := m.renderPinned(); len(pinned) > 0 {
-		lines = append(lines, pinned...)
-		lines = append(lines, stDim.Render(m.rule()))
-	}
+	lines = append(lines, m.renderPinnedBlock()...) // horizontal boxes (empty if no pins)
 	lines = append(lines, strings.Split(m.vp.View(), "\n")...)
-	if menu := m.renderMenu(); len(menu) > 0 {
-		lines = append(lines, menu...)
-	}
-	lines = append(lines, m.renderInputLines()...)
+	lines = append(lines, m.renderScrollHint()) // one line, empty when at the bottom
+	lines = append(lines, m.renderMenu()...)
+	lines = append(lines, strings.Split(m.renderInputBox(), "\n")...)
+	lines = append(lines, m.renderHint())
+	lines = append(lines, "") // bottom gap so the input box floats off the edge
 
 	// Guarantee exactly m.height lines and never overflow the width (which would
 	// wrap and throw the whole layout off).
@@ -530,80 +629,198 @@ func (m model) headerMeta() string {
 	case m.authed:
 		who = "signed in"
 	}
-	return fmt.Sprintf("%s · %d tunnels", who, len(m.tunnels))
+	return who + " · " + plural(len(m.tunnels), "tunnel")
 }
 
-func (m model) renderPinned() []string {
-	var out []string
+// plural formats a count with its noun, adding an "s" for anything but 1.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// pinnedRows is how many body lines each pinned panel shows — shared so panels
+// in a row share a height and their bottom edges line up.
+const pinnedRows = 4
+
+// renderPinnedBlock lays the pinned panels out as boxes from left to right,
+// wrapping to a new row when they'd overflow the width.
+func (m model) renderPinnedBlock() []string {
+	if len(m.pins) == 0 {
+		return nil
+	}
+	boxes := make([]string, 0, len(m.pins))
 	for _, p := range m.pins {
-		if len(out) > 0 {
-			out = append(out, "") // a blank line between stacked panels
-		}
-		switch p {
-		case "tunnels":
-			out = append(out, m.pinTunnels()...)
-		case "traffic":
-			out = append(out, m.pinTraffic()...)
-		case "status":
-			out = append(out, m.pinStatus()...)
-		}
+		boxes = append(boxes, m.pinBox(p))
+	}
+	return packBoxes(boxes, m.width)
+}
+
+func (m model) pinBox(name string) string {
+	switch name {
+	case "tunnels":
+		w := 40
+		return panelBox(fmt.Sprintf("TUNNELS (%d)", len(m.tunnels)),
+			strings.Join(fitLines(m.tunnelsBody(w-4), pinnedRows, w-4), "\n"), w)
+	case "traffic":
+		w := 54
+		return panelBox("TRAFFIC",
+			strings.Join(fitLines(m.trafficBody(w-4), pinnedRows, w-4), "\n"), w)
+	case "status":
+		w := 40
+		return panelBox("STATUS",
+			strings.Join(fitLines(m.statusBody(), pinnedRows, w-4), "\n"), w)
+	}
+	return ""
+}
+
+func (m model) tunnelsBody(w int) []string {
+	if len(m.tunnels) == 0 {
+		return []string{stDim.Render("none — /http <port>")}
+	}
+	var out []string
+	for _, t := range m.tunnels {
+		out = append(out, stURL.Render(trunc(t.PublicURL, w-6))+stDim.Render(fmt.Sprintf("  %dr", t.Metrics.Requests)))
 	}
 	return out
 }
 
-func (m model) pinTunnels() []string {
-	lines := []string{"  " + stTitle.Render("TUNNELS") + stDim.Render(fmt.Sprintf("  (%d)", len(m.tunnels)))}
-	if len(m.tunnels) == 0 {
-		return append(lines, "  "+stDim.Render("none — /http <port> to start one"))
-	}
-	const cap = 6
-	for i, t := range m.tunnels {
-		if i >= cap {
-			lines = append(lines, "  "+stDim.Render(fmt.Sprintf("…and %d more", len(m.tunnels)-cap)))
-			break
-		}
-		left := "  " + stURL.Render(t.PublicURL) + stDim.Render(" → "+t.LocalAddr)
-		right := stDim.Render(fmt.Sprintf("%s · %s · %d req", t.Status, uptime(t.CreatedAt), t.Metrics.Requests))
-		lines = append(lines, m.spread(left, right))
-	}
-	return lines
-}
-
-func (m model) pinTraffic() []string {
-	lines := []string{"  " + stTitle.Render("TRAFFIC") + stDim.Render("  (live)")}
+func (m model) trafficBody(w int) []string {
 	if len(m.requests) == 0 {
-		return append(lines, "  "+stDim.Render("waiting for requests…"))
+		return []string{stDim.Render("waiting for requests…")}
 	}
-	const cap = 8
-	start := max(0, len(m.requests)-cap)
+	start := max(0, len(m.requests)-pinnedRows)
+	var out []string
 	for _, r := range m.requests[start:] {
-		lines = append(lines, "  "+m.renderReq(r))
+		method := methodStyle(r.method).Render(pad(r.method, 6))
+		status := statusStyle(r.status).Render(fmt.Sprintf("%3d", r.status))
+		out = append(out, fmt.Sprintf("%s %s %s", method, status, trunc(r.path, max(4, w-11))))
 	}
-	return lines
+	return out
 }
 
-func (m model) pinStatus() []string {
+func (m model) statusBody() []string {
 	glyph, word, col := m.connState()
-	line := "  " + stTitle.Render("STATUS") + "   " +
-		lipgloss.NewStyle().Foreground(col).Render(glyph+" "+word) +
-		stDim.Render("   edge "+firstNonEmpty(m.status.Edge, "—")+" · "+firstNonEmpty(m.status.Kind, "—"))
-	return []string{line}
+	return []string{
+		lipglossFg(col, glyph+" "+word),
+		stDim.Render("edge " + firstNonEmpty(m.status.Edge, "—")),
+		stDim.Render(firstNonEmpty(m.status.Kind, "—") + " · " + plural(len(m.tunnels), "tunnel")),
+	}
 }
 
-func (m model) renderReq(r reqRow) string {
-	method := methodStyle(r.method).Render(pad(r.method, 6)) // widest common verb is DELETE
-	status := statusStyle(r.status).Render(fmt.Sprintf("%3d", r.status))
-	dur := stDim.Render(fmt.Sprintf("%5dms", r.ms))
-	pathW := max(10, m.width-24)
-	path := pad(trunc(r.path, pathW), pathW)
-	return fmt.Sprintf("%s %s  %s  %s", method, status, path, dur)
+// packBoxes joins rendered boxes left-to-right with a one-column gap, wrapping
+// to a new row when the next box wouldn't fit in width.
+func packBoxes(boxes []string, width int) []string {
+	if len(boxes) == 0 {
+		return nil
+	}
+	gap := strings.TrimRight(strings.Repeat(" \n", lipgloss.Height(boxes[0])), "\n") // a full-height 1-col spacer
+	var out, row []string
+	rowW := 0
+	flush := func() {
+		if len(row) > 0 {
+			out = append(out, strings.Split(lipgloss.JoinHorizontal(lipgloss.Top, row...), "\n")...)
+			row, rowW = nil, 0
+		}
+	}
+	for _, b := range boxes {
+		bw := lipgloss.Width(b)
+		if rowW > 0 && rowW+1+bw > width {
+			flush()
+		}
+		if rowW > 0 {
+			row = append(row, gap)
+			rowW++
+		}
+		row = append(row, b)
+		rowW += bw
+	}
+	flush()
+	return out
+}
+
+// --- welcome banner, input box, hints ---
+
+// renderWelcome builds the startup banner: a rounded box (title in its border)
+// with a brand/status column on the left and getting-started tips on the right.
+func (m model) renderWelcome() []string {
+	inner := max(24, m.width-6) // content width inside the box
+	leftW := max(16, inner*2/5)
+	rightW := inner - leftW - 3 // 3 = " │ "
+	left := m.welcomeLeft()
+	right := m.welcomeRight()
+	sep := stDim.Render(" │ ")
+	rows := max(len(left), len(right))
+	body := make([]string, 0, rows)
+	for i := range rows {
+		l, r := "", ""
+		if i < len(left) {
+			l = left[i]
+		}
+		if i < len(right) {
+			r = right[i]
+		}
+		body = append(body, padCell(l, leftW)+sep+padCell(r, rightW))
+	}
+	box := roundedBox("trqsh "+m.opts.Version, strings.Join(body, "\n"), m.width-2, colBrand, "")
+	return append(strings.Split(box, "\n"), "")
+}
+
+func (m model) welcomeLeft() []string {
+	glyph, word, col := m.connState()
+	who := "there"
+	if m.acct != nil {
+		who = firstNonEmpty(m.acct.User.Name, m.acct.User.Email, "there")
+	}
+	return []string{
+		stBrand.Render("≈ trqsh"),
+		"",
+		"Welcome, " + who + "!",
+		lipglossFg(col, glyph+" "+word) + stDim.Render("  "+firstNonEmpty(m.status.Edge, "trqsh.uz")),
+	}
+}
+
+func (m model) welcomeRight() []string {
+	return []string{
+		stTitle.Render("Getting started"),
+		stKey.Render("/") + stDim.Render("             browse all commands"),
+		stKey.Render("/http 3000") + stDim.Render("    expose a local port"),
+		stKey.Render("/pin traffic") + stDim.Render("  watch live requests"),
+	}
+}
+
+// padCell truncates/pads a (possibly styled) string to exactly w display cells.
+func padCell(s string, w int) string {
+	if lipgloss.Width(s) > w {
+		return ansi.Truncate(s, w, "…")
+	}
+	return s + strings.Repeat(" ", w-lipgloss.Width(s))
+}
+
+func (m model) renderInputBox() string {
+	return inputBox(m.input.View(), m.width)
+}
+
+func (m model) renderScrollHint() string {
+	if m.vp.AtBottom() {
+		return ""
+	}
+	return "  " + stWarn.Render("↓ more below") + stDim.Render("  ·  End to jump to latest, PgDn to scroll")
+}
+
+func (m model) renderHint() string {
+	if m.menuOpen() {
+		return "  " + stDim.Render("↑↓ select · tab complete · enter run · esc close")
+	}
+	return "  " + stDim.Render("↑↓ history · / commands · pgup/pgdn scroll · ctrl+c quit")
 }
 
 func (m model) renderMenu() []string {
 	if !m.menuOpen() {
 		return nil
 	}
-	const window = 8
+	const window = 7
 	start := 0
 	if m.menuIdx >= window {
 		start = m.menuIdx - window + 1
@@ -611,25 +828,23 @@ func (m model) renderMenu() []string {
 	end := min(start+window, len(m.menuItems))
 	var out []string
 	for i := start; i < end; i++ {
-		c := m.menuItems[i]
-		label := pad("/"+c.name+" "+c.args, 26)
+		e := m.menuItems[i]
+		label := pad(e.label, 26)
 		if i == m.menuIdx {
-			out = append(out, stMenuSel.Render(" "+label+" ")+"  "+stDim.Render(c.desc))
+			row := stMenuSel.Render(" " + label + " ")
+			if e.desc != "" {
+				row += "  " + stDim.Render(e.desc)
+			}
+			out = append(out, "  "+row)
 		} else {
-			out = append(out, " "+stKey.Render("/"+c.name)+stDim.Render(pad(" "+c.args, 26-len("/"+c.name)))+"  "+stDim.Render(c.desc))
+			row := "  " + stKey.Render(label)
+			if e.desc != "" {
+				row += "  " + stDim.Render(e.desc)
+			}
+			out = append(out, "  "+row)
 		}
 	}
 	return out
-}
-
-func (m model) renderInputLines() []string {
-	var hint string
-	if m.menuOpen() {
-		hint = "  " + stDim.Render("↑↓ select · tab complete · enter run · esc clear")
-	} else {
-		hint = "  " + stDim.Render("/ commands · enter run · pgup/pgdn scroll · ctrl+c quit")
-	}
-	return []string{m.input.View(), hint}
 }
 
 // firstNonEmpty returns the first non-blank value, or "".

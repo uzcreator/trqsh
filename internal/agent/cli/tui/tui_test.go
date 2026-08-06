@@ -72,14 +72,21 @@ func TestRefreshMenuFilters(t *testing.T) {
 	if !m.menuOpen() {
 		t.Fatal("menu should be open for /pi")
 	}
-	if len(m.menuItems) != 1 || m.menuItems[0].name != "pin" {
-		t.Fatalf("menu items = %v, want [pin]", m.menuItems)
+	if len(m.menuItems) != 1 || m.menuItems[0].insert != "/pin " {
+		t.Fatalf("menu items = %v, want one entry inserting \"/pin \"", m.menuItems)
 	}
-	// A space closes the menu (arguments are being typed now).
-	m.input.SetValue("/pin traffic")
+	// Typing an argument surfaces arrow-selectable suggestions (so you pick
+	// "traffic" instead of typing it).
+	m.input.SetValue("/pin tra")
+	m.refreshMenu()
+	if !m.menuOpen() || m.menuItems[0].insert != "/pin traffic" {
+		t.Fatalf("expected a /pin traffic suggestion, got %v", m.menuItems)
+	}
+	// A free-form argument (a port) offers no suggestions, so the menu closes.
+	m.input.SetValue("/http 3000")
 	m.refreshMenu()
 	if m.menuOpen() {
-		t.Fatal("menu should be closed once a space is typed")
+		t.Fatal("menu should be closed for a free-form argument like a port")
 	}
 }
 
