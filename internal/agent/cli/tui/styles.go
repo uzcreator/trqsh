@@ -23,7 +23,6 @@ var (
 	// distinct raised surfaces rather than blending into the terminal.
 	colBorder  = lipgloss.Color("#3d635d") // muted teal frame
 	colPanelBg = lipgloss.Color("#16302b") // pinned-panel background (raised surface)
-	colInputBg = lipgloss.Color("#1a2b28") // input-box background
 )
 
 var (
@@ -109,9 +108,10 @@ func panelBox(title, body string, outerW int) string {
 	return roundedBox(title, body, outerW, colBrand, colPanelBg)
 }
 
-// inputBox is the box the prompt sits in, clearly separated from the transcript.
+// inputBox is the box the prompt sits in — a plain rounded border (no background
+// fill) so it's clearly separated from the transcript without a filled surface.
 func inputBox(body string, outerW int) string {
-	return roundedBox("", body, outerW, colBorder, colInputBg)
+	return roundedBox("", body, outerW, colBorder, "")
 }
 
 // spliceTitle overwrites the top border of a rendered box with "╭─ title ─…─╮",
