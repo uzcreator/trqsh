@@ -86,6 +86,7 @@ type model struct {
 
 	welcomeShown bool // the welcome banner has been placed in the transcript
 	welcomeLen   int  // how many leading transcript lines the banner occupies
+	mascotFrame  int  // animation frame for the welcome mascot
 	loginActive  bool // a device-flow sign-in is polling
 	initialRan   bool // the InitialCommand (if any) has been dispatched
 	quitting     bool
@@ -105,6 +106,7 @@ type menuEntry struct {
 // --- messages ---
 
 type tickMsg time.Time
+type mascotTickMsg time.Time
 type dataMsg struct {
 	tunnels []agent.Tunnel
 	status  agent.Status
@@ -160,13 +162,17 @@ func newModel(opts Options, cl *client) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, m.poll(), m.fetchAccount(), tickCmd())
+	return tea.Batch(textinput.Blink, m.poll(), m.fetchAccount(), tickCmd(), mascotTickCmd())
 }
 
 // --- commands (async work) ---
 
 func tickCmd() tea.Cmd {
 	return tea.Tick(1500*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
+
+func mascotTickCmd() tea.Cmd {
+	return tea.Tick(1200*time.Millisecond, func(t time.Time) tea.Msg { return mascotTickMsg(t) })
 }
 
 func (m model) poll() tea.Cmd {
@@ -225,11 +231,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			w := m.renderWelcome()
 			m.welcomeLen = len(w)
 			m.transcript = append(w, m.transcript...)
-			m.relayout()
-			m.vp.GotoTop() // show the welcome from its top border, not the tail
-		} else {
-			m.relayout()
 		}
+		m.relayout()
 		// Run the command the user typed after `trqsh` (e.g. `trqsh http 3000`),
 		// now that the viewport is sized so its output lands in the transcript.
 		if !m.initialRan && strings.TrimSpace(m.opts.InitialCommand) != "" {
@@ -243,6 +246,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		cmds = append(cmds, m.poll(), tickCmd())
+
+	case mascotTickMsg:
+		m.mascotFrame++
+		m.refreshWelcome() // redraw the banner so the cat blinks
+		m.relayout()
+		cmds = append(cmds, mascotTickCmd())
 
 	case dataMsg:
 		if msg.ok {
@@ -563,7 +572,10 @@ func (m *model) relayout() {
 	m.vp.Width = m.width
 	m.vp.Height = vpH
 	m.vp.SetContent(strings.Join(m.transcript, "\n"))
-	if atBottom {
+	switch {
+	case m.welcomeLen > 0 && len(m.transcript) <= m.welcomeLen:
+		m.vp.GotoTop() // nothing but the welcome yet — keep it in view from the top
+	case atBottom:
 		m.vp.GotoBottom()
 	}
 	m.input.Width = max(10, m.width-6)
@@ -676,15 +688,15 @@ func (m model) pinBox(name string) string {
 	case "tunnels":
 		w := 40
 		return panelBox(fmt.Sprintf("TUNNELS (%d)", len(m.tunnels)),
-			strings.Join(fitLines(m.tunnelsBody(w-4), pinnedRows, w-4), "\n"), w)
+			strings.Join(fitLines(m.tunnelsBody(w-4), pinnedRows, w-4), "\n"), w, colBrand)
 	case "traffic":
 		w := 54
 		return panelBox("TRAFFIC",
-			strings.Join(fitLines(m.trafficBody(w-4), pinnedRows, w-4), "\n"), w)
+			strings.Join(fitLines(m.trafficBody(w-4), pinnedRows, w-4), "\n"), w, colCyan)
 	case "status":
 		w := 40
 		return panelBox("STATUS",
-			strings.Join(fitLines(m.statusBody(), pinnedRows, w-4), "\n"), w)
+			strings.Join(fitLines(m.statusBody(), pinnedRows, w-4), "\n"), w, colViolet)
 	}
 	return ""
 }
@@ -756,18 +768,25 @@ func packBoxes(boxes []string, width int) []string {
 
 // --- welcome banner, input box, hints ---
 
-// trqshMascot is the console's little critter, shown in the welcome banner
-// (like Claude Code's robot). ASCII-only so it renders in any terminal font.
-var trqshMascot = []string{
-	" /\\_/\\ ",
-	"( o.o )",
-	" > ~ < ",
+// mascotEyes is the cat's blink cycle — mostly open, an occasional blink and a
+// happy squint — which, redrawn on a slow tick, makes it feel alive.
+var mascotEyes = []string{"o.o", "o.o", "o.o", "o.o", "-.-", "o.o", "o.o", "^.^"}
+
+// mascotFrame renders the cat (ASCII, renders in any font) for animation frame
+// f, tinted so it reads as a creature: amber body, bright eyes, a pink nose.
+func mascotFrame(f int) []string {
+	e := []rune(mascotEyes[f%len(mascotEyes)])
+	return []string{
+		stCat.Render(" /\\_/\\ "),
+		stCat.Render("( ") + stCatEye.Render(string(e[0])) + stCatNose.Render(string(e[1])) + stCatEye.Render(string(e[2])) + stCat.Render(" )"),
+		stCat.Render(" > ") + stCatNose.Render("^") + stCat.Render(" < "),
+	}
 }
 
 // renderWelcome builds the startup banner: a rounded box (title in its border)
 // with three columns — the mascot, the account/status, and getting-started tips.
 func (m model) renderWelcome() []string {
-	mascot := colorLines(trqshMascot, colBrand)
+	mascot := mascotFrame(m.mascotFrame)
 	acct := m.welcomeLeft()
 	tips := m.welcomeRight()
 	rows := max(max(len(mascot), len(acct)), len(tips))
@@ -779,15 +798,6 @@ func (m model) renderWelcome() []string {
 	}
 	box := roundedBox("trqsh "+m.opts.Version, strings.Join(body, "\n"), m.width-2, colBrand, "")
 	return append(strings.Split(box, "\n"), "")
-}
-
-// colorLines applies a foreground color to each line (for the mascot art).
-func colorLines(lines []string, c lipgloss.Color) []string {
-	out := make([]string, len(lines))
-	for i, l := range lines {
-		out[i] = lipglossFg(c, l)
-	}
-	return out
 }
 
 // at returns sl[i], or "" when out of range — for zipping ragged columns.

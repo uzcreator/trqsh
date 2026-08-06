@@ -11,13 +11,15 @@ import (
 // profile (truecolor → 256 → 16 → none) and honors NO_COLOR automatically, so
 // the same code looks right everywhere from Windows Terminal to a bare TTY.
 var (
-	colBrand  = lipgloss.Color("#2dd4bf") // trqsh teal
+	colBrand  = lipgloss.Color("#2dd4bf") // trqsh teal (primary)
 	colDim    = lipgloss.Color("#6b7280") // muted gray
 	colGreen  = lipgloss.Color("#22c55e")
 	colYellow = lipgloss.Color("#eab308")
 	colRed    = lipgloss.Color("#ef4444")
-	colCyan   = lipgloss.Color("#38bdf8")
-	colViolet = lipgloss.Color("#a78bfa")
+	colCyan   = lipgloss.Color("#38bdf8") // links / traffic accent
+	colViolet = lipgloss.Color("#a78bfa") // status accent
+	colAmber  = lipgloss.Color("#f5a05a") // mascot body / warm highlight
+	colPink   = lipgloss.Color("#f472b6") // mascot nose / playful accent
 
 	// Surfaces: subtle backgrounds so the pinned panels and the input box read as
 	// distinct raised surfaces rather than blending into the terminal.
@@ -34,6 +36,12 @@ var (
 	stOK    = lipgloss.NewStyle().Foreground(colGreen)
 	stErr   = lipgloss.NewStyle().Foreground(colRed)
 	stWarn  = lipgloss.NewStyle().Foreground(colYellow)
+
+	// The mascot's colors — a warm body, bright eyes and a pink nose so it reads
+	// as a little creature, not a teal monolith.
+	stCat     = lipgloss.NewStyle().Foreground(colAmber)
+	stCatEye  = lipgloss.NewStyle().Foreground(colCyan).Bold(true)
+	stCatNose = lipgloss.NewStyle().Foreground(colPink)
 
 	// Command-menu selection highlight (a subtle inverse bar).
 	stMenuSel = lipgloss.NewStyle().Foreground(lipgloss.Color("#0b0f10")).Background(colBrand).Bold(true)
@@ -103,9 +111,10 @@ func fillBg(content string, bg lipgloss.Color) string {
 	return seq + strings.ReplaceAll(content, "\x1b[0m", "\x1b[0m"+seq)
 }
 
-// panelBox is a pinned-panel surface (teal frame, dark background, titled).
-func panelBox(title, body string, outerW int) string {
-	return roundedBox(title, body, outerW, colBrand, colPanelBg)
+// panelBox is a pinned-panel surface (colored frame, dark background, titled).
+// Each panel passes its own accent so they're visually distinct.
+func panelBox(title, body string, outerW int, accent lipgloss.Color) string {
+	return roundedBox(title, body, outerW, accent, colPanelBg)
 }
 
 // inputBox is the box the prompt sits in — a plain rounded border (no background
@@ -127,7 +136,7 @@ func spliceTitle(box, title string, fg, bg lipgloss.Color) string {
 	}
 	w := lipgloss.Width(lines[0])
 	frame := lipgloss.NewStyle().Foreground(fg).Background(bg)
-	titleStyle := lipgloss.NewStyle().Foreground(colBrand).Background(bg).Bold(true)
+	titleStyle := lipgloss.NewStyle().Foreground(fg).Background(bg).Bold(true)
 	head := "╭─ "
 	tail := " "
 	dashCount := w - lipgloss.Width(head) - lipgloss.Width(title) - lipgloss.Width(tail) - 1
