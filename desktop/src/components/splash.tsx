@@ -13,7 +13,7 @@ export function Splash({
       className="animate-boot flex h-full flex-col items-center justify-center gap-7 bg-page"
     >
       <div className="flex flex-col items-center gap-4">
-        <div className="splash-glow flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-[rgb(var(--series-2))]">
+        <div className="splash-glow flex size-16 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[rgb(var(--series-2))]">
           <span className="text-3xl font-bold lowercase text-primary-foreground">t</span>
         </div>
         <div className="flex flex-col items-center gap-1 text-center">

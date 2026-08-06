@@ -36,9 +36,25 @@ const config: Config = {
         "series-2": rgb("--series-2"),
       },
       borderColor: { DEFAULT: rgb("--border") },
-      borderRadius: { lg: "0.75rem", md: "0.5rem", sm: "0.3rem" },
+      // A deliberate 3-tier radius system (Tailwind's own `xl` default happened
+      // to equal our `lg`, erasing the distinction below — now explicit):
+      // `lg` = docked/persistent panels (console-panel, channel strips, status
+      // bar); `xl` = transient floating overlays (Dialog, CommandPalette,
+      // terminal panel); `md` = interactive controls (buttons, inputs, tabs).
+      // `full` (pills/indicators/switch) stays Tailwind's default, unlisted.
+      borderRadius: { lg: "0.75rem", xl: "1rem", md: "0.5rem", sm: "0.3rem" },
       fontFamily: {
         sans: ["system-ui", "-apple-system", '"Segoe UI"', "Roboto", "sans-serif"],
+        // Data/URL text and the embedded terminal share this stack so they read
+        // as one instrument voice, not the browser's undeclared mono default.
+        mono: [
+          "ui-monospace",
+          '"Cascadia Code"',
+          '"SF Mono"',
+          "Consolas",
+          '"JetBrains Mono"',
+          "monospace",
+        ],
       },
     },
   },
