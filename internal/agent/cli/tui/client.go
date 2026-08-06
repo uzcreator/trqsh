@@ -26,7 +26,9 @@ type client struct {
 }
 
 func newClient(addr, token string) *client {
-	return &client{addr: addr, token: token, hc: &http.Client{Timeout: 10 * time.Second}}
+	// A generous timeout: some calls (browser sign-in start, cloud proxy) hop
+	// through the daemon to the control plane, which can be slow on first use.
+	return &client{addr: addr, token: token, hc: &http.Client{Timeout: 20 * time.Second}}
 }
 
 func (c *client) url(path string) string { return "http://" + c.addr + path }
