@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -62,7 +62,7 @@ type model struct {
 	width, height int
 	ready         bool
 
-	input textinput.Model
+	input textarea.Model
 	vp    viewport.Model
 
 	transcript []string // rendered lines (may contain ANSI), shown in the viewport
@@ -147,22 +147,36 @@ func Run(opts Options) error {
 }
 
 func newModel(opts Options, cl *client) model {
-	ti := textinput.New()
-	ti.Prompt = stBrand.Render(" › ")
-	ti.Placeholder = "type / for commands"
-	ti.CharLimit = 240
-	ti.Focus()
+	ta := textarea.New()
+	ta.ShowLineNumbers = false
+	ta.Placeholder = "type / for commands"
+	ta.CharLimit = 240
+	ta.SetPromptFunc(3, inputPrompt) // "› " on the first line only; wraps stay flush under it
+	ta.FocusedStyle.Prompt = stBrand
+	ta.BlurredStyle.Prompt = stBrand
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle() // no full-line highlight — stays a plain prompt, not an editor
+	ta.SetHeight(1)
+	ta.Focus()
 
 	vp := viewport.New(0, 0)
 	vp.MouseWheelEnabled = true
 
 	// The welcome banner is placed on the first WindowSizeMsg, once the width is
 	// known to size its box to.
-	return model{opts: opts, cl: cl, input: ti, vp: vp}
+	return model{opts: opts, cl: cl, input: ta, vp: vp}
+}
+
+// inputPrompt shows the chevron only on the input's first visual row, so a
+// line that wraps onto more rows doesn't repeat "› " down the left edge.
+func inputPrompt(line int) string {
+	if line == 0 {
+		return " › "
+	}
+	return "   "
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, m.poll(), m.fetchAccount(), tickCmd(), mascotTickCmd())
+	return tea.Batch(textarea.Blink, m.poll(), m.fetchAccount(), tickCmd(), mascotTickCmd())
 }
 
 // --- commands (async work) ---
@@ -556,19 +570,39 @@ func (m *model) appendLines(lines ...string) {
 	}
 }
 
-// relayout re-sizes the viewport to whatever space the header, pinned panels,
-// autocomplete menu, and input line leave, preserving the reader's scroll
-// position unless they were already following the tail.
+// maxInputRows caps how tall the input box can grow with a long or wrapped
+// line before it scrolls internally instead of crowding out the transcript.
+const maxInputRows = 6
+
+// relayout re-sizes the input box to fit its current content (wrapping wide
+// lines down instead of scrolling them sideways) and then re-sizes the
+// viewport to whatever space the header, pinned panels, autocomplete menu,
+// and that input box leave, preserving the reader's scroll position unless
+// they were already following the tail.
 func (m *model) relayout() {
 	if m.width == 0 {
 		return
 	}
+	// Resolve the input box's height first — everything else lays out around it.
+	m.input.SetWidth(max(10, m.width-4))
+	rows := m.input.LineInfo().Height
+	if lc := m.input.LineCount(); lc > rows {
+		// A pasted clipboard blob can contain real newlines (unlike typed input,
+		// which never does — Enter submits instead of inserting one), putting the
+		// cursor's row over several logical lines. LineInfo only wraps-counts the
+		// cursor's own line, so fall back to the logical line count as a floor.
+		rows = lc
+	}
+	inputRows := max(1, min(rows, maxInputRows))
+	m.input.SetHeight(inputRows)
+
 	// Fixed chrome around the scrolling transcript: header(1)+rule(1), the pinned
-	// panels, a scroll-hint line, the autocomplete menu, the 3-line input box, a
-	// hint line, and a bottom gap so the box isn't glued to the terminal edge.
+	// panels, a scroll-hint line, the autocomplete menu, the input box (its rows
+	// plus a top/bottom border), a hint line, and a bottom gap so the box isn't
+	// glued to the terminal edge.
 	pinnedH := len(m.renderPinnedBlock())
 	menuH := len(m.renderMenu())
-	chrome := 2 + pinnedH + 1 + menuH + 3 + 1 + 1
+	chrome := 2 + pinnedH + 1 + menuH + (inputRows + 2) + 1 + 1
 	vpH := max(m.height-chrome, 1)
 	atBottom := m.vp.AtBottom()
 	m.vp.Width = m.width
@@ -580,7 +614,6 @@ func (m *model) relayout() {
 	case atBottom:
 		m.vp.GotoBottom()
 	}
-	m.input.Width = max(10, m.width-6)
 }
 
 // --- rendering ---

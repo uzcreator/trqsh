@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,6 +31,27 @@ func TestPreviewRender(t *testing.T) {
 	}
 	fmt.Println("----NARROW (54) no tips----")
 	fmt.Println(renderAt(54, 16, 0))
+}
+
+// TestPreviewInputGrows types a long line into the input box at a few widths
+// and prints the result, to eyeball that the box grows downward (wraps) once
+// the line is too long for one row, instead of scrolling sideways.
+func TestPreviewInputGrows(t *testing.T) {
+	long := "this is a pretty long command line that should wrap across more than one row of the input box instead of scrolling off sideways forever"
+
+	for _, w := range []int{100, 60} {
+		m := newModel(Options{Version: "0.1.7"}, newClient("127.0.0.1:0", ""))
+		m = feed(m, tea.WindowSizeMsg{Width: w, Height: 24})
+		m = typeStr(m, long)
+		fmt.Printf("\n----width %d, %d chars typed, input.Height()=%d----\n", w, len(long), m.input.Height())
+		view := m.View()
+		lines := strings.Split(view, "\n")
+		fmt.Printf("total view lines: %d (want %d)\n", len(lines), m.height)
+		// print just the input box region (last handful of lines before the gap)
+		for _, l := range lines[len(lines)-9:] {
+			fmt.Println(l)
+		}
+	}
 }
 
 func splitN(s string, n int) []string {

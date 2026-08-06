@@ -156,3 +156,64 @@ func TestViewFillsScreen(t *testing.T) {
 		t.Fatalf("view has %d lines, want 30", len(lines))
 	}
 }
+
+// TestInputGrowsAndShrinks proves a long line grows the input box downward
+// (wrapping) rather than scrolling it sideways, that the growth is capped at
+// maxInputRows, and that it collapses back once the text is cleared — all
+// while the overall view keeps filling the terminal exactly.
+func TestInputGrowsAndShrinks(t *testing.T) {
+	m := newModel(Options{Version: "test"}, newClient("127.0.0.1:0", ""))
+	m = feed(m, tea.WindowSizeMsg{Width: 60, Height: 24})
+	if h := m.input.Height(); h != 1 {
+		t.Fatalf("empty input height = %d, want 1", h)
+	}
+
+	m = typeStr(m, strings.Repeat("wide ", 60)) // far more than one row at width 60
+	if h := m.input.Height(); h <= 1 {
+		t.Fatalf("input height after a long line = %d, want > 1", h)
+	}
+	if h := m.input.Height(); h > maxInputRows {
+		t.Fatalf("input height = %d, exceeds maxInputRows %d", h, maxInputRows)
+	}
+	if lines := strings.Split(m.View(), "\n"); len(lines) != m.height {
+		t.Fatalf("view has %d lines while grown, want %d", len(lines), m.height)
+	}
+
+	m.input.SetValue("")
+	m.relayout()
+	if h := m.input.Height(); h != 1 {
+		t.Fatalf("input height after clearing = %d, want 1", h)
+	}
+	if lines := strings.Split(m.View(), "\n"); len(lines) != m.height {
+		t.Fatalf("view has %d lines after clearing, want %d", len(lines), m.height)
+	}
+}
+
+// TestInputGrowsForMultiLinePaste covers a clipboard paste that contains real
+// newlines (textarea, unlike the old textinput, preserves them instead of
+// collapsing them to spaces): LineInfo alone only wrap-counts the cursor's
+// own logical line, so relayout must fall back to LineCount to size the box
+// tall enough to show every pasted line.
+func TestInputGrowsForMultiLinePaste(t *testing.T) {
+	m := newModel(Options{Version: "test"}, newClient("127.0.0.1:0", ""))
+	m = feed(m, tea.WindowSizeMsg{Width: 60, Height: 24})
+
+	m.input.SetValue("first\nsecond\nthird")
+	m.relayout()
+	if h := m.input.Height(); h != 3 {
+		t.Fatalf("input height after a 3-line paste = %d, want 3", h)
+	}
+	if lines := strings.Split(m.View(), "\n"); len(lines) != m.height {
+		t.Fatalf("view has %d lines with a multi-line paste, want %d", len(lines), m.height)
+	}
+
+	// A paste taller than the cap still renders a valid, fully-filled frame.
+	m.input.SetValue(strings.Repeat("line\n", maxInputRows+5))
+	m.relayout()
+	if h := m.input.Height(); h != maxInputRows {
+		t.Fatalf("input height with an oversized paste = %d, want capped at %d", h, maxInputRows)
+	}
+	if lines := strings.Split(m.View(), "\n"); len(lines) != m.height {
+		t.Fatalf("view has %d lines with an oversized paste, want %d", len(lines), m.height)
+	}
+}
