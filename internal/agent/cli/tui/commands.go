@@ -560,6 +560,7 @@ func cmdVersion(m *model, _ []string) tea.Cmd {
 
 func cmdClear(m *model, _ []string) tea.Cmd {
 	m.transcript = nil
+	m.welcomeLen = 0 // the banner is gone; don't try to refresh it in place
 	m.vp.SetContent("")
 	return nil
 }

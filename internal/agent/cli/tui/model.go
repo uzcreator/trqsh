@@ -85,6 +85,7 @@ type model struct {
 	historyIdx int // cursor into history; == len(history) means "not browsing"
 
 	welcomeShown bool // the welcome banner has been placed in the transcript
+	welcomeLen   int  // how many leading transcript lines the banner occupies
 	loginActive  bool // a device-flow sign-in is polling
 	initialRan   bool // the InitialCommand (if any) has been dispatched
 	quitting     bool
@@ -128,7 +129,10 @@ type loginDoneMsg struct {
 // Run starts the TUI and blocks until the user quits.
 func Run(opts Options) error {
 	cl := newClient(opts.Addr, opts.Token)
-	p := tea.NewProgram(newModel(opts, cl), tea.WithAltScreen())
+	// WithMouseCellMotion makes the wheel arrive as mouse events the viewport
+	// scrolls with, instead of the terminal translating it to ↑/↓ key presses
+	// (which would drive command history). Hold Shift to select/copy text.
+	p := tea.NewProgram(newModel(opts, cl), tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	// Fan the daemon's SSE feed into the Bubble Tea message loop. Canceling ctx
 	// on return unblocks the reader so the goroutine doesn't leak past quit.
@@ -147,9 +151,12 @@ func newModel(opts Options, cl *client) model {
 	ti.CharLimit = 240
 	ti.Focus()
 
+	vp := viewport.New(0, 0)
+	vp.MouseWheelEnabled = true
+
 	// The welcome banner is placed on the first WindowSizeMsg, once the width is
 	// known to size its box to.
-	return model{opts: opts, cl: cl, input: ti, vp: viewport.New(0, 0)}
+	return model{opts: opts, cl: cl, input: ti, vp: vp}
 }
 
 func (m model) Init() tea.Cmd {
@@ -215,9 +222,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 		if !m.welcomeShown {
 			m.welcomeShown = true
-			m.transcript = append(m.renderWelcome(), m.transcript...)
+			w := m.renderWelcome()
+			m.welcomeLen = len(w)
+			m.transcript = append(w, m.transcript...)
+			m.relayout()
+			m.vp.GotoTop() // show the welcome from its top border, not the tail
+		} else {
+			m.relayout()
 		}
-		m.relayout()
 		// Run the command the user typed after `trqsh` (e.g. `trqsh http 3000`),
 		// now that the viewport is sized so its output lands in the transcript.
 		if !m.initialRan && strings.TrimSpace(m.opts.InitialCommand) != "" {
@@ -237,10 +249,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tunnels = msg.tunnels
 		}
 		m.status = msg.status
+		m.refreshWelcome()
 		m.relayout()
 
 	case accountMsg:
 		m.acct, m.authed = msg.acct, msg.authed
+		m.refreshWelcome()
 		m.relayout()
 
 	case eventMsg:
@@ -564,9 +578,9 @@ func (m model) View() string {
 	var lines []string
 	lines = append(lines, m.renderHeader())
 	lines = append(lines, stDim.Render(m.rule()))
-	lines = append(lines, m.renderPinnedBlock()...) // horizontal boxes (empty if no pins)
-	lines = append(lines, strings.Split(m.vp.View(), "\n")...)
-	lines = append(lines, m.renderScrollHint()) // one line, empty when at the bottom
+	lines = append(lines, strings.Split(m.vp.View(), "\n")...) // transcript (welcome banner first)
+	lines = append(lines, m.renderScrollHint())                // empty when at the bottom
+	lines = append(lines, m.renderPinnedBlock()...)            // pinned panels sit just above the prompt
 	lines = append(lines, m.renderMenu()...)
 	lines = append(lines, strings.Split(m.renderInputBox(), "\n")...)
 	lines = append(lines, m.renderHint())
@@ -769,16 +783,32 @@ func (m model) renderWelcome() []string {
 
 func (m model) welcomeLeft() []string {
 	glyph, word, col := m.connState()
-	who := "there"
+	name := "guest"
+	email := stDim.Render("not signed in — /login")
+	plan := ""
 	if m.acct != nil {
-		who = firstNonEmpty(m.acct.User.Name, m.acct.User.Email, "there")
+		name = firstNonEmpty(m.acct.User.Name, m.acct.User.Email, "you")
+		email = stDim.Render(m.acct.User.Email)
+		plan = firstNonEmpty(m.acct.Plan, m.acct.Org.Plan, "free") + " plan · "
 	}
 	return []string{
-		stBrand.Render("≈ trqsh"),
-		"",
-		"Welcome, " + who + "!",
-		lipglossFg(col, glyph+" "+word) + stDim.Render("  "+firstNonEmpty(m.status.Edge, "trqsh.uz")),
+		stBrand.Render("≈ trqsh") + stDim.Render("  "+m.opts.Version),
+		"Welcome, " + name,
+		email,
+		stDim.Render(plan) + lipglossFg(col, glyph+" "+word),
 	}
+}
+
+// refreshWelcome re-renders the banner in place so it reflects the account and
+// connection once they load — as long as it's still at the top of the transcript
+// (it won't be after /clear, where welcomeLen is reset to 0).
+func (m *model) refreshWelcome() {
+	if !m.welcomeShown || m.welcomeLen == 0 || len(m.transcript) < m.welcomeLen {
+		return
+	}
+	fresh := m.renderWelcome()
+	m.transcript = append(fresh, m.transcript[m.welcomeLen:]...)
+	m.welcomeLen = len(fresh)
 }
 
 func (m model) welcomeRight() []string {
