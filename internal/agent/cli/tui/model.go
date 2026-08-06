@@ -686,17 +686,19 @@ func (m model) renderPinnedBlock() []string {
 }
 
 func (m model) pinBox(name string) string {
+	// Cap each panel to the terminal width so it never overflows a narrow window.
+	cap := m.width - 2
 	switch name {
 	case "tunnels":
-		w := 40
+		w := min(40, cap)
 		return panelBox(fmt.Sprintf("TUNNELS (%d)", len(m.tunnels)),
 			strings.Join(fitLines(m.tunnelsBody(w-4), pinnedRows, w-4), "\n"), w, colBrand)
 	case "traffic":
-		w := 54
+		w := min(54, cap)
 		return panelBox("TRAFFIC",
 			strings.Join(fitLines(m.trafficBody(w-4), pinnedRows, w-4), "\n"), w, colCyan)
 	case "status":
-		w := 40
+		w := min(40, cap)
 		return panelBox("STATUS",
 			strings.Join(fitLines(m.statusBody(), pinnedRows, w-4), "\n"), w, colViolet)
 	}
@@ -770,33 +772,48 @@ func packBoxes(boxes []string, width int) []string {
 
 // --- welcome banner, input box, hints ---
 
-// mascotEyes is the cat's blink cycle — mostly open, an occasional blink and a
-// happy squint — which, redrawn on a slow tick, makes it feel alive.
-var mascotEyes = []string{"o.o", "o.o", "o.o", "o.o", "-.-", "o.o", "o.o", "^.^"}
+// mascotEyes is the owl's blink cycle — mostly wide awake, with an occasional
+// blink and a narrowed look — which, redrawn on a slow tick, gives it life.
+var mascotEyes = []string{"O,O", "O,O", "O,O", "O,O", "-,-", "O,O", "o,o", "O,O"}
 
-// mascotFrame renders the cat (ASCII, renders in any font) for animation frame
-// f, tinted so it reads as a creature: amber body, bright eyes, a pink nose.
+// mascotFrame renders the owl (ASCII, renders in any font) for animation frame
+// f, tinted so it reads as a creature: amber body, bright eyes, a pink beak.
 func mascotFrame(f int) []string {
 	e := []rune(mascotEyes[f%len(mascotEyes)])
 	return []string{
-		stCat.Render(" /\\_/\\ "),
-		stCat.Render("( ") + stCatEye.Render(string(e[0])) + stCatNose.Render(string(e[1])) + stCatEye.Render(string(e[2])) + stCat.Render(" )"),
-		stCat.Render(" > ") + stCatNose.Render("^") + stCat.Render(" < "),
+		stOwl.Render(" ,_,"),
+		stOwl.Render("{") + stOwlEye.Render(string(e[0])) + stOwlBeak.Render(string(e[1])) + stOwlEye.Render(string(e[2])) + stOwl.Render("}"),
+		stOwl.Render("/)_)") + stDim.Render(" "),
 	}
 }
 
 // renderWelcome builds the startup banner: a rounded box (title in its border)
-// with three columns — the mascot, the account/status, and getting-started tips.
+// with the mascot, the account/status, and — only when the terminal is wide
+// enough — the getting-started tips. On narrow terminals the tips column is
+// dropped so the banner stays readable instead of wrapping into a mess.
 func (m model) renderWelcome() []string {
 	mascot := mascotFrame(m.mascotFrame)
 	acct := m.welcomeLeft()
-	tips := m.welcomeRight()
-	rows := max(max(len(mascot), len(acct)), len(tips))
-	const mascotW, acctW = 9, 24
-	sep := stDim.Render("│ ")
+	const mascotW = 6
+	innerW := max(16, m.width-4) // content width inside the box borders+padding
+	showTips := m.width >= 82
+
+	rows := max(len(mascot), len(acct))
+	acctW := max(8, innerW-mascotW-2) // account fills the rest when there are no tips
+	var tips []string
+	if showTips {
+		tips = m.welcomeRight()
+		rows = max(rows, len(tips))
+		acctW = 24
+	}
+
 	body := make([]string, 0, rows)
 	for i := range rows {
-		body = append(body, padCell(at(mascot, i), mascotW)+" "+padCell(at(acct, i), acctW)+sep+at(tips, i))
+		line := padCell(at(mascot, i), mascotW) + "  " + padCell(at(acct, i), acctW)
+		if showTips {
+			line += stDim.Render("│ ") + at(tips, i)
+		}
+		body = append(body, line)
 	}
 	box := roundedBox("trqsh "+m.opts.Version, strings.Join(body, "\n"), m.width-2, colBrand, "")
 	return append(strings.Split(box, "\n"), "")

@@ -38,11 +38,11 @@ var (
 	stWarn  = lipgloss.NewStyle().Foreground(colYellow)
 	stEcho  = lipgloss.NewStyle().Foreground(lipgloss.Color("#e5e7eb")).Bold(true) // the echoed command
 
-	// The mascot's colors — a warm body, bright eyes and a pink nose so it reads
-	// as a little creature, not a teal monolith.
-	stCat     = lipgloss.NewStyle().Foreground(colAmber)
-	stCatEye  = lipgloss.NewStyle().Foreground(colCyan).Bold(true)
-	stCatNose = lipgloss.NewStyle().Foreground(colPink)
+	// The owl mascot's colors — a warm body, bright eyes and a pink beak so it
+	// reads as a little creature, not a teal monolith.
+	stOwl     = lipgloss.NewStyle().Foreground(colAmber)
+	stOwlEye  = lipgloss.NewStyle().Foreground(colCyan).Bold(true)
+	stOwlBeak = lipgloss.NewStyle().Foreground(colPink)
 
 	// Command-menu selection highlight (a subtle inverse bar).
 	stMenuSel = lipgloss.NewStyle().Foreground(lipgloss.Color("#0b0f10")).Background(colBrand).Bold(true)
