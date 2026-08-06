@@ -17,6 +17,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mdp/qrterminal/v3"
 	"github.com/trqsh-uz/trqsh/internal/agent"
 )
@@ -47,14 +48,14 @@ func init() {
 		{"stop", "<id|all>", "Stop a tunnel (or all)", cmdStop},
 		{"down", "", "Stop the background daemon and quit", cmdDown},
 		{"requests", "", "Show recently captured requests", cmdRequests},
-		{"pin", "<traffic|tunnels|status>", "Keep a live panel on screen", cmdPin},
-		{"unpin", "<name|all>", "Remove a pinned panel", cmdUnpin},
+		{"pin", "<panel>", "Keep a live panel on screen (traffic/tunnels/status)", cmdPin},
+		{"unpin", "<panel>", "Remove a pinned panel", cmdUnpin},
 		{"status", "", "Show connection status", cmdStatus},
 		{"whoami", "", "Show account, plan and usage", cmdWhoami},
 		{"login", "[key]", "Sign in via browser (or paste a key)", cmdLogin},
 		{"logout", "", "Sign out", cmdLogout},
-		{"subdomains", "[reserve|release <name>]", "Manage reserved subdomains", cmdSubdomains},
-		{"domains", "[add|verify <domain>]", "Manage custom domains", cmdDomains},
+		{"subdomains", "[reserve|release]", "Manage reserved subdomains", cmdSubdomains},
+		{"domains", "[add|verify]", "Manage custom domains", cmdDomains},
 		{"config", "", "Show configuration", cmdConfig},
 		{"update", "[check]", "Check for / install a newer trqsh", cmdUpdate},
 		{"uninstall", "", "Remove trqsh's local data", cmdUninstall},
@@ -623,11 +624,28 @@ func cmdClear(m *model, _ []string) tea.Cmd {
 }
 
 func cmdHelp(m *model, _ []string) tea.Cmd {
-	m.appendLines("  " + stTitle.Render("COMMANDS"))
+	byName := make(map[string]slashCmd, len(slashCommands))
 	for _, c := range slashCommands {
-		m.appendLines("  " + stKey.Render(pad("/"+c.name, 9)) + " " + stDim.Render(pad(c.args, 18)) + c.desc)
+		byName[c.name] = c
 	}
-	m.appendLines(stDim.Render("  tip: type ") + stKey.Render("/") + stDim.Render(" to autocomplete; ") + stKey.Render("/pin traffic") + stDim.Render(" to watch requests live"))
+	for _, g := range []struct {
+		title string
+		color lipgloss.Color
+		names []string
+	}{
+		{"TUNNELS", colBrand, []string{"http", "tcp", "udp", "start", "ls", "open", "qr", "copy", "stop", "down", "requests"}},
+		{"PANELS", colCyan, []string{"pin", "unpin"}},
+		{"ACCOUNT", colViolet, []string{"status", "whoami", "login", "logout", "subdomains", "domains"}},
+		{"SYSTEM", colAmber, []string{"config", "update", "uninstall", "version", "clear", "help", "quit"}},
+	} {
+		m.appendLines("  " + boldFg(g.color, g.title))
+		for _, n := range g.names {
+			c := byName[n]
+			m.appendLines("    " + lipglossFg(g.color, pad("/"+c.name, 11)) + stDim.Render(pad(c.args, 18)) + c.desc)
+		}
+		m.appendLines("")
+	}
+	m.appendLines(stDim.Render("  tip: ") + stKey.Render("/") + stDim.Render(" autocompletes · ") + stKey.Render("↑↓") + stDim.Render(" history · ") + stKey.Render("/pin traffic") + stDim.Render(" watches requests live"))
 	return nil
 }
 

@@ -438,7 +438,9 @@ func (m *model) pushHistory(line string) {
 }
 
 func (m model) run(line string) (tea.Model, tea.Cmd) {
-	m.appendLines(stDim.Render("  › ") + line)
+	// A blank line separates interactions; the echo uses an accented chevron and
+	// a bold command so it reads as a distinct "you ran this", not plain text.
+	m.appendLines("", stKey.Render("  ❯ ")+stEcho.Render(line))
 	name, args := parseLine(line)
 	cmd, ok := lookupCommand(name)
 	if !ok {

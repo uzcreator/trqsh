@@ -36,6 +36,7 @@ var (
 	stOK    = lipgloss.NewStyle().Foreground(colGreen)
 	stErr   = lipgloss.NewStyle().Foreground(colRed)
 	stWarn  = lipgloss.NewStyle().Foreground(colYellow)
+	stEcho  = lipgloss.NewStyle().Foreground(lipgloss.Color("#e5e7eb")).Bold(true) // the echoed command
 
 	// The mascot's colors — a warm body, bright eyes and a pink nose so it reads
 	// as a little creature, not a teal monolith.
@@ -52,6 +53,11 @@ var (
 // named style.
 func lipglossFg(c lipgloss.Color, s string) string {
 	return lipgloss.NewStyle().Foreground(c).Render(s)
+}
+
+// boldFg renders s bold in foreground color c (for /help section headers).
+func boldFg(c lipgloss.Color, s string) string {
+	return lipgloss.NewStyle().Foreground(c).Bold(true).Render(s)
 }
 
 // statusStyle colors an HTTP status code by class: 2xx green, 3xx cyan, 4xx
