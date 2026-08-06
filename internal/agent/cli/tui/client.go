@@ -132,10 +132,10 @@ func (c *client) releaseSubdomain(ctx context.Context, id string) error {
 }
 
 type domain struct {
-	ID         string `json:"id"`
-	Domain     string `json:"domain"`
+	ID         string    `json:"id"`
+	Domain     string    `json:"domain"`
 	VerifiedAt *struct{} `json:"verified_at"` // presence ⇒ verified; body unused here
-	CertStatus string `json:"cert_status"`
+	CertStatus string    `json:"cert_status"`
 }
 
 func (c *client) listDomains(ctx context.Context) ([]domain, error) {

@@ -1,21 +1,21 @@
-// Package cli implements the `trqsh` command-line interface over the agent core.
+// Package cli implements the `trqsh` command line: a thin launcher that opens
+// the interactive console (package tui) and the hidden `daemon` the console
+// spawns for itself. All user-facing actions live in the console as slash
+// commands; this package only wires flags, spawns/【talks to the daemon, and
+// bridges the two filesystem operations the console can't do over the API
+// (self-update and local-data removal). See dashboard.go and control.go.
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
 	"github.com/trqsh-uz/trqsh/internal/agent/cli/ui"
-	"github.com/trqsh-uz/trqsh/internal/agent/inspect"
 )
 
 // Execute runs the root command. Error formatting is centralized here
@@ -115,117 +115,8 @@ func (g *globalFlags) logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
 
-// runTunnels connects, binds each spec, prints URLs, and streams events until
-// interrupted.
-func runTunnels(cmd *cobra.Command, g *globalFlags, specs []agent.TunnelSpec) error {
-	cfg, err := g.loadConfig(cmd)
-	if err != nil {
-		return err
-	}
-	log := g.logger()
-	core := agent.New(cfg, log)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// Inspector.
-	if cfg.Inspector.Enabled && cfg.Inspector.Addr != "" {
-		inspSrv := inspect.NewServer(core.Inspector())
-		go func() {
-			if err := inspSrv.Serve(ctx, cfg.Inspector.Addr); err != nil {
-				log.Warn("inspector stopped", "err", err)
-			}
-		}()
-	}
-	// Local control API (for the GUI / `trqsh status`).
-	if cfg.ControlAddr != "" {
-		api := agent.NewLocalAPI(core)
-		go func() {
-			if err := api.Serve(ctx, cfg.ControlAddr); err != nil {
-				log.Warn("control api stopped", "err", err)
-			}
-		}()
-	}
-
-	for _, spec := range specs {
-		t, err := core.StartTunnel(ctx, spec)
-		if err != nil {
-			_ = core.Shutdown(context.Background())
-			return err
-		}
-		fmt.Printf("\n  %s  %s  %s  %s\n",
-			ui.Green(ui.IconOK), ui.AccentBold(t.PublicURL), ui.Gray("→"), t.LocalAddr)
-	}
-	if cfg.Inspector.Enabled {
-		fmt.Printf("  %s http://%s\n", ui.Gray("inspector"), cfg.Inspector.Addr)
-	}
-	fmt.Printf("\n  %s\n\n", ui.Gray("Press Ctrl+C to stop."))
-
-	go streamEvents(ctx, core)
-
-	<-ctx.Done()
-	fmt.Printf("\n  %s\n", ui.Gray("shutting down…"))
-	sc, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	return core.Shutdown(sc)
-}
-
-func streamEvents(ctx context.Context, core *agent.Agent) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case ev := <-core.Events():
-			switch ev.Type {
-			case "request":
-				if ev.Request != nil {
-					fmt.Printf("  %s %-40s %s  %s\n",
-						methodField(ev.Request.Method), truncate(ev.Request.Path, 40),
-						statusField(ev.Request.Status), ui.Gray(fmt.Sprintf("%dms", ev.Request.DurationMs)))
-				}
-			case "status":
-				if ev.Status != nil && !ev.Status.Connected {
-					ui.Warn("disconnected — reconnecting…")
-				}
-			case "error":
-				ui.Warn("%s", ev.Err)
-			}
-		}
-	}
-}
-
-// methodField renders a request's HTTP method in a fixed-width, colored column
-// (padding is applied before coloring so the ANSI codes don't skew alignment).
-func methodField(method string) string {
-	return ui.Cyan(fmt.Sprintf("%-6s", method))
-}
-
-// statusField colors an HTTP status code by class for the live request log.
-func statusField(code int) string {
-	s := fmt.Sprintf("%3d", code)
-	switch {
-	case code >= 500:
-		return ui.Red(s)
-	case code >= 400:
-		return ui.Yellow(s)
-	case code >= 300:
-		return ui.Cyan(s)
-	case code >= 200:
-		return ui.Green(s)
-	default:
-		return ui.Gray(s)
-	}
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "…"
-}
-
-func bold(s string) string { return ui.Bold(s) }
-
+// printErr renders a failure through the ui layer: a red ✗ line plus, for a
+// structured agent error, its actionable hint.
 func printErr(err error) {
 	fmt.Fprintln(ui.Stderr)
 	var re *agent.Error

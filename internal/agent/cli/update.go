@@ -1,14 +1,15 @@
 package cli
 
-// newUpdateCmd checks for and installs a newer trqsh release: it lists the
-// repo's GitHub releases, picks the newest non-draft CLI tag (v* but not
-// desktop-v*, which is the GUI's own release train), downloads the matching
-// platform archive, verifies its checksum against the release's
-// checksums.txt, and atomically swaps it in for the running binary. This
-// deliberately mirrors the npm/pip wrappers' own install-on-first-run logic
-// (packaging/npm/lib/install.js, packaging/pypi/src/trqsh/_runtime.py): same
-// archive naming, same checksum trust model, no new dependencies (stdlib
-// archive/zip + archive/tar cover both platforms' archive formats).
+// This file implements the self-update the console's /update runs (via
+// selfUpdate in dashboard.go): it lists the repo's GitHub releases, picks the
+// newest non-draft CLI tag (v* but not desktop-v*, the GUI's own release
+// train), downloads the matching platform archive, verifies its checksum
+// against the release's checksums.txt, and atomically swaps it in for the
+// running binary. This deliberately mirrors the npm/pip wrappers'
+// install-on-first-run logic (packaging/npm/lib/install.js,
+// packaging/pypi/src/trqsh/_runtime.py): same archive naming, same checksum
+// trust model, no new dependencies (stdlib archive/zip + archive/tar cover both
+// platforms' archive formats).
 
 import (
 	"archive/tar"
@@ -29,9 +30,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/spf13/cobra"
-	"github.com/trqsh-uz/trqsh/internal/agent"
 )
 
 const (
@@ -50,67 +48,6 @@ var (
 	updateReleasesAPIURL = "https://api.github.com/repos/" + updateRepo + "/releases?per_page=30"
 	updateDownloadBase   = "https://github.com/" + updateRepo + "/releases/download"
 )
-
-func newUpdateCmd(g *globalFlags) *cobra.Command {
-	var checkOnly bool
-	cmd := &cobra.Command{
-		Use:     "update",
-		Short:   "Update trqsh to the latest release",
-		Example: "trqsh update\ntrqsh update --check",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runUpdate(cmd, g, checkOnly)
-		},
-	}
-	cmd.Flags().BoolVar(&checkOnly, "check", false, "only check for a newer version, don't install it")
-	return cmd
-}
-
-func runUpdate(cmd *cobra.Command, g *globalFlags, checkOnly bool) error {
-	ctx := cmd.Context()
-	current := agent.Version
-	if current == "" || current == "dev" {
-		fmt.Println("running a locally-built dev binary (not a release) — self-update isn't available.")
-		fmt.Println("download a release from https://trqsh.uz/download")
-		return nil
-	}
-
-	fmt.Println("checking for updates…")
-	latest, err := latestCLIVersion(ctx)
-	if err != nil {
-		return fmt.Errorf("could not check for updates: %w", err)
-	}
-
-	cmpResult, ok := compareVersions(latest, current)
-	if !ok {
-		fmt.Printf("you have %s; latest release is %s (couldn't compare versions automatically)\n", current, latest)
-		fmt.Println("see https://github.com/" + updateRepo + "/releases")
-		return nil
-	}
-	if cmpResult <= 0 {
-		fmt.Printf("trqsh %s is up to date ✓\n", current)
-		return nil
-	}
-
-	fmt.Printf("a new version is available: %s → %s\n", current, latest)
-	if checkOnly {
-		fmt.Println("run `trqsh update` to install it.")
-		return nil
-	}
-
-	target, err := runningBinaryPath()
-	if err != nil {
-		return err
-	}
-	if err := installUpdate(ctx, latest, target); err != nil {
-		return fmt.Errorf("update failed: %w", err)
-	}
-	fmt.Printf("\n  ✓ updated trqsh %s → %s\n", current, latest)
-
-	if cfg, err := g.loadConfig(cmd); err == nil && daemonAlive(controlAddr(cfg)) {
-		fmt.Println("  a background daemon is still running the old build — `trqsh down` then start a new tunnel to pick up the update.")
-	}
-	return nil
-}
 
 // latestCLIVersion returns the newest published CLI release's version (no
 // leading "v"). Releases come back newest-first; the desktop-v* skip is
