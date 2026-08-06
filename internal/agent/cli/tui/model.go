@@ -756,29 +756,46 @@ func packBoxes(boxes []string, width int) []string {
 
 // --- welcome banner, input box, hints ---
 
+// trqshMascot is the console's little critter, shown in the welcome banner
+// (like Claude Code's robot). ASCII-only so it renders in any terminal font.
+var trqshMascot = []string{
+	" /\\_/\\ ",
+	"( o.o )",
+	" > ~ < ",
+}
+
 // renderWelcome builds the startup banner: a rounded box (title in its border)
-// with a brand/status column on the left and getting-started tips on the right.
+// with three columns — the mascot, the account/status, and getting-started tips.
 func (m model) renderWelcome() []string {
-	inner := max(24, m.width-6) // content width inside the box
-	leftW := max(16, inner*2/5)
-	rightW := inner - leftW - 3 // 3 = " │ "
-	left := m.welcomeLeft()
-	right := m.welcomeRight()
-	sep := stDim.Render(" │ ")
-	rows := max(len(left), len(right))
+	mascot := colorLines(trqshMascot, colBrand)
+	acct := m.welcomeLeft()
+	tips := m.welcomeRight()
+	rows := max(max(len(mascot), len(acct)), len(tips))
+	const mascotW, acctW = 9, 24
+	sep := stDim.Render("│ ")
 	body := make([]string, 0, rows)
 	for i := range rows {
-		l, r := "", ""
-		if i < len(left) {
-			l = left[i]
-		}
-		if i < len(right) {
-			r = right[i]
-		}
-		body = append(body, padCell(l, leftW)+sep+padCell(r, rightW))
+		body = append(body, padCell(at(mascot, i), mascotW)+" "+padCell(at(acct, i), acctW)+sep+at(tips, i))
 	}
 	box := roundedBox("trqsh "+m.opts.Version, strings.Join(body, "\n"), m.width-2, colBrand, "")
 	return append(strings.Split(box, "\n"), "")
+}
+
+// colorLines applies a foreground color to each line (for the mascot art).
+func colorLines(lines []string, c lipgloss.Color) []string {
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = lipglossFg(c, l)
+	}
+	return out
+}
+
+// at returns sl[i], or "" when out of range — for zipping ragged columns.
+func at(sl []string, i int) string {
+	if i >= 0 && i < len(sl) {
+		return sl[i]
+	}
+	return ""
 }
 
 func (m model) welcomeLeft() []string {
@@ -792,10 +809,10 @@ func (m model) welcomeLeft() []string {
 		plan = firstNonEmpty(m.acct.Plan, m.acct.Org.Plan, "free") + " plan · "
 	}
 	return []string{
-		stBrand.Render("≈ trqsh") + stDim.Render("  "+m.opts.Version),
-		"Welcome, " + name,
+		stBrand.Render("Welcome, " + name),
 		email,
 		stDim.Render(plan) + lipglossFg(col, glyph+" "+word),
+		"",
 	}
 }
 
@@ -814,9 +831,9 @@ func (m *model) refreshWelcome() {
 func (m model) welcomeRight() []string {
 	return []string{
 		stTitle.Render("Getting started"),
-		stKey.Render("/") + stDim.Render("             browse all commands"),
-		stKey.Render("/http 3000") + stDim.Render("    expose a local port"),
-		stKey.Render("/pin traffic") + stDim.Render("  watch live requests"),
+		stKey.Render("/") + stDim.Render("            browse all commands"),
+		stKey.Render("/http 3000") + stDim.Render("   expose a local port"),
+		stKey.Render("/qr") + stDim.Render("          QR to open on your phone"),
 	}
 }
 
