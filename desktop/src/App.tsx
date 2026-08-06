@@ -21,11 +21,12 @@ import {
 import { agent, host, waitForSession, type HostInfo, type UpdateInfo } from "@/lib/agent";
 import type { AgentEvent, CapturedRequest, Status, Tunnel } from "@/lib/types";
 import { applyTheme, storedTheme, type Theme } from "@/lib/theme";
-import { useHotkeys, useWindowWidth, type Hotkey } from "@/lib/hooks";
+import { useHotkeys, type Hotkey } from "@/lib/hooks";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Titlebar } from "@/components/titlebar";
-import { Sidebar, type Screen } from "@/components/sidebar";
+import { ActivityRail, type Screen } from "@/components/activity-rail";
+import { StatusBar } from "@/components/status-bar";
 import { CommandPalette, type Command } from "@/components/command-palette";
 import { StartTunnelDialog } from "@/components/start-tunnel-dialog";
 import { Splash } from "@/components/splash";
@@ -60,7 +61,6 @@ export default function App() {
 
 function Shell() {
   const toast = useToast();
-  const width = useWindowWidth();
   const [booted, setBooted] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [status, setStatus] = useState<Status>(emptyStatus);
@@ -73,10 +73,7 @@ function Shell() {
   const [minTray, setMinTray] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
-  const [manualCollapse, setManualCollapse] = useState<boolean | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
-
-  const collapsed = manualCollapse ?? width < 940;
 
   const refreshTunnels = useCallback(() => {
     agent.list().then(setTunnels).catch(() => {});
@@ -307,13 +304,15 @@ function Shell() {
 
   const bar = (
     <Titlebar
-      status={status}
       os={os}
       theme={theme}
       onToggleTheme={toggleTheme}
       onOpenPalette={() => setPaletteOpen(true)}
       onClose={closeWindow}
     />
+  );
+  const statusBar = (
+    <StatusBar status={status} tunnelCount={tunnels.length} version={env?.version ?? ""} />
   );
   const palette = (
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
@@ -350,6 +349,7 @@ function Shell() {
             agent.status().then(setStatus).catch(() => {});
           }}
         />
+        {statusBar}
         {palette}
       </div>
     );
@@ -360,14 +360,7 @@ function Shell() {
       {bar}
       {updateBanner}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          active={screen}
-          onSelect={setScreen}
-          onDisconnect={disconnect}
-          requestCount={captures.length}
-          collapsed={collapsed}
-          onToggleCollapsed={() => setManualCollapse(!collapsed)}
-        />
+        <ActivityRail active={screen} onSelect={setScreen} requestCount={captures.length} />
         <main className="flex flex-1 flex-col overflow-hidden">
           <div key={screen} className="animate-screen flex flex-1 flex-col overflow-hidden">
             {screen === "tunnels" && (
@@ -392,6 +385,7 @@ function Shell() {
           </div>
         </main>
       </div>
+      {statusBar}
       <StartTunnelDialog
         open={newOpen}
         onClose={() => setNewOpen(false)}

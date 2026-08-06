@@ -1,9 +1,7 @@
 import { Moon, Search, Sun } from "lucide-react";
-import type { Status } from "@/lib/types";
 import type { Theme } from "@/lib/theme";
 import { modKey } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { StatusDot } from "./ui/status-dot";
 import { Button } from "./ui/button";
 import { WindowControls } from "./window-controls";
 
@@ -25,28 +23,25 @@ function TrqshMark() {
   );
 }
 
-/** Frameless-window titlebar: brand + connection pill (left, draggable), and a
- *  command trigger, theme toggle, and native window buttons (right, no-drag).
- *  On macOS the OS draws its own traffic lights, so we pad the brand clear of
- *  them and WindowControls renders nothing. */
+/** Frameless-window titlebar: brand (left, draggable), and a command trigger,
+ *  theme toggle, and native window buttons (right, no-drag). Connection state
+ *  now lives solely in the bottom status bar (see status-bar.tsx) — showing it
+ *  here too was a redundant second "vitals" indicator. On macOS the OS draws
+ *  its own traffic lights, so we pad the brand clear of them and
+ *  WindowControls renders nothing. */
 export function Titlebar({
-  status,
   os,
   theme,
   onToggleTheme,
   onOpenPalette,
   onClose,
 }: {
-  status: Status;
   os: string;
   theme: Theme;
   onToggleTheme: () => void;
   onOpenPalette: () => void;
   onClose: () => void;
 }) {
-  const conn = status.connected
-    ? { dot: "online" as const, text: status.edge || "Connected" }
-    : { dot: "offline" as const, text: "Disconnected" };
   const isMac = os === "darwin";
 
   return (
@@ -59,10 +54,6 @@ export function Titlebar({
         className={cn("flex items-center gap-2.5 pl-3", isMac && "pl-[76px]")}
       >
         <TrqshMark />
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-page px-2.5 py-1">
-          <StatusDot status={conn.dot} />
-          <span className="max-w-40 truncate text-xs text-secondary">{conn.text}</span>
-        </div>
       </div>
 
       <div className="flex items-center">

@@ -104,7 +104,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed bottom-3 right-3 z-[100] flex w-80 max-w-[calc(100%-1.5rem)] flex-col gap-2">
+      {/* bottom-9 clears the app's docked status bar (h-6) plus the same 12px
+          breathing room the stack always had above the window edge. */}
+      <div className="pointer-events-none fixed bottom-9 right-3 z-[100] flex w-80 max-w-[calc(100%-1.5rem)] flex-col gap-2">
         {items.map((t) => (
           <ToastCard key={t.id} t={t} onDismiss={() => dismiss(t.id)} />
         ))}
