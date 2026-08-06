@@ -1,0 +1,14 @@
+<svg width="900" height="230" viewBox="0 0 900 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Example: running /http 3000 inside the trqsh console">
+  <rect x="0.5" y="0.5" width="899" height="229" rx="8" fill="#0a0a0a" stroke="#1c1c1c"/>
+
+  <g font-family="ui-monospace,'Cascadia Code','Segoe UI Mono',Consolas,Menlo,monospace">
+    <text x="24" y="32" font-size="15" font-weight="700" fill="#2dd4bf">trqsh 0.1.9</text>
+    <text x="876" y="32" font-size="14" text-anchor="end"><tspan fill="#22c55e">● online</tspan><tspan fill="#6b7280">   pro plan · 1 tunnel</tspan></text>
+    <line x1="24" y1="44" x2="876" y2="44" stroke="#242424" stroke-width="1"/>
+
+    <text x="24" y="88" font-size="15"><tspan fill="#2dd4bf" font-weight="700">❯ </tspan><tspan fill="#e5e7eb" font-weight="700">/http 3000</tspan></text>
+    <text x="40" y="116" font-size="14"><tspan fill="#22c55e" font-weight="700">✓ </tspan><tspan fill="#6b7280">tunnel live  →  </tspan><tspan fill="#2dd4bf" font-weight="700">https://swift-otter.trqsh.uz</tspan></text>
+
+    <text x="24" y="182" font-size="12.5" fill="#4b5c56">↑↓ history · / commands · pgup/pgdn scroll · ctrl+c quit</text>
+  </g>
+</svg>

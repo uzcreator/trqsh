@@ -1,0 +1,72 @@
+<svg width="1200" height="280" viewBox="0 0 1200 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="trqsh — QUIC-first tunnels to localhost">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1512"/>
+      <stop offset="1" stop-color="#090d14"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0fac6c"/>
+      <stop offset="0.5" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#254ebe"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="0.55" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#22c1a0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.16" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#14b8a6" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#14b8a6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.92" cy="0.85" r="0.55">
+      <stop offset="0" stop-color="#254ebe" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#254ebe" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="278" rx="22" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="278" rx="22" fill="url(#glow)"/>
+  <rect x="1" y="1" width="1198" height="278" rx="22" fill="url(#glow2)"/>
+  <rect x="1" y="1" width="1198" height="278" rx="22" fill="none" stroke="url(#ring)" stroke-opacity="0.55" stroke-width="1.5"/>
+
+  <!-- faint dot-grid texture -->
+  <g fill="#5eead4" opacity="0.09">
+    <circle cx="900" cy="40" r="1.6"/><circle cx="940" cy="40" r="1.6"/><circle cx="980" cy="40" r="1.6"/><circle cx="1020" cy="40" r="1.6"/><circle cx="1060" cy="40" r="1.6"/><circle cx="1100" cy="40" r="1.6"/>
+    <circle cx="900" cy="76" r="1.6"/><circle cx="940" cy="76" r="1.6"/><circle cx="980" cy="76" r="1.6"/><circle cx="1020" cy="76" r="1.6"/><circle cx="1060" cy="76" r="1.6"/><circle cx="1100" cy="76" r="1.6"/>
+    <circle cx="900" cy="112" r="1.6"/><circle cx="940" cy="112" r="1.6"/><circle cx="980" cy="112" r="1.6"/><circle cx="1020" cy="112" r="1.6"/><circle cx="1060" cy="112" r="1.6"/><circle cx="1100" cy="112" r="1.6"/>
+    <circle cx="900" cy="148" r="1.6"/><circle cx="940" cy="148" r="1.6"/><circle cx="980" cy="148" r="1.6"/><circle cx="1020" cy="148" r="1.6"/><circle cx="1060" cy="148" r="1.6"/><circle cx="1100" cy="148" r="1.6"/>
+  </g>
+
+  <!-- mark: nested squares, echoing the app icon -->
+  <g transform="translate(64,68)">
+    <rect x="0" y="0" width="144" height="144" rx="34" fill="#04120d" stroke="url(#ring)" stroke-width="3"/>
+    <rect x="27" y="27" width="90" height="90" rx="26" fill="none" stroke="#0fac6c" stroke-opacity="0.45" stroke-width="4"/>
+    <rect x="47" y="47" width="50" height="50" rx="16" fill="none" stroke="#0fac6c" stroke-opacity="0.85" stroke-width="4"/>
+    <circle cx="72" cy="72" r="11.5" fill="#18d28c"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="242" y="140" font-family="ui-monospace,'Cascadia Code','Segoe UI Mono',Consolas,Menlo,monospace" font-size="92" font-weight="700" letter-spacing="-2" fill="url(#word)">trqsh</text>
+  <text x="244" y="177" font-family="ui-monospace,'Cascadia Code','Segoe UI Mono',Consolas,Menlo,monospace" font-size="20" fill="#93b0a8">QUIC-first tunnels to localhost — HTTP · TCP · UDP</text>
+
+  <!-- protocol / trust chips -->
+  <g font-family="ui-monospace,'Cascadia Code','Segoe UI Mono',Consolas,Menlo,monospace" font-size="14" font-weight="600">
+    <rect x="242" y="200" width="76" height="34" rx="17" fill="#0fac6c" fill-opacity="0.14" stroke="#0fac6c" stroke-opacity="0.5"/>
+    <text x="280" y="222" text-anchor="middle" fill="#5eead4">QUIC</text>
+
+    <rect x="332" y="200" width="112" height="34" rx="17" fill="#38bdf8" fill-opacity="0.12" stroke="#38bdf8" stroke-opacity="0.45"/>
+    <text x="388" y="222" text-anchor="middle" fill="#7dd3fc">HTTP/S</text>
+
+    <rect x="458" y="200" width="70" height="34" rx="17" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.45"/>
+    <text x="493" y="222" text-anchor="middle" fill="#c4b5fd">TCP</text>
+
+    <rect x="542" y="200" width="70" height="34" rx="17" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.45"/>
+    <text x="577" y="222" text-anchor="middle" fill="#c4b5fd">UDP</text>
+
+    <rect x="626" y="200" width="178" height="34" rx="17" fill="#f5a05a" fill-opacity="0.12" stroke="#f5a05a" stroke-opacity="0.45"/>
+    <text x="715" y="222" text-anchor="middle" fill="#fbc999">signed releases</text>
+
+    <rect x="818" y="200" width="150" height="34" rx="17" fill="#94a3b8" fill-opacity="0.12" stroke="#94a3b8" stroke-opacity="0.4"/>
+    <text x="893" y="222" text-anchor="middle" fill="#cbd5e1">open source</text>
+  </g>
+</svg>
