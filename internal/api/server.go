@@ -234,8 +234,10 @@ func (s *Server) Router() http.Handler {
 			r.Post("/domains/{id}/verify", s.handleVerifyDomain)
 
 			r.Get("/usage", s.handleUsage)
+			r.Get("/usage/history", s.handleUsageHistory)
 			r.Get("/orgs", s.handleListOrgs)
 			r.Get("/tunnels", s.handleListTunnels)
+			r.Get("/tunnels/history", s.handleTunnelHistory)
 			r.Get("/plans", s.handleListPlans)
 
 			// Billing (Part 07): Stripe Checkout, Customer Portal, subscription.
@@ -268,6 +270,13 @@ func (s *Server) Router() http.Handler {
 			r.Get("/admin/lookup", s.handleAdminLookup)
 			r.Post("/admin/grant", s.handleAdminGrant)
 			r.Post("/admin/revoke", s.handleAdminRevoke)
+
+			// Admin dashboard read views (whole-deployment): fleet stats + account
+			// and tunnel directories (see handlers_admin_dash.go).
+			r.Get("/admin/stats", s.handleAdminStats)
+			r.Get("/admin/users", s.handleAdminUsers)
+			r.Get("/admin/orgs", s.handleAdminOrgs)
+			r.Get("/admin/tunnels", s.handleAdminTunnels)
 		})
 	})
 
