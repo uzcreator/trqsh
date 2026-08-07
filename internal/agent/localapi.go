@@ -38,6 +38,12 @@ type LocalAPI struct {
 	mu   sync.Mutex
 	subs map[int]chan Event
 	next int
+
+	// remote is the active /qr pairing, if any (see remoteapi.go). Guarded by
+	// its own mutex rather than mu: it's an unrelated concern, not the
+	// Event-subscriber bookkeeping mu protects.
+	remoteMu sync.Mutex
+	remote   *remotePairing
 }
 
 // NewLocalAPI builds a control API over the agent core.
@@ -207,6 +213,14 @@ func (l *LocalAPI) Handler() http.Handler {
 	})
 
 	mux.HandleFunc("GET /events", l.events)
+
+	// /qr remote-control pairing (see remoteapi.go): start/stop a session and
+	// forward the console's transcript/state to it. Inbound commands typed on
+	// the paired phone arrive as "remote" Events over /events above, not a
+	// separate stream — the TUI already has that connection open.
+	mux.HandleFunc("POST /remote/start", l.remoteStart)
+	mux.HandleFunc("POST /remote/stop", l.remoteStop)
+	mux.HandleFunc("POST /remote/publish", l.remotePublish)
 	return mux
 }
 

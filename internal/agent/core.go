@@ -61,11 +61,24 @@ type Tunnel struct {
 
 // Event is a state change, captured request, or error emitted on Events().
 type Event struct {
-	Type    string                   `json:"type"` // status|tunnel|request|error
+	Type    string                   `json:"type"` // status|tunnel|request|error|remote
 	Status  *Status                  `json:"status,omitempty"`
 	Tunnel  *Tunnel                  `json:"tunnel,omitempty"`
 	Request *inspect.CapturedRequest `json:"request,omitempty"`
 	Err     string                   `json:"err,omitempty"`
+	Remote  *RemoteEvent             `json:"remote,omitempty"`
+}
+
+// RemoteEvent carries a /qr pairing-relay notification (see remoteapi.go)
+// into an Event of Type "remote", so the TUI learns about it through the
+// same Events() stream it already consumes for everything else. Kind is
+// "command" (a slash command typed on the paired phone — Command holds the
+// text), "presence" (the phone connected/disconnected — Connected holds
+// which), or "ended" (the pairing session is over).
+type RemoteEvent struct {
+	Kind      string `json:"kind"`
+	Command   string `json:"command,omitempty"`
+	Connected bool   `json:"connected,omitempty"`
 }
 
 // Core is the interface the CLI and GUI drive. Frozen for Part 04.
