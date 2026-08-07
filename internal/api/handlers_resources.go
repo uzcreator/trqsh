@@ -265,9 +265,18 @@ func (s *Server) handleListOrgs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
-	// TODO(part-06): the edge should publish an org-scoped active-tunnel index in
-	// Redis; until then, live tunnels are read directly by the dashboard/edge.
-	writeJSON(w, http.StatusOK, []any{})
+	// Live tunnels for the org: the edge reports every bind/release as a tunnel
+	// session (see rpcReportTunnel), so the "active" set is the authoritative live
+	// list without needing a separate org-scoped Redis index. For the full past
+	// history use GET /v1/tunnels/history.
+	sessions, err := s.store.ListTunnelSessions(r.Context(), store.TunnelSessionFilter{
+		OrgID: orgOf(r), ActiveOnly: true, Limit: 200,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, sessions)
 }
 
 // handleMe returns the caller's profile, effective plan (+ expiry), and current
