@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { CopyButton } from "@/components/copy-button";
 
 function fmtDate(s?: string | null): string {
@@ -179,10 +180,9 @@ function NewKeyDialog({
     >
       {created ? (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-            <ShieldAlert className="size-4 shrink-0" />
+          <InlineAlert tone="warning" icon={ShieldAlert}>
             Store it somewhere safe — you won&apos;t be able to see it again.
-          </div>
+          </InlineAlert>
           <div className="flex items-center gap-2 rounded-md border border-border bg-page p-2">
             <code className="flex-1 truncate font-mono text-xs">{created.api_key}</code>
             <CopyButton value={created.api_key} label="Copy" variant="secondary" />

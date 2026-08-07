@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 /** Turn a device-flow error code into a human sentence. */
 function humanDeviceError(code: string): string {
@@ -180,11 +181,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
           {starting ? "Opening browser…" : "Sign in with browser"}
         </Button>
 
-        {browserErr && (
-          <p className="mt-3 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-xs text-critical">
-            {browserErr}
-          </p>
-        )}
+        {browserErr && <InlineAlert className="mt-3">{browserErr}</InlineAlert>}
 
         {!showKey ? (
           <div className="mt-4 text-center">
@@ -224,11 +221,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
               </div>
             </div>
 
-            {keyErr && (
-              <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-xs text-critical">
-                {keyErr}
-              </p>
-            )}
+            {keyErr && <InlineAlert>{keyErr}</InlineAlert>}
 
             <Button type="submit" variant="secondary" disabled={busy || !token.trim()} className="w-full">
               {busy ? <Spinner /> : <KeyRound />}

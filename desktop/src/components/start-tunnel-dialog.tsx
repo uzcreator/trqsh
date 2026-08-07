@@ -10,6 +10,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select } from "./ui/select";
 import { Spinner } from "./ui/spinner";
+import { InlineAlert } from "./ui/inline-alert";
 
 const PROTOS: { value: TunnelProto; label: string }[] = [
   { value: "http", label: "HTTP" },
@@ -173,11 +174,7 @@ export function StartTunnelDialog({
           </div>
         )}
 
-        {error && (
-          <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-xs text-critical">
-            {error}
-          </p>
-        )}
+        {error && <InlineAlert>{error}</InlineAlert>}
 
         <div className="mt-1 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close} disabled={busy}>

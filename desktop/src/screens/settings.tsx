@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 function Row({
   title,
@@ -92,9 +93,7 @@ export function Settings({ onDisconnect }: { onDisconnect: () => void }) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         {loadError ? (
-          <p className="max-w-sm rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-center text-xs text-critical">
-            {loadError}
-          </p>
+          <InlineAlert className="max-w-sm text-center">{loadError}</InlineAlert>
         ) : (
           <Spinner className="size-5 text-muted" />
         )}
