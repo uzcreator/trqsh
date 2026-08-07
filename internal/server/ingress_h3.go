@@ -185,7 +185,7 @@ func (s *Server) routeHTTPS(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	n, _ := io.Copy(w, resp.Body)
 
-	s.usage.record(bt.accountID, bt.clientTunnelID, max64(r.ContentLength, 0), n, 1)
+	s.recordUsage(bt, max64(r.ContentLength, 0), n, 1)
 }
 
 // proxyToUpstreamH3 reverse-proxies one h3 request to an internal reserved-host

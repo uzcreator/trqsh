@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/trqsh-uz/trqsh/pkg/proto"
 	"github.com/trqsh-uz/trqsh/pkg/tunnel"
@@ -20,6 +22,23 @@ type boundTunnel struct {
 	port           int    // tcp/udp assigned port (0 for http/https)
 	options        map[string]string
 	session        *agentSession
+
+	// History metadata + live traffic counters. publicURL/startedAt are captured at
+	// bind; the atomics accumulate alongside the usage aggregator so the close event
+	// can report per-tunnel totals. boundTunnel is always used by pointer, so the
+	// atomics are never copied.
+	publicURL string
+	startedAt time.Time
+	bytesIn   atomic.Int64
+	bytesOut  atomic.Int64
+	requests  atomic.Int64
+}
+
+// addTraffic accumulates this tunnel's lifetime byte/request counters.
+func (bt *boundTunnel) addTraffic(in, out, req int64) {
+	bt.bytesIn.Add(in)
+	bt.bytesOut.Add(out)
+	bt.requests.Add(req)
 }
 
 // agentSession wraps a live tunnel.Session plus the identity resolved at Hello

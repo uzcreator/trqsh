@@ -26,16 +26,17 @@ import (
 // Server is the trqsh edge (`trqshd`): it accepts agent sessions, tracks tunnels,
 // and welds public traffic to the owning agent.
 type Server struct {
-	cfg     Config
-	log     *slog.Logger
-	ent     authz.Entitlements
-	hub     *Hub
-	reg     Registry
-	certs   CertManager
-	metrics *Metrics
-	usage   *usageAgg
-	fwd     Forwarder
-	ports   *portManager
+	cfg      Config
+	log      *slog.Logger
+	ent      authz.Entitlements
+	reporter tunnelReporter // optional edge->API tunnel-history hook (nil = disabled)
+	hub      *Hub
+	reg      Registry
+	certs    CertManager
+	metrics  *Metrics
+	usage    *usageAgg
+	fwd      Forwarder
+	ports    *portManager
 
 	// proxyClient pools upstream connections for the reserved-host reverse proxy
 	// (apex/www → site, app → dashboard, api → API). Shared across all requests.
@@ -93,7 +94,22 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 		return nil, err
 	}
 	s.certs = certs
+
+	// Tunnel-history reporting is an optional capability of the real entitlements
+	// client (entitlerpc.Client); the stub doesn't implement it, so history is
+	// simply disabled when running unauthenticated. This keeps it off the frozen
+	// authz.Entitlements interface.
+	if tr, ok := ent.(tunnelReporter); ok {
+		s.reporter = tr
+	}
 	return s, nil
+}
+
+// tunnelReporter is the edge->control-plane tunnel-history seam, satisfied by
+// entitlerpc.Client. Kept separate from authz.Entitlements (a frozen contract) so
+// history is additive and optional.
+type tunnelReporter interface {
+	ReportTunnel(ctx context.Context, tr entitlerpc.TunnelReport) error
 }
 
 // buildCertManager chooses TLS: real ACME (Let's Encrypt) when an ACME email is
@@ -334,15 +350,17 @@ func (s *Server) bindHostTunnel(ctx context.Context, a *agentSession, b *proto.B
 	if err := s.hub.bindHost(bt); err != nil {
 		return bindErr(b, proto.CodeSubdomainTaken, err.Error())
 	}
+	bt.publicURL = "https://" + host
+	bt.startedAt = time.Now()
 	s.trackTunnel(a, bt)
 	_ = s.reg.Bind(ctx, Route{Host: host}, Binding{EdgeID: s.cfg.EdgeID, SessionID: a.sessionID}, 2*s.cfg.HeartbeatInterval)
 	s.metrics.TunnelsActive.Inc()
+	s.reportTunnelOpen(a, bt)
 
-	scheme := "https"
 	return &proto.BindResp{
 		ClientTunnelId: b.ClientTunnelId,
 		Ok:             true,
-		PublicUrl:      scheme + "://" + host,
+		PublicUrl:      bt.publicURL,
 		AssignedHost:   host,
 	}
 }
@@ -360,14 +378,17 @@ func (s *Server) bindPortTunnel(ctx context.Context, a *agentSession, b *proto.B
 		s.ports.release(typ, port)
 		return bindErr(b, proto.CodePortUnavailable, err.Error())
 	}
+	bt.publicURL = fmt.Sprintf("%s://%s:%d", typ, s.cfg.BaseDomain, port)
+	bt.startedAt = time.Now()
 	s.trackTunnel(a, bt)
 	_ = s.reg.Bind(ctx, Route{Proto: typ, Port: port}, Binding{EdgeID: s.cfg.EdgeID, SessionID: a.sessionID}, 2*s.cfg.HeartbeatInterval)
 	s.metrics.TunnelsActive.Inc()
+	s.reportTunnelOpen(a, bt)
 
 	return &proto.BindResp{
 		ClientTunnelId: b.ClientTunnelId,
 		Ok:             true,
-		PublicUrl:      fmt.Sprintf("%s://%s:%d", typ, s.cfg.BaseDomain, port),
+		PublicUrl:      bt.publicURL,
 		AssignedHost:   s.cfg.BaseDomain,
 		AssignedPort:   uint32(port), // #nosec G115 -- port is a real TCP/UDP port (0-65535)
 	}
@@ -433,6 +454,69 @@ func (s *Server) releaseTunnel(ctx context.Context, bt *boundTunnel) {
 		_ = s.reg.Unbind(ctx, Route{Proto: typ, Port: bt.port})
 	}
 	s.metrics.TunnelsActive.Dec()
+	s.reportTunnelClose(bt)
+}
+
+// recordUsage feeds one traffic sample to both the billing aggregator (per
+// account/tunnel windows) and the tunnel's lifetime counters (for the history
+// close event). All public-ingress paths funnel through here.
+func (s *Server) recordUsage(bt *boundTunnel, in, out, req int64) {
+	s.usage.record(bt.accountID, bt.clientTunnelID, in, out, req)
+	bt.addTraffic(in, out, req)
+}
+
+// reportTunnelOpen fires a best-effort "open" history event to the control plane.
+// It runs in its own goroutine so a slow/unreachable API never stalls a bind.
+func (s *Server) reportTunnelOpen(a *agentSession, bt *boundTunnel) {
+	if s.reporter == nil {
+		return
+	}
+	clientIP := ""
+	if addr := a.sess.RemoteAddr(); addr != nil {
+		clientIP = hostOnly(addr.String())
+	}
+	tr := entitlerpc.TunnelReport{
+		Action:    "open",
+		EdgeID:    s.cfg.EdgeID,
+		SessionID: a.sessionID,
+		TunnelID:  bt.clientTunnelID,
+		AccountID: bt.accountID,
+		Type:      protoForType(bt.ttype),
+		PublicURL: bt.publicURL,
+		Host:      bt.host,
+		Port:      bt.port,
+		Region:    s.cfg.Region,
+		ClientIP:  clientIP,
+		At:        bt.startedAt,
+	}
+	go s.sendTunnelReport(tr)
+}
+
+// reportTunnelClose fires a best-effort "close" event with final traffic totals.
+func (s *Server) reportTunnelClose(bt *boundTunnel) {
+	if s.reporter == nil || bt.session == nil {
+		return
+	}
+	tr := entitlerpc.TunnelReport{
+		Action:    "close",
+		EdgeID:    s.cfg.EdgeID,
+		SessionID: bt.session.sessionID,
+		TunnelID:  bt.clientTunnelID,
+		AccountID: bt.accountID,
+		Type:      protoForType(bt.ttype),
+		Region:    s.cfg.Region,
+		BytesIn:   bt.bytesIn.Load(),
+		BytesOut:  bt.bytesOut.Load(),
+		Requests:  bt.requests.Load(),
+		At:        time.Now(),
+	}
+	go s.sendTunnelReport(tr)
+}
+
+func (s *Server) sendTunnelReport(tr entitlerpc.TunnelReport) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = s.reporter.ReportTunnel(ctx, tr)
 }
 
 // startOps starts the metrics + health HTTP server.

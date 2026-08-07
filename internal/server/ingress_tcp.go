@@ -170,5 +170,5 @@ func (s *Server) weldRawConn(c net.Conn, bt *boundTunnel, ptype string) {
 	s.metrics.StreamsOpened.WithLabelValues(ptype).Inc()
 	up, down := rawJoin(c, c, st)
 	s.metrics.countBytes(up, down)
-	s.usage.record(bt.accountID, bt.clientTunnelID, up, down, 1)
+	s.recordUsage(bt, up, down, 1)
 }

@@ -115,7 +115,7 @@ func (s *Server) serveUDPTunnel(uc *net.UDPConn, port int) {
 			_ = f.stream.Close()
 			continue
 		}
-		s.usage.record(bt.accountID, bt.clientTunnelID, int64(n), 0, 1)
+		s.recordUsage(bt, int64(n), 0, 1)
 	}
 }
 
@@ -148,6 +148,6 @@ func (s *Server) udpReadBack(uc *net.UDPConn, addr *net.UDPAddr, f *udpFlow, bt 
 			return
 		}
 		s.metrics.countBytes(0, int64(n))
-		s.usage.record(bt.accountID, bt.clientTunnelID, 0, int64(n), 0)
+		s.recordUsage(bt, 0, int64(n), 0)
 	}
 }
