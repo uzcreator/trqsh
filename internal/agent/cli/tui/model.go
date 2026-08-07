@@ -44,6 +44,12 @@ type Options struct {
 	// a summary line to print in the transcript. Nil disables the command.
 	OnUpdate    func(context.Context) (string, error)
 	OnUninstall func(context.Context) (string, error)
+	// OnCheckUpdate reports the newest published CLI version (no leading "v"),
+	// for /update's check step. It's a separate bridge from OnUpdate — not a
+	// daemon API call (the daemon's GET /update is the desktop app's own
+	// update check, against a different release train; the CLI checks its
+	// own) — because a running daemon isn't required to check.
+	OnCheckUpdate func(context.Context) (string, error)
 }
 
 // reqRow is one line in the live traffic feed.

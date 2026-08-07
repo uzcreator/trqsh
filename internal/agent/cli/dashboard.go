@@ -43,6 +43,7 @@ func runTUI(cmd *cobra.Command, g *globalFlags, initial string) error {
 		StartSpecs:     configSpecs(cfg),
 		ConfigRows:     configRows(g, cfg),
 		OnUpdate:       selfUpdate,
+		OnCheckUpdate:  latestCLIVersion,
 		OnUninstall:    func(_ context.Context) (string, error) { return removeLocalData(cfg) },
 	})
 }

@@ -357,12 +357,16 @@ func cmdLogin(m *model, args []string) tea.Cmd {
 
 func cmdUpdate(m *model, args []string) tea.Cmd {
 	checkOnly := len(args) > 0 && strings.EqualFold(args[0], "check")
-	cur, cl, onUpdate := m.opts.Version, m.cl, m.opts.OnUpdate
+	cur, onCheck, onUpdate := m.opts.Version, m.opts.OnCheckUpdate, m.opts.OnUpdate
 	m.appendLines(stDim.Render("  checking for updates…"))
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
-		latest, _, err := cl.latestVersion(ctx)
+		var latest string
+		var err error
+		if onCheck != nil {
+			latest, err = onCheck(ctx)
+		}
 		switch {
 		case err != nil:
 			return printMsg{[]string{stErr.Render("  ✗ couldn't check: " + err.Error())}}

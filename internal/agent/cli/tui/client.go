@@ -207,17 +207,6 @@ func (c *client) me(ctx context.Context) (*account, error) {
 	return &a, nil
 }
 
-// latestVersion asks the daemon (GET /update) for the newest published CLI
-// release tag (no leading "v") and the installer URL for this platform.
-func (c *client) latestVersion(ctx context.Context) (version, url string, err error) {
-	var out struct {
-		Version string `json:"version"`
-		URL     string `json:"url"`
-	}
-	err = c.do(ctx, http.MethodGet, "/update", nil, &out)
-	return out.Version, out.URL, err
-}
-
 // --- device-flow sign-in, proxied through the daemon (POST /login/oauth/*) ---
 
 type deviceStart struct {
