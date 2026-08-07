@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities for the trqsh desktop window: frameless window controls and listening for tray-driven UI events. The agent sidecar is spawned from Rust (setup), and external links / quit go through custom commands, so neither needs a frontend capability.",
+  "description": "Capabilities for the trqsh desktop window: frameless window controls and listening for tray-driven UI events. The agent sidecar is spawned from Rust (setup), and external links / quit go through custom commands, so neither needs a frontend capability. The embedded-terminal commands (pty_spawn/pty_write/pty_resize/pty_kill, src/pty.rs) are app-registered via generate_handler! the same as every other command here — this project's ACL only gates core:*/plugin permissions, not plain app commands, so there's no separate capability entry for them either. Their real boundary is the narrow 4-command surface itself (no generic exec/run-arbitrary-command primitive) plus argv-only process spawning in pty.rs, not this file.",
   "windows": ["main"],
   "permissions": [
     "core:default",

@@ -19,6 +19,8 @@
 // No console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod pty;
+
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -212,11 +214,16 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Sidecar::default())
+        .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             get_agent_endpoint,
             get_host_info,
             open_url,
-            quit
+            quit,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill
         ])
         // Closing the window hides it to the tray instead of quitting, so the Go
         // agent keeps the tunnels alive in the background. The app only really
@@ -243,14 +250,15 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building trqsh desktop")
-        // Reap the agent whenever the app exits, so quitting never leaves an
-        // orphan daemon holding the control port.
+        // Reap the agent and every open terminal session whenever the app
+        // exits, so quitting never leaves an orphan daemon or shell behind.
         .run(|app_handle, event| {
             if matches!(
                 event,
                 tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
             ) {
                 stop_agent(app_handle);
+                pty::stop_all(&app_handle.state::<pty::PtyState>());
             }
         });
 }
