@@ -118,6 +118,29 @@ func TestReservedUpstreamProxyPoolsConnections(t *testing.T) {
 	}
 }
 
+// TestReservedUpstreamQR guards the /qr remote-control pairing link: qr.<base>
+// must route to the same upstream as app.<base> (the dashboard, which tells
+// them apart by Host header — see web/dashboard/middleware.ts), and an
+// unrelated host must still fall through to "" (not reserved).
+func TestReservedUpstreamQR(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.BaseDomain = "lvh.me"
+	cfg.AppUpstream = "http://dashboard:3000"
+	s, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if got := s.reservedUpstream("qr.lvh.me"); got != cfg.AppUpstream {
+		t.Fatalf("qr.<base> should route to AppUpstream, got %q", got)
+	}
+	if got := s.reservedUpstream("app.lvh.me"); got != cfg.AppUpstream {
+		t.Fatalf("app.<base> should still route to AppUpstream, got %q", got)
+	}
+	if got := s.reservedUpstream("someone-else.lvh.me"); got != "" {
+		t.Fatalf("a non-reserved host should not match, got %q", got)
+	}
+}
+
 // TestReservedUpstreamProxyPassesRedirectThrough guards the CheckRedirect setting:
 // the pooled client must NOT follow upstream redirects (the browser does). A 302
 // from the upstream must be relayed verbatim, Location intact.

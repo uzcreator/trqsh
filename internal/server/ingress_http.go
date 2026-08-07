@@ -262,14 +262,18 @@ func hostOnly(hostport string) string {
 }
 
 // reservedUpstream returns the internal upstream for a reserved control-plane
-// host (apex/www → site, app → dashboard, api + approve → API), or "" if the host
-// is not reserved or its upstream isn't configured.
+// host (apex/www → site, app + qr → dashboard, api + approve → API), or "" if
+// the host is not reserved or its upstream isn't configured.
 func (s *Server) reservedUpstream(host string) string {
 	base := strings.ToLower(s.cfg.BaseDomain)
 	switch host {
 	case base, "www." + base:
 		return s.cfg.SiteUpstream
-	case "app." + base:
+	case "app." + base, "qr." + base:
+		// qr.<base> (the /qr remote-control pairing link) is served by the same
+		// dashboard deployment as app.<base> — web/dashboard/middleware.ts tells
+		// the two apart by Host header and rewrites qr.<base>'s bare path to the
+		// viewer page.
 		return s.cfg.AppUpstream
 	case "api." + base, "approve." + base:
 		// The admin console (approve.<base>) is served by the API itself, on the
