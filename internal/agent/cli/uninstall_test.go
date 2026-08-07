@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -36,8 +37,20 @@ func TestRemoveBinaryCacheSelf(t *testing.T) {
 		}
 	}
 
-	if _, err := os.Stat(selfExe); err != nil {
-		t.Errorf("self dir must still exist immediately after the call (removal is deferred), stat err = %v", err)
+	if runtime.GOOS == "windows" {
+		// Windows keeps a running exe's file locked, so removeSelfDir hands
+		// off to a detached helper and the dir must still be there right
+		// after the call returns.
+		if _, err := os.Stat(selfExe); err != nil {
+			t.Errorf("self dir must still exist immediately after the call (removal is deferred), stat err = %v", err)
+		}
+		return
+	}
+	// Unix allows unlinking a file the running process still has open (the
+	// inode survives until the process exits), so removeSelfDir removes it
+	// synchronously here, same as every other version dir.
+	if _, err := os.Stat(selfExe); !os.IsNotExist(err) {
+		t.Errorf("self dir should have been removed synchronously on %s, stat err = %v", runtime.GOOS, err)
 	}
 }
 
