@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Activity, CreditCard, Globe, KeyRound, Network, Settings } from "lucide-react";
+import { Activity, CreditCard, Globe, KeyRound, Network, Settings, SquareTerminal } from "lucide-react";
 import { cloud } from "@/lib/agent";
 import type { Me } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { StatusDot } from "@/components/ui/status-dot";
 
 export type Screen = "tunnels" | "inspector" | "domains" | "keys" | "billing" | "settings" | "account";
 
@@ -92,10 +93,19 @@ export function ActivityRail({
   active,
   onSelect,
   requestCount,
+  terminalOpen,
+  terminalLive,
+  onToggleTerminal,
 }: {
   active: Screen;
   onSelect: (s: Screen) => void;
   requestCount: number;
+  terminalOpen: boolean;
+  /** A shell session is actually running — independent of whether the panel
+   *  is currently open, so the dot means "live," never "selected" (the same
+   *  distinction the signal-ring motif draws everywhere else in the app). */
+  terminalLive: boolean;
+  onToggleTerminal: () => void;
 }) {
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-surface/60 py-3">
@@ -124,6 +134,19 @@ export function ActivityRail({
       </div>
 
       <div className="flex-1" />
+
+      <RailButton
+        active={terminalOpen}
+        label="Terminal (Ctrl `)"
+        onClick={onToggleTerminal}
+      >
+        <SquareTerminal className={cn("size-[18px]", terminalOpen && "text-primary")} />
+        {terminalLive && (
+          <span className="absolute right-1 top-1">
+            <StatusDot status="online" />
+          </span>
+        )}
+      </RailButton>
     </nav>
   );
 }

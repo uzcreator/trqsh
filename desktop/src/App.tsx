@@ -14,6 +14,7 @@ import {
   Plus,
   Power,
   Settings as SettingsIcon,
+  SquareTerminal,
   Sun,
   User,
   X,
@@ -29,6 +30,7 @@ import { ActivityRail, type Screen } from "@/components/activity-rail";
 import { StatusBar } from "@/components/status-bar";
 import { CommandPalette, type Command } from "@/components/command-palette";
 import { StartTunnelDialog } from "@/components/start-tunnel-dialog";
+import { TerminalPanel } from "@/components/terminal-panel";
 import { Splash } from "@/components/splash";
 import { Login } from "@/screens/login";
 import { Tunnels } from "@/screens/tunnels";
@@ -74,6 +76,8 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [terminalSessions, setTerminalSessions] = useState(0);
 
   const refreshTunnels = useCallback(() => {
     agent.list().then(setTunnels).catch(() => {});
@@ -252,6 +256,9 @@ function Shell() {
         { combo: "mod+5", handler: () => setScreen("billing") },
         { combo: "mod+6", handler: () => setScreen("account") },
         { combo: "mod+7", handler: () => setScreen("settings") },
+        // Literal Ctrl on every platform (VS Code's own binding) — Cmd+`
+        // is already macOS's window-cycling shortcut, so mod+` would collide.
+        { combo: "ctrl+`", allowInInput: true, handler: () => setTerminalOpen((v) => !v) },
       );
     }
     return list;
@@ -271,6 +278,13 @@ function Shell() {
         { id: "go-billing", label: "Go to Billing", group: "Navigate", icon: CreditCard, run: () => setScreen("billing") },
         { id: "go-account", label: "Go to Account", group: "Navigate", icon: User, run: () => setScreen("account") },
         { id: "go-settings", label: "Go to Settings", group: "Navigate", icon: SettingsIcon, run: () => setScreen("settings") },
+        {
+          id: "toggle-terminal",
+          label: "Toggle terminal",
+          group: "Navigate",
+          icon: SquareTerminal,
+          run: () => setTerminalOpen((v) => !v),
+        },
       );
       const web = tunnels.find((t) => isWebProto(t.proto));
       if (web) {
@@ -360,7 +374,14 @@ function Shell() {
       {bar}
       {updateBanner}
       <div className="flex flex-1 overflow-hidden">
-        <ActivityRail active={screen} onSelect={setScreen} requestCount={captures.length} />
+        <ActivityRail
+          active={screen}
+          onSelect={setScreen}
+          requestCount={captures.length}
+          terminalOpen={terminalOpen}
+          terminalLive={terminalSessions > 0}
+          onToggleTerminal={() => setTerminalOpen((v) => !v)}
+        />
         <main className="flex flex-1 flex-col overflow-hidden">
           <div key={screen} className="animate-screen flex flex-1 flex-col overflow-hidden">
             {screen === "tunnels" && (
@@ -383,6 +404,7 @@ function Shell() {
             {screen === "account" && <Account status={status} tunnels={tunnels} />}
             {screen === "settings" && <Settings onDisconnect={disconnect} />}
           </div>
+          <TerminalPanel open={terminalOpen} onSessionsChange={setTerminalSessions} />
         </main>
       </div>
       {statusBar}

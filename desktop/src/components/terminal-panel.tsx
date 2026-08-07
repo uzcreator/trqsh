@@ -216,9 +216,13 @@ export function TerminalPanel({
     onSessionsChange?.(sessions.length);
   }, [sessions.length, onSessionsChange]);
 
-  // Open with at least one session.
+  // Open with at least one session. Gated on hasTauri() too: this effect
+  // runs regardless of the early-return below (hooks can't come after it),
+  // so without the guard a tab would land in `sessions` — and falsely light
+  // up the rail's live-session dot — even in the no-Tauri fallback, where no
+  // TerminalView (and thus no real PTY) is ever actually rendered.
   useEffect(() => {
-    if (open && sessions.length === 0) addSession();
+    if (open && hasTauri() && sessions.length === 0) addSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

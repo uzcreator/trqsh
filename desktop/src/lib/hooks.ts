@@ -37,7 +37,8 @@ export function useNow(ms = 1000): number {
 }
 
 export interface Hotkey {
-  /** e.g. "mod+k" (mod = ⌘ on mac, Ctrl elsewhere), "mod+shift+n", "1". */
+  /** e.g. "mod+k" (mod = ⌘ on mac, Ctrl elsewhere), "mod+shift+n", "1", or
+   *  "ctrl+`" (literal Ctrl on every platform — see the `ctrl` token below). */
   combo: string;
   handler: (e: KeyboardEvent) => void;
   /** Fire even while focus is in an input/textarea (default false). */
@@ -50,16 +51,25 @@ const isMac =
 function matches(e: KeyboardEvent, combo: string): boolean {
   const parts = combo.toLowerCase().split("+");
   const key = parts[parts.length - 1];
+  // "ctrl" (distinct from "mod") is literal Ctrl on every platform, checked
+  // independently of mod's platform-dependent resolution — for bindings that
+  // must NOT become Cmd on Mac (e.g. Ctrl+` for the terminal, matching
+  // VS Code exactly rather than colliding with Mac's own Cmd+` window-cycle).
   const want = {
     mod: parts.includes("mod"),
+    ctrl: parts.includes("ctrl"),
     shift: parts.includes("shift"),
     alt: parts.includes("alt"),
   };
   const mod = isMac ? e.metaKey : e.ctrlKey;
   // The "other" primary modifier must be off so ⌘K doesn't also fire Ctrl+K.
   const otherPrimary = isMac ? e.ctrlKey : e.metaKey;
-  if (want.mod !== mod) return false;
-  if (want.mod && otherPrimary) return false;
+  if (want.ctrl) {
+    if (!e.ctrlKey || e.metaKey) return false;
+  } else {
+    if (want.mod !== mod) return false;
+    if (want.mod && otherPrimary) return false;
+  }
   if (want.shift !== e.shiftKey) return false;
   if (want.alt !== e.altKey) return false;
   return e.key.toLowerCase() === key;
