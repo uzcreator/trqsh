@@ -20,6 +20,15 @@ import { Empty } from "@/components/empty";
 const dotFor = (s: string): "online" | "connecting" | "error" | "offline" =>
   s === "online" ? "online" : s === "connecting" ? "connecting" : s === "error" ? "error" : "offline";
 
+// Mirrors status-dot.tsx's own tone mapping, reused for the card's left-edge
+// accent bar so the two "this channel is live" signals agree with each other.
+const accentTone: Record<ReturnType<typeof dotFor>, string> = {
+  online: "bg-good",
+  connecting: "bg-warning",
+  error: "bg-critical",
+  offline: "bg-muted",
+};
+
 const isWebProto = (p: string) => p === "http" || p === "https" || p === "tls";
 
 function fmtUptime(ms: number): string {
@@ -69,12 +78,18 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
     }
   };
 
+  const status = dotFor(t.status);
+
   return (
-    <div className="card-hover flex flex-col rounded-lg border border-border bg-surface p-4">
+    <div className="card-hover relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface p-4 pl-5">
+      <span
+        className={cn("absolute inset-y-0 left-0 w-[3px]", accentTone[status])}
+        aria-hidden
+      />
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex items-center gap-2">
-            <StatusDot status={dotFor(t.status)} />
+            <StatusDot status={status} />
             <span className="truncate text-sm font-semibold">{t.name}</span>
             <Badge tone="neutral" className="uppercase">
               {t.proto}
@@ -134,19 +149,39 @@ function TunnelCard({ t, onChanged }: { t: Tunnel; onChanged: () => void }) {
       </div>
 
       {web && (
-        <div className="mt-3 flex items-end gap-3">
-          <div className="min-w-0 flex-1">
-            <Sparkline data={spark} height={30} />
-          </div>
-          <span className="tabular shrink-0 text-[10px] text-muted">{rate}/s</span>
+        // The channel's live meter — promoted from a footnote-sized chart to
+        // a first-class readout, with the current rate overlaid on top like a
+        // VU meter's numeric readout rather than sitting beside it.
+        <div className="relative mt-3">
+          <Sparkline data={spark} height={52} />
+          <span className="tabular pointer-events-none absolute right-0 top-0 rounded bg-surface/70 px-1 font-mono text-sm font-semibold text-wire">
+            {rate}
+            <span className="text-[10px] font-normal text-muted">/s</span>
+          </span>
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-4 gap-2 border-t border-border pt-3">
-        <Stat label="Requests" value={<span className="text-wire">{count(t.metrics.requests)}</span>} />
-        <Stat label="Conns" value={<span className="text-wire">{count(t.metrics.connections)}</span>} />
-        <Stat label="In" value={<span className="text-wire">{bytes(t.metrics.bytes_in)}</span>} />
-        <Stat label="Out" value={<span className="text-wire">{bytes(t.metrics.bytes_out)}</span>} />
+      <div className="mt-3 grid grid-cols-4 divide-x divide-border border-t border-border pt-3">
+        <Stat
+          className="pr-3"
+          label="Requests"
+          value={<span className="text-wire">{count(t.metrics.requests)}</span>}
+        />
+        <Stat
+          className="px-3"
+          label="Conns"
+          value={<span className="text-wire">{count(t.metrics.connections)}</span>}
+        />
+        <Stat
+          className="px-3"
+          label="In"
+          value={<span className="text-wire">{bytes(t.metrics.bytes_in)}</span>}
+        />
+        <Stat
+          className="pl-3"
+          label="Out"
+          value={<span className="text-wire">{bytes(t.metrics.bytes_out)}</span>}
+        />
       </div>
     </div>
   );
