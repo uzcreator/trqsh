@@ -33,7 +33,7 @@ func (s *Spinner) Start() {
 		return
 	}
 	if !enabled {
-		fmt.Fprintf(Stderr, "  %s…\n", s.msg)
+		_, _ = fmt.Fprintf(Stderr, "  %s…\n", s.msg)
 		return
 	}
 	s.active = true
@@ -57,7 +57,7 @@ func (s *Spinner) run() {
 			s.mu.Unlock()
 			// \r returns to column 0; \x1b[2K clears the whole line so a shorter
 			// message never leaves stale characters from a longer previous one.
-			fmt.Fprintf(Stderr, "\r\x1b[2K  %s %s", Accent(spinFrames[i%len(spinFrames)]), msg)
+			_, _ = fmt.Fprintf(Stderr, "\r\x1b[2K  %s %s", Accent(spinFrames[i%len(spinFrames)]), msg)
 			i++
 		}
 	}
@@ -70,7 +70,7 @@ func (s *Spinner) Update(msg string) {
 	s.mu.Unlock()
 	if !s.isActive() {
 		// Not animating (color off): surface the new phase as its own line.
-		fmt.Fprintf(Stderr, "  %s…\n", msg)
+		_, _ = fmt.Fprintf(Stderr, "  %s…\n", msg)
 	}
 }
 
@@ -92,7 +92,7 @@ func (s *Spinner) halt() {
 	}
 	close(s.stop)
 	<-s.done
-	fmt.Fprint(Stderr, "\r\x1b[2K")
+	_, _ = fmt.Fprint(Stderr, "\r\x1b[2K")
 }
 
 // Success stops the spinner and prints a green ✓ line in its place.

@@ -118,12 +118,12 @@ func (g *globalFlags) logger() *slog.Logger {
 // printErr renders a failure through the ui layer: a red ✗ line plus, for a
 // structured agent error, its actionable hint.
 func printErr(err error) {
-	fmt.Fprintln(ui.Stderr)
+	_, _ = fmt.Fprintln(ui.Stderr)
 	var re *agent.Error
 	if errors.As(err, &re) {
 		ui.Fail("%s", re.Message)
 		if h := re.Hint(); h != "" {
-			fmt.Fprintf(ui.Stderr, "    %s\n", ui.Gray(h))
+			_, _ = fmt.Fprintf(ui.Stderr, "    %s\n", ui.Gray(h))
 		}
 		return
 	}

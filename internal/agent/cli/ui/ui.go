@@ -122,33 +122,33 @@ const (
 
 // Success prints a green ✓ line to stdout.
 func Success(format string, a ...any) {
-	fmt.Fprintf(Stdout, "  %s %s\n", Green(IconOK), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(Stdout, "  %s %s\n", Green(IconOK), fmt.Sprintf(format, a...))
 }
 
 // Fail prints a red ✗ line to stderr.
 func Fail(format string, a ...any) {
-	fmt.Fprintf(Stderr, "  %s %s\n", Red(IconErr), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(Stderr, "  %s %s\n", Red(IconErr), fmt.Sprintf(format, a...))
 }
 
 // Warn prints a yellow ⚠ line to stderr.
 func Warn(format string, a ...any) {
-	fmt.Fprintf(Stderr, "  %s %s\n", Yellow(IconWarn), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(Stderr, "  %s %s\n", Yellow(IconWarn), fmt.Sprintf(format, a...))
 }
 
 // Info prints a muted • line to stdout — a neutral status, not an error.
 func Info(format string, a ...any) {
-	fmt.Fprintf(Stdout, "  %s %s\n", Gray(IconInfo), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(Stdout, "  %s %s\n", Gray(IconInfo), fmt.Sprintf(format, a...))
 }
 
 // Step prints an accented → line to stdout — an action taken or a next step.
 func Step(format string, a ...any) {
-	fmt.Fprintf(Stdout, "  %s %s\n", Accent(IconArrow), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(Stdout, "  %s %s\n", Accent(IconArrow), fmt.Sprintf(format, a...))
 }
 
 // Printf writes an indented, styled line verbatim (no icon), for output that
 // doesn't fit the ✓/✗/⚠ vocabulary.
 func Printf(format string, a ...any) {
-	fmt.Fprintf(Stdout, format, a...)
+	_, _ = fmt.Fprintf(Stdout, format, a...)
 }
 
 // Pad right-pads s with spaces to width n (measured in bytes, which equals

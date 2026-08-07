@@ -63,11 +63,11 @@ func printRootHelp(root *cobra.Command) {
 	out := root.OutOrStdout()
 	byName := commandIndex(root)
 
-	fmt.Fprintf(out, "\n  %s %s\n", ui.AccentBold("trqsh"), ui.Gray(versionString()))
-	fmt.Fprintf(out, "  %s\n", root.Short)
-	fmt.Fprintf(out, "  %s\n\n", ui.Gray("An interactive console — run trqsh to open it; everything happens inside."))
+	_, _ = fmt.Fprintf(out, "\n  %s %s\n", ui.AccentBold("trqsh"), ui.Gray(versionString()))
+	_, _ = fmt.Fprintf(out, "  %s\n", root.Short)
+	_, _ = fmt.Fprintf(out, "  %s\n\n", ui.Gray("An interactive console — run trqsh to open it; everything happens inside."))
 
-	fmt.Fprintf(out, "  %s\n    %s %s\n\n", ui.Title("USAGE"), ui.Bold("trqsh"), ui.Gray("[command …]   (opens the console, running any command you pass)"))
+	_, _ = fmt.Fprintf(out, "  %s\n    %s %s\n\n", ui.Title("USAGE"), ui.Bold("trqsh"), ui.Gray("[command …]   (opens the console, running any command you pass)"))
 
 	shown := map[string]bool{}
 	for _, g := range helpGroups {
@@ -86,17 +86,17 @@ func printRootHelp(root *cobra.Command) {
 	printGroup(out, "OTHER", extra, byName, shown)
 
 	if fu := strings.TrimRight(root.PersistentFlags().FlagUsages(), "\n"); fu != "" {
-		fmt.Fprintf(out, "  %s\n%s\n\n", ui.Title("GLOBAL FLAGS"), indentLines(fu, "  "))
+		_, _ = fmt.Fprintf(out, "  %s\n%s\n\n", ui.Title("GLOBAL FLAGS"), indentLines(fu, "  "))
 	}
 
-	fmt.Fprintf(out, "  %s\n", ui.Title("EXAMPLES"))
+	_, _ = fmt.Fprintf(out, "  %s\n", ui.Title("EXAMPLES"))
 	for _, ex := range rootExamples {
-		fmt.Fprintf(out, "    %s%s\n", ui.Gray("$ "), ex)
+		_, _ = fmt.Fprintf(out, "    %s%s\n", ui.Gray("$ "), ex)
 	}
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "  Inside the console, type %s for all commands (%s to autocomplete).\n", ui.Accent("/help"), ui.Accent("/"))
-	fmt.Fprintf(out, "  Docs: %s\n\n", ui.Link("https://trqsh.uz/docs"))
+	_, _ = fmt.Fprintf(out, "  Inside the console, type %s for all commands (%s to autocomplete).\n", ui.Accent("/help"), ui.Accent("/"))
+	_, _ = fmt.Fprintf(out, "  Docs: %s\n\n", ui.Link("https://trqsh.uz/docs"))
 }
 
 // printGroup prints one titled section listing the named commands (in the given
@@ -114,47 +114,47 @@ func printGroup(out io.Writer, title string, names []string, byName map[string]*
 	if len(cmds) == 0 {
 		return
 	}
-	fmt.Fprintf(out, "  %s\n", ui.Title(title))
+	_, _ = fmt.Fprintf(out, "  %s\n", ui.Title(title))
 	for _, c := range cmds {
-		fmt.Fprintf(out, "    %s  %s\n", ui.Bold(ui.Pad(c.Name(), nameColWidth)), c.Short)
+		_, _ = fmt.Fprintf(out, "    %s  %s\n", ui.Bold(ui.Pad(c.Name(), nameColWidth)), c.Short)
 	}
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 }
 
 // printCommandHelp renders the help for a single (sub)command: description,
 // usage line, any subcommands, examples, and flags.
 func printCommandHelp(cmd *cobra.Command) {
 	out := cmd.OutOrStdout()
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 
 	desc := cmd.Long
 	if desc == "" {
 		desc = cmd.Short
 	}
-	fmt.Fprintf(out, "%s\n\n", indentLines(desc, "  "))
+	_, _ = fmt.Fprintf(out, "%s\n\n", indentLines(desc, "  "))
 
-	fmt.Fprintf(out, "  %s\n    %s\n\n", ui.Title("USAGE"), cmd.UseLine())
+	_, _ = fmt.Fprintf(out, "  %s\n    %s\n\n", ui.Title("USAGE"), cmd.UseLine())
 
 	if cmd.HasAvailableSubCommands() {
-		fmt.Fprintf(out, "  %s\n", ui.Title("COMMANDS"))
+		_, _ = fmt.Fprintf(out, "  %s\n", ui.Title("COMMANDS"))
 		for _, c := range cmd.Commands() {
 			if !c.IsAvailableCommand() || c.Name() == "help" {
 				continue
 			}
-			fmt.Fprintf(out, "    %s  %s\n", ui.Bold(ui.Pad(c.Name(), nameColWidth)), c.Short)
+			_, _ = fmt.Fprintf(out, "    %s  %s\n", ui.Bold(ui.Pad(c.Name(), nameColWidth)), c.Short)
 		}
-		fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out)
 	}
 
 	if cmd.Example != "" {
-		fmt.Fprintf(out, "  %s\n%s\n\n", ui.Title("EXAMPLES"), indentLines(strings.TrimRight(cmd.Example, "\n"), "    "))
+		_, _ = fmt.Fprintf(out, "  %s\n%s\n\n", ui.Title("EXAMPLES"), indentLines(strings.TrimRight(cmd.Example, "\n"), "    "))
 	}
 
 	if fu := strings.TrimRight(cmd.LocalFlags().FlagUsages(), "\n"); fu != "" {
-		fmt.Fprintf(out, "  %s\n%s\n", ui.Title("FLAGS"), indentLines(fu, "  "))
+		_, _ = fmt.Fprintf(out, "  %s\n%s\n", ui.Title("FLAGS"), indentLines(fu, "  "))
 	}
 	if fu := strings.TrimRight(cmd.InheritedFlags().FlagUsages(), "\n"); fu != "" {
-		fmt.Fprintf(out, "\n  %s\n%s\n", ui.Title("GLOBAL FLAGS"), indentLines(fu, "  "))
+		_, _ = fmt.Fprintf(out, "\n  %s\n%s\n", ui.Title("GLOBAL FLAGS"), indentLines(fu, "  "))
 	}
 }
 
@@ -162,8 +162,8 @@ func printCommandHelp(cmd *cobra.Command) {
 // parse error). It's intentionally terse — the full help is a keystroke away.
 func brandedUsage(cmd *cobra.Command) error {
 	out := cmd.OutOrStderr()
-	fmt.Fprintf(out, "\n  %s %s\n", ui.Gray("Usage:"), cmd.UseLine())
-	fmt.Fprintf(out, "  %s %s\n", ui.Gray("Help: "), ui.Accent(cmd.CommandPath()+" --help"))
+	_, _ = fmt.Fprintf(out, "\n  %s %s\n", ui.Gray("Usage:"), cmd.UseLine())
+	_, _ = fmt.Fprintf(out, "  %s %s\n", ui.Gray("Help: "), ui.Accent(cmd.CommandPath()+" --help"))
 	return nil
 }
 
