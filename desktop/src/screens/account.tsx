@@ -95,7 +95,7 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
 
       {/* Profile */}
       <Card>
-        <CardContent className="flex items-center gap-4 pt-6">
+        <CardContent className="flex items-center gap-4">
           {user?.avatar_url ? (
             <img
               src={user.avatar_url}

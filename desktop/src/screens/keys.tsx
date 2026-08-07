@@ -4,6 +4,7 @@ import { cloud } from "@/lib/agent";
 import type { ApiKey, CreatedApiKey } from "@/lib/types";
 import { friendlyError } from "@/lib/errors";
 import { useToast } from "@/components/ui/toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,50 +69,57 @@ export function Keys() {
         </div>
       </div>
 
-      {loading && keys.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-muted">
-          <Spinner />
-        </div>
-      ) : active.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted">
-          <KeyRound className="size-8" />
-          <p className="text-sm">No API keys yet. Create one to connect an agent.</p>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus />
-            New key
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {active.map((k) => (
-            <div
-              key={k.id}
-              className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3"
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-secondary">
-                <KeyRound className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{k.name || "key"}</p>
-                <p className="truncate font-mono text-xs text-muted">{k.prefix}…</p>
-              </div>
-              <div className="hidden text-right text-xs text-muted sm:block">
-                <p>Created {fmtDate(k.created_at)}</p>
-                <p>Last used {fmtDate(k.last_used_at)}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted hover:text-critical"
-                title="Revoke key"
-                onClick={() => revoke(k.id)}
-              >
-                <Trash2 />
+      <Card>
+        <CardHeader>
+          <CardTitle>Active keys</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading && keys.length === 0 ? (
+            <div className="flex items-center justify-center py-6 text-muted">
+              <Spinner />
+            </div>
+          ) : active.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center text-muted">
+              <KeyRound className="size-8" />
+              <p className="text-sm">No API keys yet. Create one to connect an agent.</p>
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus />
+                New key
               </Button>
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {active.map((k) => (
+                <div
+                  key={k.id}
+                  className="flex items-center gap-3 rounded-md border border-border bg-page px-3 py-2"
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-secondary">
+                    <KeyRound className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{k.name || "key"}</p>
+                    <p className="truncate font-mono text-xs text-muted">{k.prefix}…</p>
+                  </div>
+                  <div className="hidden text-right text-xs text-muted sm:block">
+                    <p>Created {fmtDate(k.created_at)}</p>
+                    <p>Last used {fmtDate(k.last_used_at)}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted hover:text-critical"
+                    title="Revoke key"
+                    onClick={() => revoke(k.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <NewKeyDialog
         open={dialogOpen}

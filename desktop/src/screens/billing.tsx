@@ -128,7 +128,7 @@ export function Billing() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium">
               You're on the <span className="uppercase text-primary">{plan}</span> plan
