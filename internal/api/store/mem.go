@@ -595,6 +595,94 @@ func (m *MemStore) TunnelCountryBreakdown(_ context.Context, orgID string, activ
 	return out, nil
 }
 
+// --- Admin dashboard ---
+
+func (m *MemStore) AdminOverview(_ context.Context) (AdminStats, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	now := time.Now()
+	d7, d30 := now.AddDate(0, 0, -7), now.AddDate(0, 0, -30)
+	st := AdminStats{OrgsByPlan: map[string]int{}}
+	st.Users = len(m.users)
+	for _, u := range m.users {
+		if u.CreatedAt.After(d7) {
+			st.NewUsers7d++
+		}
+		if u.CreatedAt.After(d30) {
+			st.NewUsers30d++
+		}
+	}
+	st.Orgs = len(m.orgs)
+	for _, o := range m.orgs {
+		plan := o.Plan
+		if plan == "" {
+			plan = "free"
+		}
+		st.OrgsByPlan[plan]++
+	}
+	st.APIKeys = len(m.keys)
+	st.ReservedSubdomains = len(m.subs)
+	st.CustomDomains = len(m.domains)
+	for _, t := range m.tunnels {
+		st.TotalTunnels++
+		if t.Status == "active" {
+			st.ActiveTunnels++
+		}
+	}
+	for _, u := range m.usage {
+		if !u.WindowEnd.Before(d30) {
+			st.BytesIn30d += u.BytesIn
+			st.BytesOut30d += u.BytesOut
+			st.Requests30d += u.Requests
+		}
+	}
+	return st, nil
+}
+
+func (m *MemStore) ListUsers(_ context.Context, limit, offset int, search string) ([]User, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	search = strings.ToLower(strings.TrimSpace(search))
+	all := make([]User, 0, len(m.users))
+	for _, u := range m.users {
+		if search != "" && !strings.Contains(strings.ToLower(u.Email), search) && !strings.Contains(strings.ToLower(u.Name), search) {
+			continue
+		}
+		all = append(all, u)
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].CreatedAt.After(all[j].CreatedAt) })
+	return pageSlice(all, limit, offset), nil
+}
+
+func (m *MemStore) ListOrgs(_ context.Context, limit, offset int, plan string) ([]Org, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	plan = strings.ToLower(strings.TrimSpace(plan))
+	all := make([]Org, 0, len(m.orgs))
+	for _, o := range m.orgs {
+		if plan != "" && o.Plan != plan {
+			continue
+		}
+		all = append(all, o)
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].CreatedAt.After(all[j].CreatedAt) })
+	return pageSlice(all, limit, offset), nil
+}
+
+// pageSlice applies limit/offset to an already-sorted slice with safe bounds.
+func pageSlice[T any](s []T, limit, offset int) []T {
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(s) {
+		return []T{}
+	}
+	return s[offset:min(offset+limit, len(s))]
+}
+
 // --- Billing ---
 
 func (m *MemStore) UpsertSubscription(_ context.Context, s Subscription) (Subscription, error) {

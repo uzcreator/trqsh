@@ -134,6 +134,24 @@ type UsageBucket struct {
 	Requests int64     `json:"requests"`
 }
 
+// AdminStats is the fleet-wide snapshot behind the admin dashboard overview: a
+// single round-trip of headline counts across the whole deployment.
+type AdminStats struct {
+	Users              int            `json:"users"`
+	NewUsers7d         int            `json:"new_users_7d"`
+	NewUsers30d        int            `json:"new_users_30d"`
+	Orgs               int            `json:"orgs"`
+	OrgsByPlan         map[string]int `json:"orgs_by_plan"`
+	APIKeys            int            `json:"api_keys"`
+	ReservedSubdomains int            `json:"reserved_subdomains"`
+	CustomDomains      int            `json:"custom_domains"`
+	ActiveTunnels      int            `json:"active_tunnels"`
+	TotalTunnels       int            `json:"total_tunnels"`
+	BytesIn30d         int64          `json:"bytes_in_30d"`
+	BytesOut30d        int64          `json:"bytes_out_30d"`
+	Requests30d        int64          `json:"requests_30d"`
+}
+
 // Subscription mirrors a Stripe subscription (Part 07). Webhooks are the source
 // of truth: each update rewrites this row and the derived orgs.plan.
 type Subscription struct {
@@ -222,6 +240,13 @@ type Store interface {
 	ListTunnelSessions(ctx context.Context, f TunnelSessionFilter) ([]TunnelSession, error)
 	CountTunnelSessions(ctx context.Context, orgID string, activeOnly bool) (int, error)
 	TunnelCountryBreakdown(ctx context.Context, orgID string, activeOnly bool) (map[string]int, error)
+
+	// Admin dashboard (whole-deployment views). AdminOverview is one round-trip of
+	// headline counts; ListUsers/ListOrgs are paginated directory listings across
+	// all accounts (search filters users by email/name; plan filters orgs).
+	AdminOverview(ctx context.Context) (AdminStats, error)
+	ListUsers(ctx context.Context, limit, offset int, search string) ([]User, error)
+	ListOrgs(ctx context.Context, limit, offset int, plan string) ([]Org, error)
 
 	// Billing: subscriptions (Part 07). GetOrgByStripeCustomer maps a Stripe
 	// customer back to an org during webhook handling.

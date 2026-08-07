@@ -537,6 +537,99 @@ func (p *PostgresStore) CountTunnelSessions(ctx context.Context, orgID string, a
 	return n, err
 }
 
+// --- Admin dashboard ---
+
+func (p *PostgresStore) AdminOverview(ctx context.Context) (AdminStats, error) {
+	now := time.Now()
+	d7, d30 := now.AddDate(0, 0, -7), now.AddDate(0, 0, -30)
+	st := AdminStats{OrgsByPlan: map[string]int{}}
+	// One round-trip for the headline counts via scalar subqueries.
+	err := p.db.QueryRowContext(ctx, `SELECT
+		(SELECT count(*) FROM users),
+		(SELECT count(*) FROM users WHERE created_at > $1),
+		(SELECT count(*) FROM users WHERE created_at > $2),
+		(SELECT count(*) FROM orgs),
+		(SELECT count(*) FROM api_keys),
+		(SELECT count(*) FROM reserved_subdomains),
+		(SELECT count(*) FROM custom_domains),
+		(SELECT count(*) FROM tunnel_sessions WHERE status='active'),
+		(SELECT count(*) FROM tunnel_sessions),
+		(SELECT COALESCE(sum(bytes_in),0) FROM usage_records WHERE window_end>=$2),
+		(SELECT COALESCE(sum(bytes_out),0) FROM usage_records WHERE window_end>=$2),
+		(SELECT COALESCE(sum(requests),0) FROM usage_records WHERE window_end>=$2)`,
+		d7, d30).Scan(&st.Users, &st.NewUsers7d, &st.NewUsers30d, &st.Orgs, &st.APIKeys,
+		&st.ReservedSubdomains, &st.CustomDomains, &st.ActiveTunnels, &st.TotalTunnels,
+		&st.BytesIn30d, &st.BytesOut30d, &st.Requests30d)
+	if err != nil {
+		return st, err
+	}
+	rows, err := p.db.QueryContext(ctx,
+		`SELECT COALESCE(NULLIF(plan,''),'free'), count(*) FROM orgs GROUP BY 1`)
+	if err != nil {
+		return st, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var plan string
+		var n int
+		if err := rows.Scan(&plan, &n); err != nil {
+			return st, err
+		}
+		st.OrgsByPlan[plan] = n
+	}
+	return st, rows.Err()
+}
+
+func (p *PostgresStore) ListUsers(ctx context.Context, limit, offset int, search string) ([]User, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := p.db.QueryContext(ctx,
+		`SELECT id,email,name,avatar_url,oauth_provider,created_at FROM users
+		 WHERE ($3='' OR email ILIKE '%'||$3||'%' OR name ILIKE '%'||$3||'%')
+		 ORDER BY created_at DESC LIMIT $1 OFFSET $2`, limit, offset, strings.TrimSpace(search))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.OAuthProvider, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (p *PostgresStore) ListOrgs(ctx context.Context, limit, offset int, plan string) ([]Org, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := p.db.QueryContext(ctx,
+		`SELECT id,name,plan,COALESCE(stripe_customer_id,''),created_at,plan_expires_at FROM orgs
+		 WHERE ($3='' OR plan=$3) ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset, strings.ToLower(strings.TrimSpace(plan)))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Org
+	for rows.Next() {
+		var o Org
+		var cust sql.NullString
+		var exp sql.NullTime
+		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &cust, &o.CreatedAt, &exp); err != nil {
+			return nil, err
+		}
+		o.StripeCustomerID = cust.String
+		o.PlanExpiresAt = nullTimePtr(exp)
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
 func (p *PostgresStore) TunnelCountryBreakdown(ctx context.Context, orgID string, activeOnly bool) (map[string]int, error) {
 	where := "WHERE 1=1"
 	args := []any{}
