@@ -151,7 +151,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
             <button
               type="button"
               onClick={cancelBrowser}
-              className="text-xs text-muted transition-colors hover:text-foreground"
+              className="rounded-sm text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-page"
             >
               Cancel
             </button>
@@ -188,7 +188,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
             <button
               type="button"
               onClick={() => setShowKey(true)}
-              className="text-xs text-muted transition-colors hover:text-foreground"
+              className="rounded-sm text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-page"
             >
               Use an API key instead
             </button>
@@ -214,7 +214,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
                   onClick={() => setReveal((v) => !v)}
                   title={reveal ? "Hide key" : "Show key"}
                   aria-label={reveal ? "Hide key" : "Show key"}
-                  className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted transition-colors hover:text-foreground"
+                  className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-page"
                 >
                   {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -230,7 +230,7 @@ export function Login({ onConnected }: { onConnected: () => void }) {
             <button
               type="button"
               onClick={() => agent.openURL(keysURL)}
-              className="text-center text-xs text-primary hover:underline"
+              className="rounded-sm text-center text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-page"
             >
               Get a key from the dashboard →
             </button>

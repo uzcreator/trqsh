@@ -1,7 +1,7 @@
 // TypeScript mirrors of the frozen agent-core Go types (internal/agent/core.go
-// and internal/agent/inspect). Field names match the Go json tags exactly:
-// Wails marshals across the boundary with encoding/json, so these are the
-// snake_case keys that actually arrive in the frontend.
+// and internal/agent/inspect). Field names match the Go json tags exactly —
+// the Go agent's HTTP control API marshals with encoding/json, so these are
+// the snake_case keys that actually arrive over the wire (see lib/agent.ts).
 
 /** Agent connection status. kind: "quic" | "tcp". */
 export interface Status {

@@ -60,7 +60,7 @@ export function Titlebar({
         <button
           onClick={onOpenPalette}
           title={`Command palette (${modKey} K)`}
-          className="mr-1 flex items-center gap-2 rounded-md border border-border bg-page px-2 py-1 text-xs text-muted transition-colors hover:text-foreground"
+          className="mr-1 flex items-center gap-2 rounded-md border border-border bg-page px-2 py-1 text-xs text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-page"
         >
           <Search className="size-3.5" />
           <span className="hidden sm:inline">Search</span>

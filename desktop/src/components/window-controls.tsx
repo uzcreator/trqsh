@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { host } from "@/lib/agent";
 import { cn } from "@/lib/utils";
 
-// Native window buttons for a frameless window. On macOS the OS draws its own
-// traffic lights (MacTitleBarHiddenInset in main.go), so we render nothing and
-// let the titlebar reserve space instead. On Windows/Linux we draw min / max /
-// close ourselves and drive them through the Go WindowService.
+// Native window buttons for the app's frameless window (`decorations: false`
+// in tauri.conf.json). On macOS the titlebar reserves space instead of
+// rendering these (see titlebar.tsx's isMac padding), so WindowControls
+// renders nothing there. On Windows/Linux we draw min/max/close ourselves and
+// drive them through the Tauri window API (the `host` object in lib/agent.ts).
 
 function Glyph({ kind, maximized }: { kind: "min" | "max" | "close"; maximized: boolean }) {
   const stroke = "currentColor";

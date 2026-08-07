@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
+import { Empty } from "@/components/empty";
 
 function fmtDate(s?: string | null): string {
   if (!s) return "—";
@@ -82,14 +83,20 @@ export function Keys() {
               <Skeleton className="h-14" />
             </div>
           ) : active.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center text-muted">
-              <KeyRound className="size-8" />
-              <p className="text-sm">No API keys yet. Create one to connect an agent.</p>
-              <Button size="sm" onClick={() => setDialogOpen(true)}>
-                <Plus />
-                New key
-              </Button>
-            </div>
+            // Nested inside a Card already, so Empty's own dashed box/bg is
+            // dropped — the surrounding panel border is enough framing.
+            <Empty
+              icon={KeyRound}
+              title="No API keys yet"
+              hint="Create one to connect an agent."
+              action={
+                <Button size="sm" onClick={() => setDialogOpen(true)}>
+                  <Plus />
+                  New key
+                </Button>
+              }
+              className="border-0 bg-transparent p-6"
+            />
           ) : (
             <div className="flex flex-col gap-1.5">
               {active.map((k) => (

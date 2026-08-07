@@ -144,7 +144,7 @@ function ToastCard({ t, onDismiss }: { t: ToastItem; onDismiss: () => void }) {
       </div>
       <button
         onClick={onDismiss}
-        className="-m-1 rounded p-1 text-muted transition-colors hover:text-foreground"
+        className="-m-1 rounded p-1 text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
         aria-label="Dismiss"
       >
         <X className="size-3.5" />
