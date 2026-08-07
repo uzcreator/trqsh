@@ -17,6 +17,7 @@ import (
 	"github.com/trqsh-uz/trqsh/internal/api/store"
 	"github.com/trqsh-uz/trqsh/internal/billing"
 	"github.com/trqsh-uz/trqsh/internal/billing/stripe"
+	"github.com/trqsh-uz/trqsh/internal/geo"
 )
 
 // Server is the control-plane API.
@@ -27,6 +28,7 @@ type Server struct {
 	auth    *auth.Auth
 	ent     *Entitlements
 	billing *billing.Service
+	geo     *geo.Service
 	metrics *metrics
 
 	authLimiter *rateLimiter
@@ -77,6 +79,16 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 	}
 	s.billing = billing.New(st, sapi, bcfg, log)
 	s.ent.SetQuota(s.billing)
+
+	// Geo/location service: powers /v1/geo region routing and enriches tunnel
+	// history + the admin dashboard with country data. A bad TRQSH_REGIONS value is
+	// non-fatal — we log and fall back to the built-in PoP catalog.
+	regions, err := geo.ParseRegions(cfg.Regions)
+	if err != nil {
+		log.Warn("invalid TRQSH_REGIONS, using built-in catalog", "err", err)
+		regions = nil
+	}
+	s.geo = geo.New(geo.Config{Header: cfg.GeoIPHeader, APIURL: cfg.GeoIPAPI, Regions: regions})
 
 	if cfg.GitHubClientID != "" {
 		s.providers["github"] = auth.GitHubProvider(cfg.GitHubClientID, cfg.GitHubClientSecret,
@@ -174,6 +186,12 @@ func (s *Server) Router() http.Handler {
 		// for build-time consumption by the marketing site — which can't import
 		// internal/billing across a module boundary once it's a separate repo.
 		r.Get("/plans/public", s.handleListPlansPublic)
+
+		// Location routing: the edge PoP catalog and the caller's detected country +
+		// recommended nearest region. Public so the CLI/desktop/agent can pick a
+		// region before authenticating (see internal/geo).
+		r.Get("/regions", s.handleListRegions)
+		r.Get("/geo", s.handleGeo)
 
 		// Public auth endpoints — stricter per-IP limit (brute-force / account spam).
 		r.Group(func(r chi.Router) {

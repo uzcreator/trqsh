@@ -55,6 +55,12 @@ type Config struct {
 	// TrustProxy trusts X-Forwarded-For for client-IP extraction (rate limiting).
 	// Only enable behind a trusted reverse proxy / load balancer.
 	TrustProxy bool // TRQSH_TRUST_PROXY
+
+	// Geo / location (see internal/geo). All optional; unset => location detection
+	// degrades to "unknown" for public IPs while still serving the region catalog.
+	GeoIPHeader string // TRQSH_GEOIP_HEADER — trusted CDN country header, e.g. "CF-IPCountry"
+	GeoIPAPI    string // TRQSH_GEOIP_API — external GeoIP provider URL template with "{ip}"
+	Regions     string // TRQSH_REGIONS — JSON array overriding the built-in edge PoP catalog
 }
 
 // IsProduction reports whether strict production validation applies.
@@ -97,6 +103,9 @@ func LoadConfig() (Config, error) {
 	env(&c.GoogleClientSecret, "TRQSH_GOOGLE_CLIENT_SECRET")
 	env(&c.AdminUser, "TRQSH_ADMIN_USER")
 	env(&c.AdminPassword, "TRQSH_ADMIN_PASSWORD")
+	env(&c.GeoIPHeader, "TRQSH_GEOIP_HEADER")
+	env(&c.GeoIPAPI, "TRQSH_GEOIP_API")
+	env(&c.Regions, "TRQSH_REGIONS")
 	envInt(&c.DBMaxOpenConns, "TRQSH_DB_MAX_OPEN_CONNS")
 	envInt(&c.DBMaxIdleConns, "TRQSH_DB_MAX_IDLE_CONNS")
 
