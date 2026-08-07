@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -412,6 +413,156 @@ func (p *PostgresStore) UsageForOrg(ctx context.Context, orgID string, since tim
 		 FROM usage_records WHERE org_id=$1 AND window_end>=$2`, orgID, since).
 		Scan(&agg.BytesIn, &agg.BytesOut, &agg.Requests)
 	return agg, err
+}
+
+func (p *PostgresStore) UsageSeriesForOrg(ctx context.Context, orgID string, since time.Time, bucket string) ([]UsageBucket, error) {
+	if bucket != "hour" {
+		bucket = "day" // whitelist: only hour/day (also passed as a bound param below)
+	}
+	rows, err := p.db.QueryContext(ctx,
+		`SELECT date_trunc($3, window_end) AS b,
+		        COALESCE(sum(bytes_in),0), COALESCE(sum(bytes_out),0), COALESCE(sum(requests),0)
+		 FROM usage_records WHERE org_id=$1 AND window_end>=$2
+		 GROUP BY b ORDER BY b`, orgID, since, bucket)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []UsageBucket
+	for rows.Next() {
+		var b UsageBucket
+		if err := rows.Scan(&b.Start, &b.BytesIn, &b.BytesOut, &b.Requests); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// --- Tunnel history ---
+
+func (p *PostgresStore) RecordTunnelOpen(ctx context.Context, s TunnelSession) (TunnelSession, error) {
+	if s.ID == "" {
+		s.ID = NewID("tun")
+	}
+	if s.StartedAt.IsZero() {
+		s.StartedAt = time.Now()
+	}
+	// Idempotent open keyed by the live-instance partial unique index: a duplicate
+	// bind refreshes metadata instead of erroring, and RETURNING id yields the
+	// surviving row's id.
+	err := p.db.QueryRowContext(ctx,
+		`INSERT INTO tunnel_sessions
+		   (id, org_id, edge_id, session_id, tunnel_id, type, public_url, host, port,
+		    region, client_ip, country, city, status, started_at)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'active',$14)
+		 ON CONFLICT (edge_id, session_id, tunnel_id) WHERE status = 'active'
+		 DO UPDATE SET org_id=EXCLUDED.org_id, type=EXCLUDED.type, public_url=EXCLUDED.public_url,
+		    host=EXCLUDED.host, port=EXCLUDED.port, region=EXCLUDED.region,
+		    client_ip=EXCLUDED.client_ip, country=EXCLUDED.country, city=EXCLUDED.city,
+		    started_at=EXCLUDED.started_at
+		 RETURNING id`,
+		s.ID, s.OrgID, s.EdgeID, s.SessionID, s.TunnelID, s.Type, s.PublicURL, s.Host, s.Port,
+		s.Region, s.ClientIP, s.Country, s.City, s.StartedAt).Scan(&s.ID)
+	s.Status = "active"
+	return s, err
+}
+
+func (p *PostgresStore) CloseTunnelSession(ctx context.Context, edgeID, sessionID, tunnelID string, endedAt time.Time, bytesIn, bytesOut, requests int64) error {
+	return execOne(p.db.ExecContext(ctx,
+		`UPDATE tunnel_sessions SET ended_at=$4, status='closed', bytes_in=$5, bytes_out=$6, requests=$7
+		 WHERE edge_id=$1 AND session_id=$2 AND tunnel_id=$3 AND status='active'`,
+		edgeID, sessionID, tunnelID, endedAt, bytesIn, bytesOut, requests))
+}
+
+func (p *PostgresStore) ListTunnelSessions(ctx context.Context, f TunnelSessionFilter) ([]TunnelSession, error) {
+	limit := f.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	// Build the filter incrementally so the org-scoped and admin (all-orgs) paths
+	// share one query.
+	where := "WHERE 1=1"
+	args := []any{}
+	if f.OrgID != "" {
+		args = append(args, f.OrgID)
+		where += " AND org_id=$1"
+	}
+	if f.ActiveOnly {
+		where += " AND status='active'"
+	}
+	args = append(args, limit, f.Offset)
+	q := `SELECT id,org_id,edge_id,session_id,tunnel_id,type,public_url,host,port,region,
+	             client_ip,country,city,bytes_in,bytes_out,requests,status,started_at,ended_at
+	      FROM tunnel_sessions ` + where +
+		` ORDER BY started_at DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+	rows, err := p.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []TunnelSession
+	for rows.Next() {
+		s, err := scanTunnelSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func scanTunnelSession(rows *sql.Rows) (TunnelSession, error) {
+	var s TunnelSession
+	var ended sql.NullTime
+	err := rows.Scan(&s.ID, &s.OrgID, &s.EdgeID, &s.SessionID, &s.TunnelID, &s.Type, &s.PublicURL,
+		&s.Host, &s.Port, &s.Region, &s.ClientIP, &s.Country, &s.City,
+		&s.BytesIn, &s.BytesOut, &s.Requests, &s.Status, &s.StartedAt, &ended)
+	s.EndedAt = nullTimePtr(ended)
+	return s, err
+}
+
+func (p *PostgresStore) CountTunnelSessions(ctx context.Context, orgID string, activeOnly bool) (int, error) {
+	where := "WHERE 1=1"
+	args := []any{}
+	if orgID != "" {
+		args = append(args, orgID)
+		where += " AND org_id=$1"
+	}
+	if activeOnly {
+		where += " AND status='active'"
+	}
+	var n int
+	err := p.db.QueryRowContext(ctx, `SELECT count(*) FROM tunnel_sessions `+where, args...).Scan(&n)
+	return n, err
+}
+
+func (p *PostgresStore) TunnelCountryBreakdown(ctx context.Context, orgID string, activeOnly bool) (map[string]int, error) {
+	where := "WHERE 1=1"
+	args := []any{}
+	if orgID != "" {
+		args = append(args, orgID)
+		where += " AND org_id=$1"
+	}
+	if activeOnly {
+		where += " AND status='active'"
+	}
+	rows, err := p.db.QueryContext(ctx,
+		`SELECT COALESCE(NULLIF(country,''),'??') AS cc, count(*) FROM tunnel_sessions `+where+` GROUP BY cc`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]int{}
+	for rows.Next() {
+		var cc string
+		var n int
+		if err := rows.Scan(&cc, &n); err != nil {
+			return nil, err
+		}
+		out[cc] = n
+	}
+	return out, rows.Err()
 }
 
 // --- Billing ---

@@ -26,6 +26,7 @@ const (
 	PathAuthenticate = "/internal/entitlements/authenticate"
 	PathCheckBind    = "/internal/entitlements/check-bind"
 	PathReportUsage  = "/internal/entitlements/report-usage"
+	PathReportTunnel = "/internal/entitlements/report-tunnel"
 )
 
 // AuthRequest / AuthResponse cover Entitlements.Authenticate.
@@ -66,6 +67,30 @@ type UsageRequest struct {
 	Requests    int64     `json:"requests"`
 	WindowStart time.Time `json:"window_start"`
 	WindowEnd   time.Time `json:"window_end"`
+}
+
+// TunnelReport is a tunnel-lifecycle event the edge sends so the control plane can
+// build per-org tunnel history + the admin fleet view. It is additive to the
+// frozen authz.Entitlements seam (a best-effort, fire-and-forget capability of the
+// concrete Client), not part of that interface. Action is "open" (at bind) or
+// "close" (at release); ClientIP is the agent's public address, which the API
+// resolves to a country/city via its geo service.
+type TunnelReport struct {
+	Action    string    `json:"action"` // "open" | "close"
+	EdgeID    string    `json:"edge_id"`
+	SessionID string    `json:"session_id"`
+	TunnelID  string    `json:"tunnel_id"` // agent-chosen client_tunnel_id
+	AccountID string    `json:"account_id"`
+	Type      string    `json:"type"` // http|https|tls|tcp|udp
+	PublicURL string    `json:"public_url,omitempty"`
+	Host      string    `json:"host,omitempty"`
+	Port      int       `json:"port,omitempty"`
+	Region    string    `json:"region,omitempty"`
+	ClientIP  string    `json:"client_ip,omitempty"`
+	BytesIn   int64     `json:"bytes_in,omitempty"`
+	BytesOut  int64     `json:"bytes_out,omitempty"`
+	Requests  int64     `json:"requests,omitempty"`
+	At        time.Time `json:"at"`
 }
 
 // Client is the edge-side authz.Entitlements implementation backed by the API.
@@ -167,6 +192,12 @@ func (c *Client) ReportUsage(ctx context.Context, u authz.Usage) error {
 		AccountID: u.AccountID, TunnelID: u.TunnelID, BytesIn: u.BytesIn, BytesOut: u.BytesOut,
 		Requests: u.Requests, WindowStart: u.WindowStart, WindowEnd: u.WindowEnd,
 	}, nil)
+}
+
+// ReportTunnel forwards a tunnel open/close event to the control plane for
+// history. Best-effort: the edge ignores the returned error (like ReportUsage).
+func (c *Client) ReportTunnel(ctx context.Context, tr TunnelReport) error {
+	return c.post(ctx, PathReportTunnel, tr, nil)
 }
 
 func (c *Client) post(ctx context.Context, path string, in, out any) error {

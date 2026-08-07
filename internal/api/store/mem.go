@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,8 @@ type MemStore struct {
 	events       map[string]bool         // processed webhook event ids
 	metered      []MeteredUsage
 	meteredSeq   int64
+
+	tunnels []TunnelSession // append-only history; newest last
 }
 
 // NewMemStore builds an empty in-memory store.
@@ -443,6 +446,153 @@ func (m *MemStore) UsageForOrg(_ context.Context, orgID string, since time.Time)
 		}
 	}
 	return agg, nil
+}
+
+func (m *MemStore) UsageSeriesForOrg(_ context.Context, orgID string, since time.Time, bucket string) ([]UsageBucket, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	buckets := map[time.Time]*UsageBucket{}
+	for _, u := range m.usage {
+		if u.OrgID != orgID || u.WindowEnd.Before(since) {
+			continue
+		}
+		key := truncateTo(u.WindowEnd, bucket)
+		b := buckets[key]
+		if b == nil {
+			b = &UsageBucket{Start: key}
+			buckets[key] = b
+		}
+		b.BytesIn += u.BytesIn
+		b.BytesOut += u.BytesOut
+		b.Requests += u.Requests
+	}
+	out := make([]UsageBucket, 0, len(buckets))
+	for _, b := range buckets {
+		out = append(out, *b)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Start.Before(out[j].Start) })
+	return out, nil
+}
+
+// truncateTo rounds t down to the start of its hour or day (UTC).
+func truncateTo(t time.Time, bucket string) time.Time {
+	t = t.UTC()
+	if bucket == "hour" {
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, time.UTC)
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// --- Tunnel history ---
+
+func tunnelKeyMatch(s TunnelSession, edgeID, sessionID, tunnelID string) bool {
+	return s.EdgeID == edgeID && s.SessionID == sessionID && s.TunnelID == tunnelID
+}
+
+func (m *MemStore) RecordTunnelOpen(_ context.Context, s TunnelSession) (TunnelSession, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s.StartedAt.IsZero() {
+		s.StartedAt = time.Now()
+	}
+	s.Status = "active"
+	s.EndedAt = nil
+	// Idempotent open: replace an existing active row for the same instance.
+	for i := range m.tunnels {
+		if tunnelKeyMatch(m.tunnels[i], s.EdgeID, s.SessionID, s.TunnelID) && m.tunnels[i].Status == "active" {
+			s.ID = m.tunnels[i].ID
+			m.tunnels[i] = s
+			return s, nil
+		}
+	}
+	if s.ID == "" {
+		s.ID = NewID("tun")
+	}
+	m.tunnels = append(m.tunnels, s)
+	return s, nil
+}
+
+func (m *MemStore) CloseTunnelSession(_ context.Context, edgeID, sessionID, tunnelID string, endedAt time.Time, bytesIn, bytesOut, requests int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Close the newest matching active row.
+	for i := len(m.tunnels) - 1; i >= 0; i-- {
+		s := &m.tunnels[i]
+		if tunnelKeyMatch(*s, edgeID, sessionID, tunnelID) && s.Status == "active" {
+			t := endedAt
+			s.EndedAt = &t
+			s.Status = "closed"
+			s.BytesIn, s.BytesOut, s.Requests = bytesIn, bytesOut, requests
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
+func (m *MemStore) ListTunnelSessions(_ context.Context, f TunnelSessionFilter) ([]TunnelSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	limit := f.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	out := []TunnelSession{}
+	skipped := 0
+	// Newest first.
+	for i := len(m.tunnels) - 1; i >= 0; i-- {
+		s := m.tunnels[i]
+		if f.OrgID != "" && s.OrgID != f.OrgID {
+			continue
+		}
+		if f.ActiveOnly && s.Status != "active" {
+			continue
+		}
+		if skipped < f.Offset {
+			skipped++
+			continue
+		}
+		out = append(out, s)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (m *MemStore) CountTunnelSessions(_ context.Context, orgID string, activeOnly bool) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	n := 0
+	for _, s := range m.tunnels {
+		if orgID != "" && s.OrgID != orgID {
+			continue
+		}
+		if activeOnly && s.Status != "active" {
+			continue
+		}
+		n++
+	}
+	return n, nil
+}
+
+func (m *MemStore) TunnelCountryBreakdown(_ context.Context, orgID string, activeOnly bool) (map[string]int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := map[string]int{}
+	for _, s := range m.tunnels {
+		if orgID != "" && s.OrgID != orgID {
+			continue
+		}
+		if activeOnly && s.Status != "active" {
+			continue
+		}
+		cc := s.Country
+		if cc == "" {
+			cc = "??"
+		}
+		out[cc]++
+	}
+	return out, nil
 }
 
 // --- Billing ---

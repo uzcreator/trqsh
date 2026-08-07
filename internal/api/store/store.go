@@ -88,6 +88,52 @@ type UsageRecord struct {
 	WindowEnd   time.Time `json:"window_end"`
 }
 
+// TunnelSession is the history record for one bound tunnel instance: it is opened
+// when the edge binds a tunnel and closed when the tunnel is released (or its
+// agent session dies). It captures where the tunnel lived (edge/region), where the
+// agent connected from (client IP → country/city), and its final traffic totals —
+// the raw material for per-org history views and the admin fleet dashboard. The
+// triple (EdgeID, SessionID, TunnelID) uniquely identifies a live instance and is
+// the key used to close it.
+type TunnelSession struct {
+	ID        string     `json:"id"`
+	OrgID     string     `json:"org_id"`
+	EdgeID    string     `json:"edge_id"`
+	SessionID string     `json:"session_id"`
+	TunnelID  string     `json:"tunnel_id"` // agent-chosen client_tunnel_id
+	Type      string     `json:"type"`      // http|https|tls|tcp|udp
+	PublicURL string     `json:"public_url"`
+	Host      string     `json:"host,omitempty"`
+	Port      int        `json:"port,omitempty"`
+	Region    string     `json:"region,omitempty"`
+	ClientIP  string     `json:"client_ip,omitempty"` // the agent's public IP
+	Country   string     `json:"country,omitempty"`   // ISO alpha-2, resolved from ClientIP
+	City      string     `json:"city,omitempty"`
+	BytesIn   int64      `json:"bytes_in"`
+	BytesOut  int64      `json:"bytes_out"`
+	Requests  int64      `json:"requests"`
+	Status    string     `json:"status"` // "active" | "closed"
+	StartedAt time.Time  `json:"started_at"`
+	EndedAt   *time.Time `json:"ended_at,omitempty"`
+}
+
+// TunnelSessionFilter narrows a history listing. A zero OrgID lists across all
+// orgs (admin only); Limit<=0 falls back to a sane default in the store.
+type TunnelSessionFilter struct {
+	OrgID      string
+	ActiveOnly bool
+	Limit      int
+	Offset     int
+}
+
+// UsageBucket is one point in a usage time series (for dashboard graphs).
+type UsageBucket struct {
+	Start    time.Time `json:"start"`
+	BytesIn  int64     `json:"bytes_in"`
+	BytesOut int64     `json:"bytes_out"`
+	Requests int64     `json:"requests"`
+}
+
 // Subscription mirrors a Stripe subscription (Part 07). Webhooks are the source
 // of truth: each update rewrites this row and the derived orgs.plan.
 type Subscription struct {
@@ -162,6 +208,20 @@ type Store interface {
 	// Usage.
 	UpsertUsage(ctx context.Context, u UsageRecord) error
 	UsageForOrg(ctx context.Context, orgID string, since time.Time) (UsageRecord, error)
+	// UsageSeriesForOrg returns usage bucketed by "hour" or "day" since a time,
+	// for dashboard graphs. Buckets with no traffic are omitted.
+	UsageSeriesForOrg(ctx context.Context, orgID string, since time.Time, bucket string) ([]UsageBucket, error)
+
+	// Tunnel history. RecordTunnelOpen upserts an "active" session keyed by
+	// (edge_id, session_id, tunnel_id); CloseTunnelSession stamps ended_at + final
+	// counters for that key. ListTunnelSessions/counts drive per-org history and the
+	// admin fleet view (empty filter.OrgID = across all orgs). TunnelCountryBreakdown
+	// aggregates sessions by resolved country for the geo dashboard.
+	RecordTunnelOpen(ctx context.Context, s TunnelSession) (TunnelSession, error)
+	CloseTunnelSession(ctx context.Context, edgeID, sessionID, tunnelID string, endedAt time.Time, bytesIn, bytesOut, requests int64) error
+	ListTunnelSessions(ctx context.Context, f TunnelSessionFilter) ([]TunnelSession, error)
+	CountTunnelSessions(ctx context.Context, orgID string, activeOnly bool) (int, error)
+	TunnelCountryBreakdown(ctx context.Context, orgID string, activeOnly bool) (map[string]int, error)
 
 	// Billing: subscriptions (Part 07). GetOrgByStripeCustomer maps a Stripe
 	// customer back to an org during webhook handling.
