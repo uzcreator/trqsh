@@ -91,7 +91,7 @@ function BodyBlock({ body }: { body?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Body</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-secondary">Body</span>
         <CopyButton value={text} label="Copy" />
       </div>
       <pre className="selectable max-h-72 overflow-auto rounded-md border border-border bg-page/50 p-2 font-mono text-xs text-foreground">
@@ -162,7 +162,7 @@ function Detail({ req, onBack }: { req: CapturedRequest; onBack?: () => void }) 
       <div className="flex flex-col gap-3 p-4">
         {tab === "request" ? (
           <>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-secondary">
               Request headers
             </span>
             <HeaderTable headers={req.req_headers} />
@@ -170,7 +170,7 @@ function Detail({ req, onBack }: { req: CapturedRequest; onBack?: () => void }) 
           </>
         ) : (
           <>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-secondary">
               Response headers
             </span>
             <HeaderTable headers={req.resp_headers} />
@@ -196,10 +196,15 @@ function Row({
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-xs transition-colors hover:bg-accent/60",
+        "relative flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-xs transition-colors hover:bg-accent/60",
         active && "bg-accent",
       )}
     >
+      {/* Mirrors the activity rail's own selection accent (commit 2) so "this
+          is the selected item" reads the same way throughout the app. */}
+      {active && (
+        <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" aria-hidden />
+      )}
       <span className={cn("w-12 shrink-0 font-semibold", methodTone(c.method))}>{c.method}</span>
       <span className="flex-1 truncate font-mono text-foreground">{c.path}</span>
       <span className={cn("tabular w-8 shrink-0 text-right font-semibold", toneClass[tone])}>
