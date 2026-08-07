@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
 
 function fmtDate(s?: string | null): string {
@@ -76,8 +77,9 @@ export function Keys() {
         </CardHeader>
         <CardContent>
           {loading && keys.length === 0 ? (
-            <div className="flex items-center justify-center py-6 text-muted">
-              <Spinner />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-14" />
+              <Skeleton className="h-14" />
             </div>
           ) : active.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-6 text-center text-muted">

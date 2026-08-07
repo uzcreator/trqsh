@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
 
 const BASE = "trqsh.uz";
@@ -122,7 +123,12 @@ export function Domains() {
             </Button>
           </form>
 
-          {subs.length === 0 ? (
+          {loading && subs.length === 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-9" />
+              <Skeleton className="h-9" />
+            </div>
+          ) : subs.length === 0 ? (
             <p className="text-sm text-muted">No reserved subdomains yet.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
@@ -170,7 +176,12 @@ export function Domains() {
             </Button>
           </form>
 
-          {domains.length === 0 ? (
+          {loading && domains.length === 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-9" />
+              <Skeleton className="h-9" />
+            </div>
+          ) : domains.length === 0 ? (
             <p className="text-sm text-muted">
               No custom domains. Add one to serve tunnels on your own hostname (paid plans).
             </p>

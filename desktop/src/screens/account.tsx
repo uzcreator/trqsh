@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Meter } from "@/components/ui/meter";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Stat } from "@/components/stat";
 
 const GB = 1024 ** 3;
@@ -83,6 +84,9 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
   const user = me?.user;
   const displayName = user?.name || user?.email || status.account_id || "Your account";
   const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+  // Only the very first fetch skeletons — a manual refresh keeps showing the
+  // last-known data rather than blanking it out again.
+  const firstLoad = loading && !me;
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
@@ -96,26 +100,38 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
       {/* Profile */}
       <Card>
         <CardContent className="flex items-center gap-4">
-          {user?.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="size-12 shrink-0 rounded-full ring-1 ring-border"
-            />
+          {firstLoad ? (
+            <>
+              <Skeleton className="size-12 shrink-0 rounded-full" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </>
           ) : (
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary ring-1 ring-primary/20">
-              {initial}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{displayName}</p>
-            {user?.email && <p className="truncate text-sm text-muted">{user.email}</p>}
-          </div>
-          {user?.oauth_provider && (
-            <Badge tone="neutral" className="capitalize">
-              {user.oauth_provider}
-            </Badge>
+            <>
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="size-12 shrink-0 rounded-full ring-1 ring-border"
+                />
+              ) : (
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary ring-1 ring-primary/20">
+                  {initial}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{displayName}</p>
+                {user?.email && <p className="truncate text-sm text-muted">{user.email}</p>}
+              </div>
+              {user?.oauth_provider && (
+                <Badge tone="neutral" className="capitalize">
+                  {user.oauth_provider}
+                </Badge>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -124,16 +140,28 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Plan</CardTitle>
-          <Badge tone={planTone(plan)} className="uppercase">
-            {plan}
-          </Badge>
+          {firstLoad ? (
+            <Skeleton className="h-[18px] w-14 rounded-full" />
+          ) : (
+            <Badge tone={planTone(plan)} className="uppercase">
+              {plan}
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Status" value={<span className={expired ? "text-critical" : ""}>{planNote}</span>} />
-            <Stat label="Account" value={<span className="font-mono text-xs">{me?.org.id || status.account_id || "—"}</span>} />
-            <Stat label="Transport" value={<span className="uppercase text-xs">{status.kind}</span>} />
-          </div>
+          {firstLoad ? (
+            <div className="grid grid-cols-3 gap-2">
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Status" value={<span className={expired ? "text-critical" : ""}>{planNote}</span>} />
+              <Stat label="Account" value={<span className="font-mono text-xs">{me?.org.id || status.account_id || "—"}</span>} />
+              <Stat label="Transport" value={<span className="uppercase text-xs">{status.kind}</span>} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -143,22 +171,35 @@ export function Account({ status, tunnels }: { status: Status; tunnels: Tunnel[]
           <CardTitle>Usage this month</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Requests" value={<span className="text-wire">{count(monthRequests)}</span>} />
-            <Stat label="Used" value={<span className="text-wire">{bytes(usedBytes)}</span>} />
-            <Stat label="Session" value={<span className="text-wire">{bytes(session.bytes)}</span>} />
-          </div>
-          <Meter
-            value={usedBytes}
-            max={limitBytes}
-            label="Bandwidth"
-            sublabel={`${bytes(usedBytes)} of ${bytes(limitBytes)} this month`}
-          />
-          {!me && !loading && (
-            <p className="text-xs text-muted">
-              Couldn&apos;t reach the control plane — showing this session&apos;s totals. Check your
-              connection and refresh.
-            </p>
+          {firstLoad ? (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <Skeleton className="h-8" />
+                <Skeleton className="h-8" />
+                <Skeleton className="h-8" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <Stat label="Requests" value={<span className="text-wire">{count(monthRequests)}</span>} />
+                <Stat label="Used" value={<span className="text-wire">{bytes(usedBytes)}</span>} />
+                <Stat label="Session" value={<span className="text-wire">{bytes(session.bytes)}</span>} />
+              </div>
+              <Meter
+                value={usedBytes}
+                max={limitBytes}
+                label="Bandwidth"
+                sublabel={`${bytes(usedBytes)} of ${bytes(limitBytes)} this month`}
+              />
+              {!me && !loading && (
+                <p className="text-xs text-muted">
+                  Couldn&apos;t reach the control plane — showing this session&apos;s totals. Check
+                  your connection and refresh.
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -6,6 +6,7 @@ import type { Me } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Stat } from "@/components/stat";
 
 /** Illustrative $/GB used only to render a plausible "Overall cost" figure —
@@ -43,7 +44,17 @@ function monthLabel(offset: number): string {
   return d.toLocaleDateString(undefined, { month: "long" });
 }
 
-function MonthCard({ month, plan }: { month: MonthSummary; plan: string }) {
+function MonthCard({
+  month,
+  plan,
+  loading,
+}: {
+  month: MonthSummary;
+  plan: string;
+  /** Only the live "This month" card can genuinely be loading — the mocked
+   *  history cards are constants and never pass this. */
+  loading?: boolean;
+}) {
   const cost = estimateCost(plan, month.bytesTotal);
   const estimated = plan !== "free";
   return (
@@ -53,30 +64,45 @@ function MonthCard({ month, plan }: { month: MonthSummary; plan: string }) {
         {month.live && <Badge tone="primary">Live</Badge>}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Traffic" value={<span className="text-wire">{bytes(month.bytesTotal)}</span>} />
-          <Stat label="Requests" value={<span className="text-wire">{count(month.requests)}</span>} />
-        </div>
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-            Overall cost
-            {estimated && (
-              <span title="Estimated from usage — trqsh doesn't meter usage-based billing yet.">
-                <Info className="size-3" />
+        {loading ? (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-8" />
+              <Skeleton className="h-8" />
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Traffic" value={<span className="text-wire">{bytes(month.bytesTotal)}</span>} />
+              <Stat label="Requests" value={<span className="text-wire">{count(month.requests)}</span>} />
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
+                Overall cost
+                {estimated && (
+                  <span title="Estimated from usage — trqsh doesn't meter usage-based billing yet.">
+                    <Info className="size-3" />
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <span className="flex items-center gap-1.5">
-            {estimated && (
-              <Badge tone="neutral" className="text-[10px]">
-                Estimated
-              </Badge>
-            )}
-            <span className="tabular text-sm font-semibold text-good">
-              {cost === 0 ? "$0" : `$${cost.toFixed(2)}`}
-            </span>
-          </span>
-        </div>
+              <span className="flex items-center gap-1.5">
+                {estimated && (
+                  <Badge tone="neutral" className="text-[10px]">
+                    Estimated
+                  </Badge>
+                )}
+                <span className="tabular text-sm font-semibold text-good">
+                  {cost === 0 ? "$0" : `$${cost.toFixed(2)}`}
+                </span>
+              </span>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -121,7 +147,7 @@ export function Billing() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <MonthCard month={thisMonth} plan={plan} />
+        <MonthCard month={thisMonth} plan={plan} loading={loading && !me} />
         {MOCK_HISTORY.map((m) => (
           <MonthCard key={m.label} month={m} plan={plan} />
         ))}
