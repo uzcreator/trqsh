@@ -37,6 +37,7 @@ type Server struct {
 	providers map[string]auth.OAuthProvider
 
 	oauthState oauthStateStore
+	remote     *remoteHub
 }
 
 // New builds the API server, choosing Postgres or the in-memory store from config.
@@ -89,6 +90,10 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 		regions = nil
 	}
 	s.geo = geo.New(geo.Config{Header: cfg.GeoIPHeader, APIURL: cfg.GeoIPAPI, Regions: regions})
+
+	// /qr remote-control pairing relay (see remote.go) — in-process, no Redis
+	// dependency today.
+	s.remote = newRemoteHub()
 
 	if cfg.GitHubClientID != "" {
 		s.providers["github"] = auth.GitHubProvider(cfg.GitHubClientID, cfg.GitHubClientSecret,
@@ -237,7 +242,23 @@ func (s *Server) Router() http.Handler {
 			r.Post("/billing/checkout", s.billing.HandleCheckout)
 			r.Post("/billing/portal", s.billing.HandlePortal)
 			r.Get("/billing/subscription", s.billing.HandleSubscription)
+
+			// /qr remote-control pairing (see remote.go) — agent (daemon) side.
+			r.Post("/remote/sessions", s.handleRemoteCreate)
+			r.Get("/remote/sessions/{code}/agent", s.handleRemoteAgentStream)
+			r.Post("/remote/sessions/{code}/publish", s.handleRemotePublish)
+			r.Post("/remote/sessions/{code}/end", s.handleRemoteEnd)
 		})
+
+		// /qr remote-control pairing (see remote.go) — viewer (phone/browser) side.
+		// Deliberately outside the JWT/API-key group above: the session code
+		// itself, embedded in the QR/link, is the capability — requiring a second
+		// login on the phone would defeat the point of scanning a code. Still
+		// covered by the flood guard (apiLimiter, r.Use'd on the whole /v1 group
+		// at the top of this Route call) — the code's ~58 bits of entropy is what
+		// actually resists guessing.
+		r.Get("/remote/sessions/{code}/viewer", s.handleRemoteViewerStream)
+		r.Post("/remote/sessions/{code}/command", s.handleRemoteCommand)
 
 		// Admin (approve.<base>): subscription grants, gated by the admin session
 		// cookie (not a user JWT). handlers refuse when admin creds are unset.

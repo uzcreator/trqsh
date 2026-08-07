@@ -34,6 +34,10 @@ type Config struct {
 	PublicURL      string // TRQSH_API_PUBLIC_URL (for OAuth redirects), e.g. https://api.example.com
 	AppURL         string // TRQSH_APP_URL — public dashboard origin, e.g. https://app.example.com
 	// (device-flow verification page + post-OAuth redirect). Defaults to https://app.<BaseDomain>.
+	QRURL string // TRQSH_QR_URL — public /qr pairing origin, e.g. https://qr.example.com
+	// (remote-control viewer link). Defaults to https://qr.<BaseDomain>. Served by
+	// the same dashboard deployment as AppURL, on a distinct reserved host — see
+	// internal/server's reservedUpstream and web/dashboard/middleware.ts.
 
 	JWTSecret     string // TRQSH_JWT_SECRET
 	InternalToken string // TRQSH_INTERNAL_TOKEN (edge <-> api)
@@ -95,6 +99,7 @@ func LoadConfig() (Config, error) {
 	env(&c.BaseDomain, "TRQSH_BASE_DOMAIN")
 	env(&c.PublicURL, "TRQSH_API_PUBLIC_URL")
 	env(&c.AppURL, "TRQSH_APP_URL")
+	env(&c.QRURL, "TRQSH_QR_URL")
 	env(&c.JWTSecret, "TRQSH_JWT_SECRET")
 	env(&c.InternalToken, "TRQSH_INTERNAL_TOKEN")
 	env(&c.GitHubClientID, "TRQSH_GITHUB_CLIENT_ID")
@@ -123,6 +128,9 @@ func LoadConfig() (Config, error) {
 	// domain is a real hostname (dev bases like lvh.me fall back to PublicURL).
 	if c.AppURL == "" && c.BaseDomain != "" && c.BaseDomain != "lvh.me" && c.BaseDomain != "localhost" {
 		c.AppURL = "https://app." + c.BaseDomain
+	}
+	if c.QRURL == "" && c.BaseDomain != "" && c.BaseDomain != "lvh.me" && c.BaseDomain != "localhost" {
+		c.QRURL = "https://qr." + c.BaseDomain
 	}
 
 	return c, c.validate()
