@@ -82,6 +82,13 @@ type model struct {
 
 	pins []string // ordered, unique: "traffic" | "tunnels" | "status"
 
+	// /qr remote-control pairing (see commands.go's cmdQR and this file's
+	// handleRemoteEvent). remoteCode is "" when no pairing is active.
+	remoteCode         string
+	remoteURL          string
+	remoteConnected    bool
+	pendingRemoteLines []string // transcript lines queued to publish this Update() tick
+
 	// autocomplete menu (command names, or argument options for /pin, /unpin)
 	menuItems []menuEntry
 	menuIdx   int
@@ -133,6 +140,7 @@ type loginDoneMsg struct {
 	ok  bool
 	msg string
 }
+type remoteStartedMsg struct{ code, url string }
 
 // Run starts the TUI and blocks until the user quits.
 func Run(opts Options) error {
@@ -149,6 +157,15 @@ func Run(opts Options) error {
 	go cl.streamEvents(ctx, func(ev agent.Event) { p.Send(eventMsg(ev)) })
 
 	_, err := p.Run()
+
+	// Best-effort: end any active pairing so a paired phone sees the session
+	// close right away instead of quietly going stale — the daemon (and any
+	// pairing it's holding open on the control plane) outlives this console
+	// process. A no-op, harmless either way, when no pairing was ever started.
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	_ = cl.remoteStop(stopCtx)
+	stopCancel()
+
 	return err
 }
 
@@ -257,7 +274,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// now that the viewport is sized so its output lands in the transcript.
 		if !m.initialRan && strings.TrimSpace(m.opts.InitialCommand) != "" {
 			m.initialRan = true
-			return m.run(m.opts.InitialCommand)
+			return m.run(m.opts.InitialCommand, false)
 		}
 		return m, nil
 
@@ -280,6 +297,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = msg.status
 		m.refreshWelcome()
 		m.relayout()
+		if m.remoteCode != "" {
+			cmds = append(cmds, m.publishRemoteState())
+		}
 
 	case accountMsg:
 		m.acct, m.authed = msg.acct, msg.authed
@@ -287,8 +307,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.relayout()
 
 	case eventMsg:
-		m.handleEvent(agent.Event(msg))
+		cmds = append(cmds, m.handleEvent(agent.Event(msg)))
 		m.relayout()
+
+	case remoteStartedMsg:
+		m.remoteCode, m.remoteURL = msg.code, msg.url
+		renderPairQR(&m, msg.url, msg.code)
 
 	case printMsg:
 		m.appendLines(msg.lines...)
@@ -317,6 +341,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.appendLines(stErr.Render("  ✗ sign-in failed: " + msg.msg))
 		}
+	}
+
+	// Flush this tick's queued transcript lines to a paired phone as one POST,
+	// rather than one per appendLines call.
+	if len(m.pendingRemoteLines) > 0 {
+		lines := m.pendingRemoteLines
+		m.pendingRemoteLines = nil
+		cmds = append(cmds, m.publishRemoteLines(lines))
 	}
 
 	// Keep the input caret blinking and the viewport responsive to mouse wheel.
@@ -445,7 +477,7 @@ func (m model) submit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.pushHistory(line)
-	return m.run(line)
+	return m.run(line, false)
 }
 
 // pushHistory records a submitted line for up/down recall, skipping consecutive
@@ -457,12 +489,27 @@ func (m *model) pushHistory(line string) {
 	m.historyIdx = len(m.history)
 }
 
-func (m model) run(line string) (tea.Model, tea.Cmd) {
-	// A blank line separates interactions; the echo uses an accented chevron and
-	// a bold command so it reads as a distinct "you ran this", not plain text.
-	m.appendLines("", stKey.Render("  ❯ ")+stEcho.Render(line))
+// run executes a slash-command line, either typed locally (remote=false) or
+// received from a paired phone (remote=true — see handleRemoteEvent). Remote
+// commands are checked against remoteBlocked first: they never even reach
+// the echo line, since running them at all is the thing being refused, not
+// just how it's displayed.
+func (m model) run(line string, remote bool) (tea.Model, tea.Cmd) {
 	name, args := parseLine(line)
 	cmd, ok := lookupCommand(name)
+	if remote && ok && remoteBlocked[cmd.name] {
+		m.appendLines(stWarn.Render("  ⚠ blocked: ") + stKey.Render("/"+cmd.name) + stDim.Render(" only runs from the laptop"))
+		m.relayout()
+		return m, nil
+	}
+	// A blank line separates interactions; the echo uses an accented chevron
+	// (or a phone glyph for a remote command) and a bold command so it reads
+	// as a distinct "you ran this", not plain text.
+	chevron := "  ❯ "
+	if remote {
+		chevron = "  📱 "
+	}
+	m.appendLines("", stKey.Render(chevron)+stEcho.Render(line))
 	if !ok {
 		m.appendLines(stErr.Render("  ✗ unknown command: "+name) + stDim.Render("   (type /help)"))
 		m.relayout()
@@ -544,7 +591,7 @@ func (m *model) acceptMenu() {
 
 // --- live event handling ---
 
-func (m *model) handleEvent(ev agent.Event) {
+func (m *model) handleEvent(ev agent.Event) tea.Cmd {
 	switch ev.Type {
 	case "request":
 		if ev.Request != nil {
@@ -564,12 +611,87 @@ func (m *model) handleEvent(ev agent.Event) {
 		if ev.Err != "" {
 			m.appendLines(stWarn.Render("  ⚠ " + ev.Err))
 		}
+	case "remote":
+		return m.handleRemoteEvent(ev.Remote)
+	}
+	return nil
+}
+
+// handleRemoteEvent reacts to a /qr pairing notification, delivered as a
+// "remote" Event over the same stream as everything else (see
+// internal/agent/remoteapi.go's pump). "command" runs exactly like a locally
+// typed line — through the same run() a submitted line goes through, subject
+// to the same remoteBlocked allow-list — so a paired phone is a second
+// keyboard into this console, not a separate code path.
+func (m *model) handleRemoteEvent(ev *agent.RemoteEvent) tea.Cmd {
+	if ev == nil {
+		return nil
+	}
+	switch ev.Kind {
+	case "presence":
+		m.remoteConnected = ev.Connected
+		if ev.Connected {
+			m.appendLines(stOK.Render("  ✓ 📱 phone connected"))
+		} else {
+			m.appendLines(stDim.Render("  📱 phone disconnected"))
+		}
+	case "ended":
+		m.remoteCode, m.remoteURL, m.remoteConnected = "", "", false
+		m.appendLines(stDim.Render("  📱 pairing ended"))
+	case "command":
+		updated, cmd := m.run(ev.Command, true)
+		*m = updated.(model)
+		return cmd
+	}
+	return nil
+}
+
+// publishRemoteState sends a fresh tunnels/status snapshot to the active
+// pairing's viewers, at the same ~1.5s cadence the console already polls the
+// daemon at — no separate timer, and cheap enough at that rate not to need
+// change-detection before publishing.
+func (m model) publishRemoteState() tea.Cmd {
+	cl := m.cl
+	tunnels := make([]remoteTunnel, 0, len(m.tunnels))
+	for _, t := range m.tunnels {
+		tunnels = append(tunnels, remoteTunnel{
+			ID: t.ID, PublicURL: t.PublicURL, LocalAddr: t.LocalAddr,
+			Status: t.Status, Requests: t.Metrics.Requests,
+		})
+	}
+	st := remoteState{Online: m.status.Connected, Edge: m.status.Edge, Tunnels: tunnels}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = cl.remotePublishState(ctx, st) // best-effort; not paired or unreachable is a silent no-op
+		return nil
 	}
 }
 
-// appendLines adds rendered lines to the transcript and follows to the bottom.
+// publishRemoteLines flushes lines queued by appendLines while paired. A
+// separate tea.Cmd (rather than publishing inline) so a command's whole
+// multi-line output goes out as one POST instead of one per line.
+func (m model) publishRemoteLines(lines []string) tea.Cmd {
+	cl := m.cl
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = cl.remotePublishLines(ctx, lines)
+		return nil
+	}
+}
+
+// appendLines adds rendered lines to the transcript and follows to the
+// bottom. While a /qr pairing is active, plain-text (ANSI-stripped) copies
+// are also queued for publishRemoteLines to flush at the end of this
+// Update() tick, so a paired phone mirrors the same transcript.
 func (m *model) appendLines(lines ...string) {
 	m.transcript = append(m.transcript, lines...)
+	if m.remoteCode != "" {
+		for _, l := range lines {
+			m.pendingRemoteLines = append(m.pendingRemoteLines, ansi.Strip(l))
+		}
+	}
 	if m.width > 0 {
 		m.vp.SetContent(strings.Join(m.transcript, "\n"))
 		m.vp.GotoBottom()
@@ -696,7 +818,11 @@ func (m model) headerMeta() string {
 	case m.authed:
 		who = "signed in"
 	}
-	return who + " · " + plural(len(m.tunnels), "tunnel")
+	meta := who + " · " + plural(len(m.tunnels), "tunnel")
+	if m.remoteConnected {
+		meta += " · 📱 paired"
+	}
+	return meta
 }
 
 // plural formats a count with its noun, adding an "s" for anything but 1.
@@ -901,7 +1027,7 @@ func (m model) welcomeRight() []string {
 		stTitle.Render("Getting started"),
 		stKey.Render("/") + stDim.Render("            browse all commands"),
 		stKey.Render("/http 3000") + stDim.Render("   expose a local port"),
-		stKey.Render("/qr") + stDim.Render("          QR to open on your phone"),
+		stKey.Render("/qr") + stDim.Render("          pair this console to your phone"),
 	}
 }
 

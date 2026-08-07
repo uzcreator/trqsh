@@ -43,7 +43,7 @@ func init() {
 		{"start", "", "Start tunnels from your config", cmdStart},
 		{"ls", "", "List running tunnels", cmdLs},
 		{"open", "<id>", "Open a tunnel URL in your browser", cmdOpen},
-		{"qr", "[id]", "Show a QR code for a tunnel URL", cmdQR},
+		{"qr", "[id|stop]", "Pair this console to your phone (or a tunnel's QR)", cmdQR},
 		{"copy", "[id]", "Copy a tunnel URL to the clipboard", cmdCopy},
 		{"stop", "<id|all>", "Stop a tunnel (or all)", cmdStop},
 		{"down", "", "Stop the background daemon and quit", cmdDown},
@@ -165,7 +165,22 @@ func cmdOpen(m *model, args []string) tea.Cmd {
 	return nil
 }
 
+// cmdQR is dual-purpose, dispatching on its argument: bare "/qr" pairs this
+// console to a phone (remote control — see cmdQRPair), "/qr stop" ends an
+// active pairing, and "/qr <id>" keeps the original behavior of showing a
+// tunnel URL's QR code.
 func cmdQR(m *model, args []string) tea.Cmd {
+	switch {
+	case len(args) == 0:
+		return cmdQRPair(m)
+	case strings.EqualFold(args[0], "stop"):
+		return cmdQRStop(m)
+	default:
+		return cmdQRTunnel(m, args)
+	}
+}
+
+func cmdQRTunnel(m *model, args []string) tea.Cmd {
 	t := m.pickTunnel(args)
 	if t == nil {
 		m.appendLines(stErr.Render("  ✗ no tunnel to show — ") + stKey.Render("/http <port>") + stDim.Render(" first"))
@@ -178,6 +193,70 @@ func cmdQR(m *model, args []string) tea.Cmd {
 		m.appendLines("  " + line)
 	}
 	return nil
+}
+
+// cmdQRPair starts a /qr remote-control pairing: the daemon signs into the
+// control plane and opens a session (internal/api/remote.go), and this
+// prints a QR + short code for a phone to scan or type in at qr.<base>.
+func cmdQRPair(m *model) tea.Cmd {
+	if m.acct == nil && !m.authed {
+		m.appendLines(stErr.Render("  ✗ sign in first — ") + stKey.Render("/login"))
+		return nil
+	}
+	m.appendLines(stDim.Render("  starting a pairing session…"))
+	cl := m.cl
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		r, err := cl.remoteStart(ctx)
+		if err != nil {
+			return printMsg{[]string{stErr.Render("  ✗ " + err.Error())}}
+		}
+		return remoteStartedMsg{code: r.Code, url: r.URL}
+	}
+}
+
+func cmdQRStop(m *model) tea.Cmd {
+	if m.remoteCode == "" {
+		m.appendLines(stDim.Render("  no active pairing"))
+		return nil
+	}
+	m.appendLines(stDim.Render("  ending pairing…"))
+	cl := m.cl
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		_ = cl.remoteStop(ctx)
+		return printMsg{[]string{stOK.Render("  ✓ pairing ended")}}
+	}
+}
+
+// renderPairQR renders the pairing QR (reusing the same half-block QR the
+// tunnel-URL /qr uses) plus a typable fallback: the code alone, for
+// qr.<base>'s bare landing page when scanning isn't an option.
+func renderPairQR(m *model, url, code string) {
+	var buf bytes.Buffer
+	qrterminal.GenerateHalfBlock(url, qrterminal.L, &buf)
+	m.appendLines(stDim.Render("  scan to control this console from your phone:"))
+	for line := range strings.SplitSeq(strings.TrimRight(buf.String(), "\n"), "\n") {
+		m.appendLines("  " + line)
+	}
+	m.appendLines(
+		stDim.Render("  or open ")+stURL.Render("qr."+m.opts.BaseDomain)+stDim.Render(" and enter ")+stKey.Render(code),
+		stDim.Render("  ")+stKey.Render("/qr stop")+stDim.Render(" ends the pairing"),
+	)
+}
+
+// remoteBlocked lists commands a paired phone can never run, even though
+// everything else executes exactly like locally typed input (see run() in
+// model.go): process lifecycle (down, quit) so a phone can't pull the rug
+// out from under whoever's at the laptop, account credentials (login,
+// logout), anything touching the running binary or local data (update,
+// uninstall), and pairing management itself (qr) so a phone can't end or
+// replace its own session.
+var remoteBlocked = map[string]bool{
+	"qr": true, "login": true, "logout": true,
+	"uninstall": true, "update": true, "down": true, "quit": true,
 }
 
 func cmdCopy(m *model, args []string) tea.Cmd {

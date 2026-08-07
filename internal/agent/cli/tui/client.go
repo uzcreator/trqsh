@@ -246,6 +246,53 @@ func (c *client) oauthPoll(ctx context.Context, deviceCode string) (authorized, 
 	return out.Authed, false, nil
 }
 
+// --- /qr remote-control pairing, proxied through the daemon (POST /remote/*) ---
+
+type remoteStart struct {
+	Code      string `json:"code"`
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+func (c *client) remoteStart(ctx context.Context) (*remoteStart, error) {
+	var out remoteStart
+	err := c.do(ctx, http.MethodPost, "/remote/start", nil, &out)
+	return &out, err
+}
+
+func (c *client) remoteStop(ctx context.Context) error {
+	return c.do(ctx, http.MethodPost, "/remote/stop", nil, nil)
+}
+
+// remoteTunnel is the display-only tunnel shape published to a paired
+// phone — mirrors internal/api/remote.go's remoteTunnel wire shape.
+type remoteTunnel struct {
+	ID        string `json:"id"`
+	PublicURL string `json:"public_url"`
+	LocalAddr string `json:"local_addr"`
+	Status    string `json:"status"`
+	Requests  int64  `json:"requests"`
+}
+
+// remoteState is the header-card snapshot published to a paired phone —
+// mirrors internal/api/remote.go's remoteState wire shape.
+type remoteState struct {
+	Online  bool           `json:"online"`
+	Edge    string         `json:"edge"`
+	Tunnels []remoteTunnel `json:"tunnels"`
+}
+
+// remotePublishLines forwards new transcript lines to the active pairing.
+// Best-effort: the daemon itself already treats a publish with no active
+// session, or no cloud connectivity, as a harmless no-op.
+func (c *client) remotePublishLines(ctx context.Context, lines []string) error {
+	return c.do(ctx, http.MethodPost, "/remote/publish", map[string]any{"type": "lines", "lines": lines}, nil)
+}
+
+func (c *client) remotePublishState(ctx context.Context, st remoteState) error {
+	return c.do(ctx, http.MethodPost, "/remote/publish", map[string]any{"type": "state", "state": st}, nil)
+}
+
 // streamEvents connects to the control API's SSE feed and calls onEvent for each
 // event until ctx is canceled, reconnecting with a short backoff so a transient
 // daemon hiccup doesn't permanently kill the live traffic feed.

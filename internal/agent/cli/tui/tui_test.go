@@ -104,6 +104,95 @@ func TestHandleEventCollectsTraffic(t *testing.T) {
 	}
 }
 
+// TestRemoteCommandBlocklist proves a paired-phone command runs through the
+// exact same run() as locally typed input for an allowed command, but a
+// remoteBlocked one (e.g. logout) is refused outright — never even reaching
+// lookupCommand's execution, just a warning line.
+func TestRemoteCommandBlocklist(t *testing.T) {
+	m := &model{}
+	cmd := m.handleRemoteEvent(&agent.RemoteEvent{Kind: "command", Command: "/logout"})
+	if cmd != nil {
+		t.Fatal("a blocked remote command should not return a tea.Cmd")
+	}
+	joined := strings.Join(m.transcript, "\n")
+	if !strings.Contains(joined, "blocked") || !strings.Contains(joined, "/logout") {
+		t.Fatalf("expected a blocked-command warning naming /logout, got transcript: %q", joined)
+	}
+	if strings.Contains(joined, "📱") {
+		t.Fatalf("a blocked command should not echo the remote-run prefix, got: %q", joined)
+	}
+
+	m2 := &model{}
+	m2.handleRemoteEvent(&agent.RemoteEvent{Kind: "command", Command: "/status"})
+	joined2 := strings.Join(m2.transcript, "\n")
+	if !strings.Contains(joined2, "📱") || !strings.Contains(joined2, "/status") {
+		t.Fatalf("an allowed remote command should echo with the phone prefix, got: %q", joined2)
+	}
+
+	// An alias resolving to a blocked command (q -> quit) must also be caught,
+	// not just the canonical name.
+	m3 := &model{}
+	m3.handleRemoteEvent(&agent.RemoteEvent{Kind: "command", Command: "/q"})
+	joined3 := strings.Join(m3.transcript, "\n")
+	if !strings.Contains(joined3, "blocked") {
+		t.Fatalf("expected the quit alias /q to be blocked too, got: %q", joined3)
+	}
+}
+
+// TestRemoteEventPresenceAndEnded covers the two non-command notifications a
+// pairing relay can send: presence (the phone connecting/disconnecting) and
+// ended (the session is over) — both update model state the header/welcome
+// banner read, without running anything.
+func TestRemoteEventPresenceAndEnded(t *testing.T) {
+	m := &model{remoteCode: "ABCD-1234", remoteURL: "https://qr.example/ABCD-1234"}
+	m.handleRemoteEvent(&agent.RemoteEvent{Kind: "presence", Connected: true})
+	if !m.remoteConnected {
+		t.Fatal("presence(connected=true) should set remoteConnected")
+	}
+	m.handleRemoteEvent(&agent.RemoteEvent{Kind: "presence", Connected: false})
+	if m.remoteConnected {
+		t.Fatal("presence(connected=false) should clear remoteConnected")
+	}
+	m.handleRemoteEvent(&agent.RemoteEvent{Kind: "ended"})
+	if m.remoteCode != "" || m.remoteURL != "" || m.remoteConnected {
+		t.Fatalf("ended should clear all pairing state, got code=%q url=%q connected=%v", m.remoteCode, m.remoteURL, m.remoteConnected)
+	}
+}
+
+// TestCmdQRDispatch covers /qr's three-way branch: bare (pairing), "stop",
+// and an argument (the original tunnel-URL QR), including the two guard
+// cases that need no network access to observe (not signed in; nothing to
+// stop).
+func TestCmdQRDispatch(t *testing.T) {
+	// Bare /qr with no account requires signing in first, and does not
+	// attempt to reach the daemon.
+	m := &model{}
+	if cmd := cmdQR(m, nil); cmd != nil {
+		t.Fatal("cmdQR with no signed-in account should not return a tea.Cmd")
+	}
+	if !strings.Contains(strings.Join(m.transcript, "\n"), "/login") {
+		t.Fatalf("expected a sign-in prompt, got: %q", m.transcript)
+	}
+
+	// /qr stop with nothing active is a friendly no-op, not an error.
+	m2 := &model{}
+	if cmd := cmdQR(m2, []string{"stop"}); cmd != nil {
+		t.Fatal("stopping with no active pairing should not return a tea.Cmd")
+	}
+	if !strings.Contains(strings.Join(m2.transcript, "\n"), "no active pairing") {
+		t.Fatalf("expected a no-active-pairing message, got: %q", m2.transcript)
+	}
+
+	// /qr <id> with no matching tunnel keeps the original tunnel-QR error.
+	m3 := &model{}
+	if cmd := cmdQR(m3, []string{"bogus-id"}); cmd != nil {
+		t.Fatal("cmdQR for an unknown tunnel id should not return a tea.Cmd")
+	}
+	if !strings.Contains(strings.Join(m3.transcript, "\n"), "no tunnel to show") {
+		t.Fatalf("expected the tunnel-QR error, got: %q", m3.transcript)
+	}
+}
+
 // feed drives the model through a sequence of messages, mimicking the Bubble Tea
 // runtime without a real terminal.
 func feed(m model, msgs ...tea.Msg) model {
