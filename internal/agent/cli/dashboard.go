@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/trqsh-uz/trqsh/internal/agent"
@@ -108,6 +109,10 @@ func selfUpdate(ctx context.Context) (string, error) {
 func removeLocalData(cfg agent.Config) (string, error) {
 	if addr := controlAddr(cfg); daemonAlive(addr) {
 		_ = controlPOST(addr, "/shutdown", nil, nil)
+		// Give it a moment to actually exit before touching its files: the
+		// /shutdown handler acks before it stops, and Windows can't delete a
+		// file (daemon.log) the still-exiting process has open.
+		waitDaemonExit(addr, 5*time.Second)
 	}
 	removed := removePath(filepath.Dir(agent.DefaultConfigPath()))
 	if removeBinaryCache(pypiCacheDir()) {

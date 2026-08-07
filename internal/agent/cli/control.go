@@ -117,6 +117,25 @@ func daemonAlive(addr string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// waitDaemonExit polls addr until the daemon stops answering /healthz (or
+// timeout elapses), so a caller that just told it to shut down doesn't race
+// its own cleanup against a daemon that's still exiting. The control API's
+// /shutdown handler acks immediately and only then triggers the actual
+// shutdown, so without this a caller like removeLocalData could try to
+// delete daemon.log while the daemon process still has it open — harmless on
+// Unix (open files can be unlinked while held), but Windows refuses to
+// delete a file another process still holds, so uninstall would report it
+// couldn't fully remove ~/.trqsh.
+func waitDaemonExit(addr string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if !daemonAlive(addr) {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
 // controlPOST posts JSON to the daemon's control API, attaching the loopback
 // token, and decodes a 2xx body into out (when non-nil).
 func controlPOST(addr, path string, in, out any) error {
