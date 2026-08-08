@@ -102,6 +102,20 @@ The console script `trqsh` calls `trqsh.ensure_binary()`, which detects your OS
 `checksums.txt`, caches the binary under `~/.cache/trqsh/<version>/`, and execs
 it. Pure standard library — no runtime dependencies.
 
+## Troubleshooting: "'trqsh' is not recognized" on Windows
+
+`pip install trqsh` without admin rights (the common case) installs the
+`trqsh.exe` launcher into a per-user Scripts folder that isn't always on
+PATH. Every `trqsh` invocation checks for this and fixes it automatically —
+but pip has no post-install hook, so the very first invocation can't (if
+PATH is broken, that first `trqsh` can't run at all to fix it). Run it once
+via the Python launcher, which is always on PATH:
+
+```bash
+python -m trqsh version
+# then open a new terminal — bare `trqsh` now works
+```
+
 ## Environment overrides
 
 | Variable | Purpose |

@@ -11,7 +11,9 @@ from __future__ import annotations
 import hashlib
 import os
 import platform
+import site
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -118,8 +120,101 @@ def _extract(archive_path: Path, ext: str, dest: Path) -> None:
                 tf.extractall(dest)
 
 
+def _console_script_dir() -> Path | None:
+    """Best-effort: the directory actually holding the installed trqsh(.exe)
+    launcher pip/setuptools generated for the [project.scripts] entry point.
+
+    Not the same as locating *this* module: ``python -m trqsh`` resolves
+    ``sys.argv[0]`` to ``__main__.py`` inside site-packages, not the launcher,
+    so the venv/system/--user Scripts dirs are checked directly rather than
+    derived from argv0 alone.
+    """
+    shim = _bin_name()
+    candidates = []
+    argv0 = Path(sys.argv[0]).resolve()
+    if argv0.name == shim:
+        candidates.append(argv0.parent)
+    candidates.append(Path(sys.executable).resolve().parent)  # a venv's own Scripts dir
+    candidates.append(Path(sys.executable).resolve().parent / "Scripts")  # system/base install
+    if site.ENABLE_USER_SITE:
+        candidates.append(Path(site.USER_BASE) / "Scripts")  # `pip install` without admin lands here
+    for c in candidates:
+        if (c / shim).exists():
+            return c
+    return None
+
+
+# PowerShell source for _ensure_on_path below — mirrors the npm wrapper's
+# postinstall fix (packaging/npm/lib/install.js). Static text only; the
+# directory value flows in via the TRQSH_PATH_DIR env var rather than being
+# interpolated into the command text (a Windows path can contain a literal
+# single quote, e.g. a username like O'Brien).
+_PATH_FIX_SCRIPT = "\n".join(
+    [
+        "$dir = $env:TRQSH_PATH_DIR",
+        "$cur = [Environment]::GetEnvironmentVariable('Path','User')",
+        "if (-not $cur) { $cur = '' }",
+        "$already = $false",
+        "foreach ($p in ($cur -split ';')) { if ($p -and ($p.TrimEnd('\\') -ieq $dir.TrimEnd('\\'))) { $already = $true } }",
+        "if (-not $already) {",
+        "  $new = if ($cur.Trim().Length -gt 0) { $cur.TrimEnd(';') + ';' + $dir } else { $dir }",
+        "  [Environment]::SetEnvironmentVariable('Path', $new, 'User')",
+        '  Add-Type -Namespace TrqshWin32 -Name NativeMethods -MemberDefinition \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);\'',
+        "  $result = [UIntPtr]::Zero",
+        "  [TrqshWin32.NativeMethods]::SendMessageTimeout([IntPtr]0xffff, 0x1a, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result) | Out-Null",
+        "  Write-Output 'ADDED'",
+        "} else {",
+        "  Write-Output 'ALREADY'",
+        "}",
+    ]
+)
+
+
+def _ensure_on_path() -> None:
+    """Best-effort Windows PATH self-heal.
+
+    pip has no post-install hook — a wheel installs by unpacking, no code
+    runs afterward — so unlike the npm wrapper's postinstall, this can't fix
+    the very first ``trqsh`` invocation after ``pip install`` (if PATH is
+    broken, the shim can't be reached to run this at all). But ``python -m
+    trqsh`` / ``py -m trqsh`` always works — python.exe itself is on PATH
+    from any standard installer even when Scripts isn't — and running that
+    once triggers this self-heal, fixing every bare ``trqsh`` invocation
+    from then on.
+    """
+    if os.name != "nt":
+        return
+    exe = str(Path(sys.executable)).lower()
+    if os.environ.get("PIPX_HOME") or "pipx" in exe:
+        return  # pipx manages its own PATH via `pipx ensurepath`
+    scripts_dir = _console_script_dir()
+    if scripts_dir is None:
+        return
+
+    def norm(p: str) -> str:
+        return p.rstrip("\\/").lower()
+
+    target = norm(str(scripts_dir))
+    if any(norm(p) == target for p in os.environ.get("PATH", "").split(os.pathsep) if p):
+        return
+    try:
+        result = subprocess.run(  # noqa: S603 (fixed arg list, no shell)
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _PATH_FIX_SCRIPT],
+            env={**os.environ, "TRQSH_PATH_DIR": str(scripts_dir)},
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if "ADDED" in result.stdout:
+            print(f"trqsh: added {scripts_dir} to your PATH — open a new terminal to use the trqsh command", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001 — never block the actual command over a PATH nicety
+        print(f"trqsh: warning — couldn't update PATH automatically ({exc})", file=sys.stderr)
+
+
 def ensure_binary() -> Path:
     """Return the path to the trqsh binary, downloading it once if needed."""
+    _ensure_on_path()
     target = bin_path()
     if target.exists():
         return target
