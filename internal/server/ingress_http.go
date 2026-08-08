@@ -173,6 +173,18 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		req.Header.Set("X-Forwarded-Proto", scheme)
 		req.Header.Set("X-Forwarded-Host", host)
 		req.Header.Set("X-Request-Id", rid)
+			// The edge is the first trusted hop: overwrite the client-supplied
+			// forwarding headers with the true peer address so a public client
+			// can't spoof its source IP to the tunneled app (bypassing that app's
+			// IP allowlist or poisoning its logs). conn.RemoteAddr is the real
+			// client even across an inter-edge hop (forwardedConn.RemoteAddr).
+			clientIP := conn.RemoteAddr().String()
+			if ip, _, err := net.SplitHostPort(clientIP); err == nil {
+				clientIP = ip
+			}
+			req.Header.Set("X-Forwarded-For", clientIP)
+			req.Header.Set("X-Real-Ip", clientIP)
+			req.Header.Del("Forwarded")
 
 		init := &proto.StreamInit{
 			ClientTunnelId: bt.clientTunnelID,
