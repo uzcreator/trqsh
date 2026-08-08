@@ -5,4 +5,4 @@ binary for your platform (from the GitHub release) and execs it. The real
 program is the Go binary; see https://trqsh.uz.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
