@@ -140,9 +140,22 @@ func (p OAuthProvider) fetchUser(ctx context.Context, accessToken string) (OAuth
 		Login   string `json:"login"`
 		Avatar  string `json:"avatar_url"`
 		Picture string `json:"picture"`
+		// Email-verification signals. Google's userinfo returns verified_email;
+		// OIDC id_token/userinfo returns email_verified. Pointers so "field absent"
+		// (GitHub, whose /user email is always an already-verified address) is
+		// distinguishable from an explicit false.
+		VerifiedEmail *bool `json:"verified_email"`
+		EmailVerified *bool `json:"email_verified"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return OAuthUser{}, err
+	}
+	// Accounts are linked by email (provisionUser), so an unverified address from
+	// a provider that allows one would be an account-takeover vector: attacker sets
+	// victim@example.com as an unverified email, signs in, and lands on the victim's
+	// account. Reject any email the provider explicitly marks unverified.
+	if (raw.VerifiedEmail != nil && !*raw.VerifiedEmail) || (raw.EmailVerified != nil && !*raw.EmailVerified) {
+		return OAuthUser{}, fmt.Errorf("oauth userinfo: email is not verified with %s", p.Name)
 	}
 	name := raw.Name
 	if name == "" {
