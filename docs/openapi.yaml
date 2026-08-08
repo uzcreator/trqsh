@@ -142,10 +142,25 @@ paths:
         "400": { description: DNS record not found yet }
   /usage:
     get: { summary: Usage for the active org (last 30 days), responses: { "200": { description: OK } } }
+  /usage/history:
+    get:
+      summary: Usage time series for the active org (bucket=hour|day, days=N), for dashboard graphs
+      parameters:
+        - { name: bucket, in: query, schema: { type: string, enum: [hour, day] } }
+        - { name: days, in: query, schema: { type: integer } }
+      responses: { "200": { description: OK } }
   /orgs:
     get: { summary: Orgs the caller belongs to, responses: { "200": { description: OK } } }
   /tunnels:
-    get: { summary: Live tunnels for the org (from the edge registry), responses: { "200": { description: OK } } }
+    get: { summary: Live (active) tunnels for the org, responses: { "200": { description: OK } } }
+  /tunnels/history:
+    get:
+      summary: Paginated tunnel-session history for the org (active + closed)
+      parameters:
+        - { name: active, in: query, schema: { type: boolean } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses: { "200": { description: OK } }
   /plans:
     get:
       summary: The plan/quota catalog
@@ -155,6 +170,18 @@ paths:
     get:
       summary: The plan/quota catalog, unauthenticated (build-time consumption by the marketing site)
       security: []
+      responses: { "200": { description: OK } }
+  /regions:
+    get:
+      summary: The edge PoP catalog (code, city, endpoint) for region selection
+      security: []
+      responses: { "200": { description: OK } }
+  /geo:
+    get:
+      summary: Detect the caller's country and recommend the nearest edge region
+      security: []
+      parameters:
+        - { name: ip, in: query, description: "Override IP (dev only)", schema: { type: string } }
       responses: { "200": { description: OK } }
   /billing/checkout:
     post:
