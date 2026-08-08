@@ -233,6 +233,57 @@ func TestReplFlow(t *testing.T) {
 	}
 }
 
+// TestSelectAll covers Ctrl+A's GUI-style "select all" behavior: typing
+// replaces the selection, Backspace/Delete clears it, and anything else
+// (e.g. an arrow key) cancels the selection without touching the text.
+func TestSelectAll(t *testing.T) {
+	m := newModel(Options{Version: "test"}, newClient("127.0.0.1:0", ""))
+	m = feed(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	// Nothing to select on an empty input.
+	m = feed(m, tea.KeyMsg{Type: tea.KeyCtrlA})
+	if m.selectAll {
+		t.Fatal("ctrl+a on an empty input should not select anything")
+	}
+
+	m = typeStr(m, "hello world")
+	m = feed(m, tea.KeyMsg{Type: tea.KeyCtrlA})
+	if !m.selectAll {
+		t.Fatal("ctrl+a should select the non-empty input")
+	}
+
+	// Typing while selected replaces the whole value.
+	sel := m
+	sel = feed(sel, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	if sel.selectAll {
+		t.Fatal("typing should end the selection")
+	}
+	if got := sel.input.Value(); got != "x" {
+		t.Fatalf("input after typing over a selection = %q, want %q", got, "x")
+	}
+
+	// Backspace while selected clears the whole value.
+	sel = m
+	sel = feed(sel, tea.KeyMsg{Type: tea.KeyBackspace})
+	if sel.selectAll {
+		t.Fatal("backspace should end the selection")
+	}
+	if got := sel.input.Value(); got != "" {
+		t.Fatalf("input after backspacing a selection = %q, want empty", got)
+	}
+
+	// Any other key (e.g. an arrow) just cancels the selection, leaving the
+	// text untouched.
+	sel = m
+	sel = feed(sel, tea.KeyMsg{Type: tea.KeyLeft})
+	if sel.selectAll {
+		t.Fatal("left arrow should end the selection")
+	}
+	if got := sel.input.Value(); got != "hello world" {
+		t.Fatalf("input after navigating away from a selection = %q, want unchanged", got)
+	}
+}
+
 // TestViewFillsScreen checks the layout math: the rendered frame is exactly the
 // terminal height and never wider than the terminal, so nothing wraps or scrolls
 // the outer screen.

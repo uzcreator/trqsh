@@ -97,6 +97,12 @@ type model struct {
 	history    []string
 	historyIdx int // cursor into history; == len(history) means "not browsing"
 
+	// selectAll is true right after Ctrl+A: the whole input reads as
+	// selected (highlighted in renderInputBox) until the next key either
+	// acts on it (typing replaces it, Backspace/Delete clears it) or
+	// cancels it (anything else, which then runs normally — see handleKey).
+	selectAll bool
+
 	welcomeShown bool // the welcome banner has been placed in the transcript
 	welcomeLen   int  // how many leading transcript lines the banner occupies
 	mascotFrame  int  // animation frame for the welcome mascot
@@ -362,6 +368,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	menuOpen := m.menuOpen()
+
+	// Ctrl+A selects the whole input, GUI-style — not the textarea library's
+	// emacs-default "jump to line start" (Home still does that). While
+	// selected: typing replaces everything, Backspace/Delete clears it
+	// (both handled below by clearing first, then letting the same
+	// keystroke fall through to the normal handling further down); any
+	// other key just cancels the selection and runs normally.
+	if msg.Type == tea.KeyCtrlA {
+		if strings.TrimSpace(m.input.Value()) != "" {
+			m.selectAll = true
+		}
+		return m, nil
+	}
+	if m.selectAll {
+		m.selectAll = false
+		switch msg.Type {
+		case tea.KeyRunes, tea.KeySpace, tea.KeyBackspace, tea.KeyDelete:
+			m.input.SetValue("")
+			m.input.CursorEnd()
+		}
+	}
 
 	switch msg.Type {
 	case tea.KeyCtrlC:
@@ -1040,7 +1067,12 @@ func padCell(s string, w int) string {
 }
 
 func (m model) renderInputBox() string {
-	return inputBox(m.input.View(), m.width)
+	ta := m.input // local copy — styling it here doesn't touch the real model
+	if m.selectAll {
+		ta.FocusedStyle.Text = stMenuSel
+		ta.FocusedStyle.Placeholder = stMenuSel
+	}
+	return inputBox(ta.View(), m.width)
 }
 
 func (m model) renderScrollHint() string {
