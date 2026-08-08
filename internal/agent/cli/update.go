@@ -293,7 +293,7 @@ func replaceBinary(target string, newData []byte) error {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("write new binary: %w", firstErr(writeErr, closeErr))
 	}
-	if err := os.Chmod(tmpPath, 0o755); err != nil { // no-op perm-wise on Windows, harmless
+	if err := os.Chmod(tmpPath, 0o755); err != nil { // #nosec G302 -- the extracted file is an executable; it must stay user-executable (0755), and 0600 would leave the updated binary non-runnable (no-op perm-wise on Windows)
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("chmod new binary: %w", err)
 	}

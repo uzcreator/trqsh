@@ -213,7 +213,7 @@ func (s *Server) proxyToUpstreamH3(w http.ResponseWriter, r *http.Request, schem
 		outReq.Header.Set("X-Forwarded-For", r.RemoteAddr)
 	}
 
-	resp, err := s.proxyClient.Do(outReq)
+	resp, err := s.proxyClient.Do(outReq) // #nosec G704 -- upstream is a fixed reserved-host config value (site/dashboard/api, resolved via reservedUpstream), never user input, so this is not attacker-controllable SSRF
 	if err != nil {
 		label, msg := "upstream_bad_response", "502 upstream bad response"
 		var netErr *net.OpError

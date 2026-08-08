@@ -495,7 +495,7 @@ func (p *PostgresStore) ListTunnelSessions(ctx context.Context, f TunnelSessionF
 	q := `SELECT id,org_id,edge_id,session_id,tunnel_id,type,public_url,host,port,region,
 	             client_ip,country,city,bytes_in,bytes_out,requests,status,started_at,ended_at
 	      FROM tunnel_sessions ` + where +
-		` ORDER BY started_at DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+		` ORDER BY started_at DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args)) // #nosec G202 -- `where` is built only from constant SQL fragments and $N placeholder markers; every user value is passed as a bound arg (args...), so nothing user-controlled is concatenated into the SQL
 	rows, err := p.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
