@@ -67,9 +67,17 @@ services:
       TRQSH_JWT_SECRET: ${TRQSH_JWT_SECRET:-dev-jwt-secret-change-me}
       TRQSH_INTERNAL_TOKEN: *internal_token
       TRQSH_DEV_AUTH: "1"
+      TRQSH_TRUST_PROXY: "1"
       # Billing is off unless you supply Stripe test keys in deploy/.env.
       TRQSH_STRIPE_SECRET_KEY: ${TRQSH_STRIPE_SECRET_KEY:-}
       TRQSH_STRIPE_WEBHOOK_SECRET: ${TRQSH_STRIPE_WEBHOOK_SECRET:-}
+      # Admin console (approve.lvh.me) — set both in deploy/.env to enable locally.
+      TRQSH_ADMIN_USER: ${TRQSH_ADMIN_USER:-}
+      TRQSH_ADMIN_PASSWORD: ${TRQSH_ADMIN_PASSWORD:-}
+      # Location/geo (optional): country detection for /v1/geo + history/admin.
+      TRQSH_GEOIP_HEADER: ${TRQSH_GEOIP_HEADER:-}
+      TRQSH_GEOIP_API: ${TRQSH_GEOIP_API:-}
+      TRQSH_REGIONS: ${TRQSH_REGIONS:-}
     ports:
       - "8080:8080"
     depends_on:

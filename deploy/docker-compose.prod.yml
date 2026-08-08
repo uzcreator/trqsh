@@ -129,6 +129,13 @@ services:
     #     context: ..
     #     dockerfile: deploy/docker/Dockerfile.api
     restart: unless-stopped
+    # Load EVERY operator setting from deploy/.env in one shot — OAuth, admin
+    # console, Stripe/billing, and geo/location all come from there, so enabling a
+    # feature is a `.env` edit + restart, never a compose or code change. The
+    # explicit `environment:` block below still wins for the internal/derived
+    # values it pins (addresses, DB DSN, TRQSH_ENV=production, …).
+    env_file:
+      - .env
     # Many concurrent client + internal-RPC connections; the default 1024 open
     # files is too low. Host somaxconn also needs raising (see PRODUCTION.md).
     ulimits:
