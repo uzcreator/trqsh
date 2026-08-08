@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"sync"
@@ -32,6 +33,9 @@ func rawJoin(clientConn net.Conn, clientRead io.Reader, agent net.Conn) (up, dow
 }
 
 // branded404 is the response body for an unknown host — a small, on-brand page.
+// host is HTML-escaped: it comes straight from the client's Host header, so
+// reflecting it raw would be an XSS sink (low-severity, since browsers set Host
+// themselves, but escaped regardless as defense in depth).
 func branded404(host string) string {
 	return fmt.Sprintf(`<!doctype html>
 <html><head><meta charset="utf-8"><title>Tunnel offline · trqsh</title>
@@ -42,7 +46,7 @@ p{color:#9aa3b2;line-height:1.5}a{color:#7aa2ff}</style></head>
 <body><main><h1>This tunnel is offline</h1>
 <p>No active tunnel is serving <code>%s</code>. If this is your tunnel, make sure the
 trqsh agent is running and connected.</p>
-<p><a href="https://trqsh.uz">trqsh.uz</a></p></main></body></html>`, host)
+<p><a href="https://trqsh.uz">trqsh.uz</a></p></main></body></html>`, html.EscapeString(host))
 }
 
 // writeHTTPResponse writes a minimal HTTP/1.1 response with a body to a raw conn.
