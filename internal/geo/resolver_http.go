@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -44,13 +45,26 @@ type providerResponse struct {
 }
 
 func (h *httpResolver) Lookup(ctx context.Context, ip string) (Location, bool) {
-	url := strings.ReplaceAll(h.urlTemplate, "{ip}", ip)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	// Only ever interpolate a validated IP literal into the provider URL. ip can
+	// originate from a client-supplied header (X-Forwarded-For behind a trusted
+	// proxy), so an unvalidated value could inject a different host or path into
+	// our outbound request (SSRF — CWE-918). net.ParseIP rejects anything that is
+	// not a bare IPv4/IPv6 address, so no URL metacharacters (/, @, ?, #, …) can
+	// survive into the request target.
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return Location{}, false
+	}
+	// Interpolate the canonical form of the validated IP, never the raw input, so
+	// the outbound request target provably cannot carry user-controlled host/path
+	// characters (breaks the taint flow at the value, not just behind a guard).
+	url := strings.ReplaceAll(h.urlTemplate, "{ip}", parsedIP.String())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // #nosec G704 -- url derives only from a net.ParseIP-validated IP (checked above) and the operator-configured template; there is no user-controlled host or path
 	if err != nil {
 		return Location{}, false
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := h.client.Do(req)
+	resp, err := h.client.Do(req) // #nosec G704 -- see above: the request target is a validated IP literal interpolated into the operator's template, not attacker-controlled
 	if err != nil {
 		return Location{}, false
 	}
