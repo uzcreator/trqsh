@@ -700,9 +700,12 @@ func cmdVersion(m *model, _ []string) tea.Cmd {
 }
 
 func cmdClear(m *model, _ []string) tea.Cmd {
-	m.transcript = nil
-	m.welcomeLen = 0 // the banner is gone; don't try to refresh it in place
-	m.vp.SetContent("")
+	// Same as the first-launch welcome placement in model.go's WindowSizeMsg
+	// handler, just replacing the transcript instead of prepending to an
+	// empty one — /clear should feel like a fresh console, not a blank one.
+	w := m.renderWelcome()
+	m.welcomeLen = len(w)
+	m.transcript = w
 	return nil
 }
 
