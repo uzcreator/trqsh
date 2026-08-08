@@ -32,6 +32,9 @@ npx @trqsh-uz/trqsh http 3000
 - **A real console, not a log spinner** — `/pin traffic`, `/pin status`, and
   friends keep live panels on screen while you keep working, with command
   history, autocomplete, and a scrolling transcript. See below.
+- **Remote control from your phone** — `/qr` pairs the console to a scanned
+  QR: watch the live transcript and tunnels, or type commands back, from
+  anywhere.
 - **Real TLS** — Let's Encrypt via CertMagic, not a self-signed cert with a
   browser warning.
 - **Background tunnels** (`-d`) that outlive your terminal, reserved
@@ -58,7 +61,7 @@ prompt, and keep an eye on traffic without leaving the terminal:
 | `/start` | Start every tunnel from your config file at once |
 | `/ls` | List running tunnels |
 | `/open <id>` | Open a tunnel's public URL in your browser |
-| `/qr [id]` | Show a QR code for a tunnel URL — open it on your phone |
+| `/qr [id\|stop]` | Pair this console to your phone (or show a tunnel's QR) |
 | `/copy [id]` | Copy a tunnel URL to the clipboard |
 | `/requests` | Show recently captured requests |
 | `/pin <traffic\|tunnels\|status>` | Keep a live panel on screen |
