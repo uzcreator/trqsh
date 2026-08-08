@@ -55,7 +55,43 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, replayed)
 	})
 	mux.HandleFunc("GET /api/stream", s.stream)
-	return mux
+	// A loopback Host guard wraps every route: the inspector serves captured
+	// request/response bodies (which may hold cookies, tokens, and other
+	// secrets from the developer's own traffic) with no auth, relying on the
+	// 127.0.0.1 bind. Without a Host check a malicious web page could reach it
+	// via DNS rebinding (re-resolving its own domain to 127.0.0.1) and read
+	// everything or trigger replays. Same defense the control API uses
+	// (agent/localapi.go's isLoopbackHost).
+	return guardLoopback(mux)
+}
+
+// guardLoopback rejects any request whose Host is not loopback, blocking
+// DNS-rebinding access to the inspector from a victim's browser.
+func guardLoopback(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden: non-loopback host", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// isLoopbackHost reports whether host (a Host header, optionally with a port)
+// targets localhost / a loopback IP.
+func isLoopbackHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	h := host
+	if hh, _, err := net.SplitHostPort(host); err == nil {
+		h = hh
+	}
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Serve runs the inspector until ctx is canceled.
@@ -198,27 +234,32 @@ h2{margin:.2rem 0 .6rem;font-size:1rem}small{color:#9aa3b2}
 <div id="detail"><p><small>Select a request.</small></p></div>
 <script>
 let sel=null;
+// esc HTML-escapes every value interpolated into innerHTML below. The captured
+// method/path/headers/bodies are attacker-controlled — anyone hitting the public
+// tunnel URL picks them — so rendering them raw was a stored-XSS sink that fired
+// in the developer's browser when they opened the inspector.
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 async function load(){
   const rs=await (await fetch('/api/requests')).json();
   document.getElementById('cnt').textContent=rs.length?('· '+rs.length):'';
   document.getElementById('rows').innerHTML=rs.map(r=>
-    '<div class="row" onclick="show(\''+r.id+'\')"><span class="m">'+r.method+'</span><span>'+
-    (r.path||'')+'</span><span class="s '+(r.status>=400?'err':'ok')+'">'+(r.status||'—')+'</span></div>').join('');
+    '<div class="row" onclick="show(\''+esc(r.id)+'\')"><span class="m">'+esc(r.method)+'</span><span>'+
+    esc(r.path||'')+'</span><span class="s '+(r.status>=400?'err':'ok')+'">'+esc(r.status||'—')+'</span></div>').join('');
 }
-function h(o){return o?Object.entries(o).map(([k,v])=>k+': '+v).join('\n'):''}
+function h(o){return o?Object.entries(o).map(([k,v])=>esc(k)+': '+esc(v)).join('\n'):''}
 function b64(s){try{return atob(s)}catch(e){return ''}}
 async function show(id){
   sel=id;
-  const r=await (await fetch('/api/requests/'+id)).json();
+  const r=await (await fetch('/api/requests/'+encodeURIComponent(id))).json();
   document.getElementById('detail').innerHTML=
-    '<h2>'+r.method+' '+r.path+' <small>'+(r.status||'')+' · '+r.duration_ms+'ms</small></h2>'+
-    '<button onclick="replay(\''+id+'\')">Replay</button>'+
+    '<h2>'+esc(r.method)+' '+esc(r.path)+' <small>'+esc(r.status||'')+' · '+esc(r.duration_ms)+'ms</small></h2>'+
+    '<button onclick="replay(\''+esc(id)+'\')">Replay</button>'+
     '<h2>Request headers</h2><pre>'+h(r.req_headers)+'</pre>'+
-    (r.req_body?'<h2>Request body</h2><pre>'+b64(r.req_body)+'</pre>':'')+
+    (r.req_body?'<h2>Request body</h2><pre>'+esc(b64(r.req_body))+'</pre>':'')+
     '<h2>Response headers</h2><pre>'+h(r.resp_headers)+'</pre>'+
-    (r.resp_body?'<h2>Response body</h2><pre>'+b64(r.resp_body)+'</pre>':'');
+    (r.resp_body?'<h2>Response body</h2><pre>'+esc(b64(r.resp_body))+'</pre>':'');
 }
-async function replay(id){await fetch('/api/requests/'+id+'/replay',{method:'POST'});load();}
+async function replay(id){await fetch('/api/requests/'+encodeURIComponent(id)+'/replay',{method:'POST'});load();}
 load();setInterval(load,1500);
 </script>
 </body></html>`
