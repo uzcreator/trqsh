@@ -66,6 +66,14 @@ signs:
     args:
       - "sign-blob"
       - "--bundle=${signature}"
+      # Force the Sigstore-standard protobuf bundle (base64Signature/cert/
+      # rekorBundle is cosign's older, non-standard shape): the CLI's own
+      # self-update verifies with sigstore-go, which only parses the
+      # standardized format (v0.1.9's release proved this the hard way —
+      # cosign's --bundle alone produced the legacy shape and sigstore-go
+      # rejected it with "unknown field \"base64Signature\""). Cosign v3
+      # defaults this on already; passing it explicitly also covers v2.
+      - "--new-bundle-format"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
