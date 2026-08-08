@@ -224,11 +224,12 @@ func TestReplFlow(t *testing.T) {
 		t.Fatalf("after typing /pin traffic + enter, pins = %v", m.pins)
 	}
 
-	// /clear empties the transcript.
+	// /clear resets the transcript back to just the welcome banner, not a
+	// blank screen.
 	m = typeStr(m, "/clear")
 	m = feed(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if len(m.transcript) != 0 {
-		t.Fatalf("after /clear, transcript has %d lines", len(m.transcript))
+	if m.welcomeLen == 0 || len(m.transcript) != m.welcomeLen {
+		t.Fatalf("after /clear, transcript has %d lines (welcomeLen=%d), want just the welcome banner", len(m.transcript), m.welcomeLen)
 	}
 }
 
