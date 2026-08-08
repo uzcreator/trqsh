@@ -113,6 +113,8 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 	defer func() { _ = conn.Close() }()
 	br := bufio.NewReader(conn)
 
+	authFailures := 0
+
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(httpIdleTimeout))
 		req, err := http.ReadRequest(br)
@@ -158,7 +160,18 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 			return
 		}
 		if !checkBasicAuth(req, bt.options) {
+			authFailures++
+			s.metrics.Errors.WithLabelValues("basic_auth_failed").Inc()
+			// Throttle credential brute-forcing on this connection: each failure
+			// costs an escalating delay, and after a handful we drop the connection
+			// so the attacker must pay a fresh TCP+TLS handshake to keep guessing.
+			// A legitimate browser sees at most one small delay (its first,
+			// credential-less probe) before it sends the password.
+			time.Sleep(basicAuthDelay(authFailures))
 			writeUnauthorized(conn)
+			if authFailures >= maxBasicAuthFailures {
+				return
+			}
 			// keep the connection open for a retry with credentials
 			continue
 		}
@@ -173,18 +186,18 @@ func (s *Server) serveHTTPConn(conn net.Conn, scheme string) {
 		req.Header.Set("X-Forwarded-Proto", scheme)
 		req.Header.Set("X-Forwarded-Host", host)
 		req.Header.Set("X-Request-Id", rid)
-			// The edge is the first trusted hop: overwrite the client-supplied
-			// forwarding headers with the true peer address so a public client
-			// can't spoof its source IP to the tunneled app (bypassing that app's
-			// IP allowlist or poisoning its logs). conn.RemoteAddr is the real
-			// client even across an inter-edge hop (forwardedConn.RemoteAddr).
-			clientIP := conn.RemoteAddr().String()
-			if ip, _, err := net.SplitHostPort(clientIP); err == nil {
-				clientIP = ip
-			}
-			req.Header.Set("X-Forwarded-For", clientIP)
-			req.Header.Set("X-Real-Ip", clientIP)
-			req.Header.Del("Forwarded")
+		// The edge is the first trusted hop: overwrite the client-supplied
+		// forwarding headers with the true peer address so a public client
+		// can't spoof its source IP to the tunneled app (bypassing that app's
+		// IP allowlist or poisoning its logs). conn.RemoteAddr is the real
+		// client even across an inter-edge hop (forwardedConn.RemoteAddr).
+		clientIP := conn.RemoteAddr().String()
+		if ip, _, err := net.SplitHostPort(clientIP); err == nil {
+			clientIP = ip
+		}
+		req.Header.Set("X-Forwarded-For", clientIP)
+		req.Header.Set("X-Real-Ip", clientIP)
+		req.Header.Del("Forwarded")
 
 		init := &proto.StreamInit{
 			ClientTunnelId: bt.clientTunnelID,
@@ -436,6 +449,21 @@ func checkBasicAuth(req *http.Request, options map[string]string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(dec, []byte(want)) == 1
+}
+
+// maxBasicAuthFailures caps failed --basic-auth attempts on one connection
+// before the edge drops it, forcing a fresh TCP+TLS handshake to keep guessing.
+const maxBasicAuthFailures = 10
+
+// basicAuthDelay returns the throttle applied after the nth failed basic-auth
+// attempt on a connection: it grows with each failure and is capped, so a single
+// mistyped password barely registers while an automated brute-force crawls.
+func basicAuthDelay(failures int) time.Duration {
+	d := time.Duration(failures) * 250 * time.Millisecond
+	if d > 2*time.Second {
+		d = 2 * time.Second
+	}
+	return d
 }
 
 // writeUnauthorized sends the 401 challenge for a --basic-auth protected
