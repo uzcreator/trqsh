@@ -95,21 +95,44 @@ func (l *LocalAPI) remoteStart(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(context.Background())
 	old := l.swapRemote(&remotePairing{code: out.Code, cancel: cancel})
 	if old != nil {
-		old.cancel()
-		go endRemoteSession(key, old.code)
+		// End the old session on the control plane before tearing down its
+		// local pump, not the other way around: ending it evicts its viewers
+		// first, so they see a clean "ended" instead of a stray "disconnected"
+		// presence from the pump's connection dropping out from under them.
+		go func() {
+			endRemoteSession(key, old.code)
+			old.cancel()
+		}()
 	}
-	go l.pumpRemote(ctx, key, out.Code)
+	attached := make(chan struct{}, 1)
+	go l.pumpRemote(ctx, key, out.Code, attached)
+
+	// Wait for the agent stream to actually attach before handing back the
+	// code/QR: without this, a phone that scanned and connected unusually
+	// fast could see the very first presence event as "offline" — the
+	// broadcast in attachAgent only reaches viewers already connected when it
+	// fires, and there'd be nothing to guarantee it fires before the response
+	// (and thus the QR) even leaves this handler.
+	select {
+	case <-attached:
+	case <-time.After(5 * time.Second):
+	case <-ctx.Done():
+	}
 
 	apiWriteJSON(w, http.StatusOK, out)
 }
 
 // remoteStop ends the active pairing, if any. Idempotent: stopping with
-// nothing active is a no-op, not an error.
+// nothing active is a no-op, not an error. Ends the session on the control
+// plane BEFORE canceling the local pump (see the same ordering note in
+// remoteStart): that evicts its viewers first, so they see a clean "ended"
+// rather than a stray "disconnected" presence from the pump dropping out
+// from under them a moment earlier.
 func (l *LocalAPI) remoteStop(w http.ResponseWriter, r *http.Request) {
 	old := l.swapRemote(nil)
 	if old != nil {
-		old.cancel()
 		endRemoteSession(storedAPIKey(), old.code)
+		old.cancel()
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -149,11 +172,12 @@ func (l *LocalAPI) remotePublish(w http.ResponseWriter, r *http.Request) {
 // connection to the control plane's agent stream, reconnected with backoff on
 // a transient drop (mirrors package tui's own client.streamEvents), until ctx
 // is canceled (explicit stop, or superseded by a fresh /qr) or the session
-// itself ends.
-func (l *LocalAPI) pumpRemote(ctx context.Context, key, code string) {
+// itself ends. attached is signaled (once, non-blocking) the first time the
+// stream actually connects, so remoteStart can wait for it.
+func (l *LocalAPI) pumpRemote(ctx context.Context, key, code string, attached chan<- struct{}) {
 	backoff := time.Second
 	for ctx.Err() == nil {
-		err := l.pumpRemoteOnce(ctx, key, code)
+		err := l.pumpRemoteOnce(ctx, key, code, attached)
 		if ctx.Err() != nil {
 			return
 		}
@@ -175,7 +199,7 @@ func (l *LocalAPI) pumpRemote(ctx context.Context, key, code string) {
 	}
 }
 
-func (l *LocalAPI) pumpRemoteOnce(ctx context.Context, key, code string) error {
+func (l *LocalAPI) pumpRemoteOnce(ctx context.Context, key, code string, attached chan<- struct{}) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cloudBase()+"/v1/remote/sessions/"+code+"/agent", nil)
 	if err != nil {
 		return err
@@ -194,6 +218,10 @@ func (l *LocalAPI) pumpRemoteOnce(ctx context.Context, key, code string) error {
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("remote agent stream: status %d", resp.StatusCode)
+	}
+	select {
+	case attached <- struct{}{}:
+	default:
 	}
 
 	sc := bufio.NewScanner(resp.Body)
