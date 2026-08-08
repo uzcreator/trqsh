@@ -40,6 +40,19 @@ printf 'POSTGRES_PASSWORD=%s\nTRQSH_JWT_SECRET=%s\nTRQSH_INTERNAL_TOKEN=%s\n' \
 nano .env
 ```
 
+`deploy/.env` is the **single source of configuration** — the compose file loads
+the whole file into the control API (`env_file`), so everything below is a `.env`
+edit + `up -d`, never a compose or code change. The example is grouped and
+self-documenting; notable optional groups:
+
+- **Admin dashboard** — set `TRQSH_ADMIN_USER` + `TRQSH_ADMIN_PASSWORD` to enable
+  the fleet console (stats, users, orgs, tunnels, subscription grants) at
+  `https://approve.<domain>`. Empty = disabled.
+- **Location / geo** — set `TRQSH_GEOIP_API` (or `TRQSH_GEOIP_HEADER` behind a
+  CDN) to enable country detection + nearest-region routing (`/v1/geo`) and the
+  geo data in tunnel history. Blank = detection off, regions still served.
+- **Billing, OAuth** — fill the Stripe / OAuth groups to turn those on.
+
 ## 3. Bring it up (staging first)
 
 Keep `TRQSH_ACME_STAGING=1` for the first run — proves cert issuance without
