@@ -183,6 +183,65 @@ paths:
       parameters:
         - { name: ip, in: query, description: "Override IP (dev only)", schema: { type: string } }
       responses: { "200": { description: OK } }
+  /remote/sessions:
+    post:
+      summary: Start a /qr remote-control pairing session (CLI console, authenticated)
+      responses:
+        "200":
+          description: Pairing code + viewer URL
+          content: { application/json: { schema: { $ref: '#/components/schemas/RemoteSession' } } }
+  /remote/sessions/{code}/agent:
+    get:
+      summary: Console (agent) side event stream — inbound commands/presence/ended (SSE)
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "text/event-stream of RemoteEvent frames" }
+        "404": { description: No such session, or not owned by the caller's org }
+  /remote/sessions/{code}/publish:
+    post:
+      summary: Console (agent) side — publish transcript lines or a state snapshot to viewers
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RemoteEvent' } } }
+      responses:
+        "204": { description: Delivered (fanned out to any connected viewers) }
+        "404": { description: No such session, or not owned by the caller's org }
+  /remote/sessions/{code}/end:
+    post:
+      summary: Console (agent) side — end the pairing early
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Ended; viewers see a final "ended" event }
+        "404": { description: No such session, or not owned by the caller's org }
+  /remote/sessions/{code}/viewer:
+    get:
+      summary: Phone/browser side event stream — transcript/state/presence/ended (SSE, public)
+      description: >
+        No login: the code itself, embedded in the QR/link the console shows, is the
+        capability. Replays recent transcript + the last known state on connect.
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "text/event-stream of RemoteEvent frames" }
+        "404": { description: No such session, or it has expired/ended }
+  /remote/sessions/{code}/command:
+    post:
+      summary: Phone/browser side — send a command to the paired console (public)
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 240 } } } } }
+      responses:
+        "204": { description: Delivered to the attached console }
+        "404": { description: No such session, or it has expired/ended }
+        "409": { description: No console is currently attached to this session }
   /billing/checkout:
     post:
       summary: Create a Stripe Checkout Session to subscribe to / change plan (Part 07)
@@ -279,3 +338,32 @@ components:
         status: { type: string, enum: [active, trialing, past_due, canceled, incomplete] }
         current_period_end: { type: string, format: date-time }
         cancel_at_period_end: { type: boolean }
+    RemoteSession:
+      type: object
+      properties:
+        code: { type: string, description: "Pairing code — also the viewer URL's capability token" }
+        url: { type: string, description: "https://qr.<base>/<code>" }
+        expires_at: { type: string, format: date-time }
+    RemoteEvent:
+      type: object
+      description: One envelope shape for both the agent and viewer streams; fields present depend on type.
+      properties:
+        type: { type: string, enum: [lines, state, command, presence, ended] }
+        lines: { type: array, items: { type: string } }
+        state:
+          type: object
+          properties:
+            online: { type: boolean }
+            edge: { type: string }
+            tunnels:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  public_url: { type: string }
+                  local_addr: { type: string }
+                  status: { type: string }
+                  requests: { type: integer }
+        command: { type: string }
+        connected: { type: boolean }
