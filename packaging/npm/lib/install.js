@@ -73,8 +73,75 @@ async function verifyChecksum(buf, archive) {
   }
 }
 
+// PowerShell source for ensureOnPath below. Static text only — the directory
+// value flows in via the TRQSH_PATH_DIR env var (see the existing
+// Expand-Archive call above for why: a Windows path can contain a literal
+// single quote, e.g. a username like O'Brien, which would break a naively
+// interpolated -Command string).
+const PATH_FIX_SCRIPT = [
+  "$dir = $env:TRQSH_PATH_DIR",
+  "$cur = [Environment]::GetEnvironmentVariable('Path','User')",
+  "if (-not $cur) { $cur = '' }",
+  "$already = $false",
+  "foreach ($p in ($cur -split ';')) { if ($p -and ($p.TrimEnd('\\') -ieq $dir.TrimEnd('\\'))) { $already = $true } }",
+  "if (-not $already) {",
+  "  $new = if ($cur.Trim().Length -gt 0) { $cur.TrimEnd(';') + ';' + $dir } else { $dir }",
+  "  [Environment]::SetEnvironmentVariable('Path', $new, 'User')",
+  "  Add-Type -Namespace TrqshWin32 -Name NativeMethods -MemberDefinition '[DllImport(\"user32.dll\", SetLastError = true, CharSet = CharSet.Auto)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'",
+  "  $result = [UIntPtr]::Zero",
+  "  [TrqshWin32.NativeMethods]::SendMessageTimeout([IntPtr]0xffff, 0x1a, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result) | Out-Null",
+  "  Write-Output 'ADDED'",
+  "} else {",
+  "  Write-Output 'ALREADY'",
+  "}",
+].join("\n");
+
+// ensureOnPath fixes the #1 reported install failure: `npm install -g` links
+// the `trqsh` shim into npm's global bin dir, but on plenty of Windows setups
+// (custom prefix, portable Node zips, some nvm-windows configs...) that dir
+// was never added to PATH, so the freshly installed command isn't found.
+// Only runs for a real `-g` install (npm_config_global) on win32 — a local
+// `npm i` puts the shim in ./node_modules/.bin, which is never meant to be
+// on PATH (that's what npx / package scripts are for), so there's nothing
+// to fix there. Broadcasts WM_SETTINGCHANGE after the registry write so a
+// terminal opened right after (which inherits Explorer's cached environment
+// block) picks up the change without a full logoff.
+function ensureOnPath() {
+  if (process.platform !== "win32" || process.env.npm_config_global !== "true") return;
+
+  let dir;
+  try {
+    dir = (process.env.npm_config_prefix || execFileSync("npm", ["config", "get", "prefix"], { encoding: "utf8" })).trim();
+  } catch {
+    return; // best-effort — never fail the install over a PATH nicety
+  }
+  if (!dir) return;
+
+  const norm = (p) => p.replace(/\\+$/, "").toLowerCase();
+  const already = (process.env.PATH || "").split(path.delimiter).some((p) => p && norm(p) === norm(dir));
+  if (already) return;
+
+  try {
+    const out = execFileSync(
+      "powershell",
+      ["-NoProfile", "-NonInteractive", "-Command", PATH_FIX_SCRIPT],
+      { encoding: "utf8", env: { ...process.env, TRQSH_PATH_DIR: dir } }
+    );
+    if (out.includes("ADDED")) {
+      process.stderr.write(`trqsh: added ${dir} to your PATH — open a new terminal to use the trqsh command\n`);
+    }
+  } catch (e) {
+    process.stderr.write(
+      `trqsh: warning — couldn't update PATH automatically (${e.message}); if 'trqsh' isn't found, add ${dir} to your PATH manually\n`
+    );
+  }
+}
+
 async function install() {
-  if (fs.existsSync(C.binPath)) return C.binPath;
+  if (fs.existsSync(C.binPath)) {
+    ensureOnPath();
+    return C.binPath;
+  }
 
   const { archive } = C.target();
   const url = C.archiveUrl(archive);
@@ -126,6 +193,7 @@ async function install() {
   if (process.platform !== "win32") fs.chmodSync(C.binPath, 0o755);
 
   process.stderr.write("trqsh: installed ✓\n");
+  ensureOnPath();
   return C.binPath;
 }
 
