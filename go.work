@@ -1,4 +1,4 @@
-go 1.25.0
+go 1.25.8
 
 // Single module today. The workspace is here so we can later split the
 // open-source client (cmd/trqsh + pkg/*) into its own module without churn.

@@ -3,13 +3,15 @@ package cli
 // This file implements the self-update the console's /update runs (via
 // selfUpdate in dashboard.go): it lists the repo's GitHub releases, picks the
 // newest non-draft CLI tag (v* but not desktop-v*, the GUI's own release
-// train), downloads the matching platform archive, verifies its checksum
-// against the release's checksums.txt, and atomically swaps it in for the
-// running binary. This deliberately mirrors the npm/pip wrappers'
+// train), downloads the matching platform archive, verifies the release's
+// checksums.txt against its cosign/Sigstore bundle (sigstore.go) and the
+// archive's checksum against checksums.txt, then atomically swaps the binary
+// in for the running one. This deliberately mirrors the npm/pip wrappers'
 // install-on-first-run logic (packaging/npm/lib/install.js,
 // packaging/pypi/src/trqsh/_runtime.py): same archive naming, same checksum
-// trust model, no new dependencies (stdlib archive/zip + archive/tar cover both
-// platforms' archive formats).
+// trust model — though today only this Go path also verifies the Sigstore
+// signature automatically; the wrappers still document it as a manual
+// `cosign verify-blob` step (see their READMEs).
 
 import (
 	"archive/tar"
@@ -128,7 +130,6 @@ func installUpdate(ctx context.Context, version, target string) error {
 	archive := fmt.Sprintf("trqsh_%s_%s_%s.%s", version, goos, goarch, ext)
 	base := updateDownloadBase + "/v" + version
 
-	fmt.Printf("downloading %s...\n", archive)
 	data, err := fetchURL(ctx, base+"/"+archive, "")
 	if err != nil {
 		return fmt.Errorf("download %s: %w", archive, err)
@@ -142,10 +143,16 @@ func installUpdate(ctx context.Context, version, target string) error {
 		// rather than silently installing an unverified binary.
 		return fmt.Errorf("download checksums.txt: %w", err)
 	}
+	sigstoreBundle, err := fetchURL(ctx, base+"/checksums.txt.sigstore.json", "")
+	if err != nil {
+		return fmt.Errorf("download checksums.txt.sigstore.json: %w", err)
+	}
+	if err := verifySigstoreBundleFunc(sums, sigstoreBundle); err != nil {
+		return fmt.Errorf("sigstore signature: %w", err)
+	}
 	if err := verifyChecksum(data, archive, string(sums)); err != nil {
 		return err
 	}
-	fmt.Println("checksum verified ✓")
 
 	binData, err := extractBinaryFromArchive(data, ext, binName)
 	if err != nil {
