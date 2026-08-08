@@ -131,6 +131,7 @@ func New(cfg Config, log *slog.Logger) (*Server, error) {
 	if rdb != nil {
 		s.oauthState = newRedisStateStore(rdb, log)
 		a.SetDevices(newRedisDeviceStore(rdb, log))
+		a.SetRevoker(newRedisRevoker(rdb, log))
 	} else {
 		s.oauthState = newMemStateStore()
 	}

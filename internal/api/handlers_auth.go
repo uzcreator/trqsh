@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -126,10 +128,31 @@ func (s *Server) handleOAuthStart(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleLogout clears the shared session cookies so a different account can sign
-// in. JWTs are short-lived; the refresh cookie is removed here and by the client.
+// in, and revokes the refresh token server-side so it can't mint new access
+// tokens even if it was captured before logout. The access token is short-lived
+// (1h) and expires on its own.
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if rt := refreshTokenFromRequest(r); rt != "" {
+		s.auth.RevokeRefresh(rt)
+	}
 	s.clearSessionCookies(w)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// refreshTokenFromRequest pulls the refresh token from the shared cookie
+// (browser) or, failing that, a JSON {refresh_token} body (programmatic clients).
+func refreshTokenFromRequest(r *http.Request) string {
+	if c, err := r.Cookie("trqsh_refresh"); err == nil && c.Value != "" {
+		return c.Value
+	}
+	if r.Body == nil {
+		return ""
+	}
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body)
+	return body.RefreshToken
 }
 
 func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {

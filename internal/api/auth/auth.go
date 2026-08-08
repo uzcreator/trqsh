@@ -5,6 +5,8 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -25,6 +27,7 @@ type Auth struct {
 	accessTTL  time.Duration
 	refreshTTL time.Duration
 	devices    DeviceStore
+	revoker    Revoker
 }
 
 // New builds an Auth manager. secret signs JWTs (HS256).
@@ -35,6 +38,7 @@ func New(st store.Store, secret string) *Auth {
 		accessTTL:  1 * time.Hour,
 		refreshTTL: 30 * 24 * time.Hour,
 		devices:    newDeviceStore(),
+		revoker:    newMemRevoker(),
 	}
 }
 
@@ -77,6 +81,7 @@ func (a *Auth) sign(userID, orgID, kind string, ttl time.Duration) (string, erro
 		OrgID: orgID,
 		Kind:  kind,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        newJTI(), // unique per token, so a refresh token can be revoked
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
@@ -84,6 +89,13 @@ func (a *Auth) sign(userID, orgID, kind string, ttl time.Duration) (string, erro
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(a.secret)
+}
+
+// newJTI returns a 128-bit random token identifier (the JWT "jti" claim).
+func newJTI() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // ParseToken verifies a JWT and returns its claims.
@@ -110,7 +122,27 @@ func (a *Auth) Refresh(refreshToken string) (Tokens, error) {
 	if claims.Kind != "refresh" {
 		return Tokens{}, ErrUnauthorized
 	}
+	// Reject a refresh token that was revoked (logout / session kill) so it can
+	// no longer mint fresh access tokens even though its signature is still valid.
+	if a.revoker.IsRevoked(claims.ID) {
+		return Tokens{}, ErrUnauthorized
+	}
 	return a.IssueTokens(claims.Subject, claims.OrgID)
+}
+
+// RevokeRefresh invalidates a refresh token server-side (logout / session kill):
+// it parses the token and, if it is a still-valid refresh token, records its jti
+// as revoked until it would have expired anyway. A malformed, expired, or
+// non-refresh token is a no-op — there is nothing left to revoke, and logout
+// must not error on a stale token.
+func (a *Auth) RevokeRefresh(refreshToken string) {
+	claims, err := a.ParseToken(refreshToken)
+	if err != nil || claims.Kind != "refresh" || claims.ID == "" || claims.ExpiresAt == nil {
+		return
+	}
+	if ttl := time.Until(claims.ExpiresAt.Time); ttl > 0 {
+		a.revoker.Revoke(claims.ID, ttl)
+	}
 }
 
 // Store exposes the backing store for handlers that need it.
@@ -123,6 +155,12 @@ func (a *Auth) Devices() DeviceStore { return a.devices }
 // DeviceStore (internal/api) in place of the in-process default New builds,
 // when the deployment runs more than one API replica.
 func (a *Auth) SetDevices(d DeviceStore) { a.devices = d }
+
+// SetRevoker swaps the refresh-token revocation store — used to install a
+// Redis-backed Revoker (internal/api) in place of the in-process default New
+// builds, so a logout on one API replica invalidates the refresh token on all
+// of them.
+func (a *Auth) SetRevoker(r Revoker) { a.revoker = r }
 
 // AuthenticateAPIKey validates a raw API key and returns the owning org and key.
 func (a *Auth) AuthenticateAPIKey(ctx context.Context, raw string) (store.APIKey, error) {
